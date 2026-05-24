@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f34ca0b446e4594cb689e47adfb0134, type: 3}
+  m_Name: PortraitLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::PortraitLibrary
+  Portraits:
+  - {fileID: 2800000, guid: 6849f6188bc41424ca889f24ea2a0d8d, type: 3}
+  - {fileID: 2800000, guid: 2d13d219b5c4c4e469faa300a78f70d1, type: 3}
+  - {fileID: 2800000, guid: e6854b1aac177aa4eb6d3e7ded78c0d5, type: 3}
+  - {fileID: 2800000, guid: 9f169ab0c1152b946b9665c634668819, type: 3}
+  - {fileID: 2800000, guid: 42692d62bcf43fa4bb687c6bbaeeb01d, type: 3}
+  - {fileID: 2800000, guid: 90e18c7d2a7fc1044a3404ed06199b8a, type: 3}
+  - {fileID: 2800000, guid: fc8981bb782d9fe4b9027047e65e193a, type: 3}
+  - {fileID: 2800000, guid: b250f57506da3274d80b435cbe5825ce, type: 3}
+  - {fileID: 2800000, guid: 1a1f180723a360847b6c6d18a300f88b, type: 3}
+  - {fileID: 2800000, guid: 51eb2e6d1c37b8543bb93f50a995ff38, type: 3}
+  - {fileID: 2800000, guid: c3d6e04450d3e7c4287dc46aa74d3b96, type: 3}
+  - {fileID: 2800000, guid: d158a7685740bc54f88deee9813b261e, type: 3}
+  - {fileID: 2800000, guid: aeaf398824719814fa76c0f283f9df0e, type: 3}
+  - {fileID: 2800000, guid: d010c06e09d95254cbc8560dd7af1a81, type: 3}
+  - {fileID: 2800000, guid: f308206d064a0234b9c1b0a3070da09a, type: 3}
+  - {fileID: 2800000, guid: dfdaa6bd639c8b644b0c9deb17681594, type: 3}
+  - {fileID: 2800000, guid: ef4b624ff8e97df4191c58a2a78614f4, type: 3}
+  - {fileID: 2800000, guid: 9ed9465f05c1e874baaf061874b0d405, type: 3}
+  - {fileID: 2800000, guid: 0f226be69b9bd99458273d38d5f191a3, type: 3}
+  - {fileID: 2800000, guid: c5062d5200a6cea4b9cd54f2f005954e, type: 3}
+  - {fileID: 2800000, guid: 560bb7489e65a0d42a38f1e3271044ef, type: 3}
+  - {fileID: 2800000, guid: 1fd886a8785a4c6469f2592838289224, type: 3}
+  - {fileID: 2800000, guid: bd7513de7bfd5be4b93c718ac4fcabad, type: 3}
+  - {fileID: 2800000, guid: c52fc870ba27ecb4ab5220cea9c10a61, type: 3}
+  - {fileID: 2800000, guid: 68dfa5ed3929e12468c5c4da2403d343, type: 3}
+  - {fileID: 2800000, guid: f548034117a434c4bab32ab19754a0c5, type: 3}
+  - {fileID: 2800000, guid: 08d430ad73630394ebc0f8410d043b11, type: 3}
+  - {fileID: 2800000, guid: f6c71984e3e1f43458365849bacf0873, type: 3}
+  - {fileID: 2800000, guid: 7a7f6169b2fc48848974c4b52b798bc8, type: 3}
+  - {fileID: 2800000, guid: 67824d18a1c2cd044b7db7b611a34e90, type: 3}
+  - {fileID: 2800000, guid: f69a7b6acc18f3c43b63916cd1788127, type: 3}
+  - {fileID: 2800000, guid: a7861d4be87e07a4ba9fd210e32f15fe, type: 3}
+  - {fileID: 2800000, guid: 1eb9a6e62dcf5d644bf1283c24a5f650, type: 3}
+  - {fileID: 2800000, guid: 190e39ce24db9074f943c55f7a680fa5, type: 3}
+  - {fileID: 2800000, guid: b9cf7cdefbd53594f9fe9a742a9a3143, type: 3}
+  - {fileID: 2800000, guid: f66a0cb66fd989c4f8de3590ddfc6acf, type: 3}
+  - {fileID: 2800000, guid: d49b0699d77950641bd597f53ddf17bf, type: 3}
+  - {fileID: 2800000, guid: c8f084e8a12a73441978f23a6cf9d0a8, type: 3}
+  - {fileID: 2800000, guid: 74b9f5889eee9df4283af72a9e8223da, type: 3}
+  - {fileID: 2800000, guid: 3e44ba9ec1f0ea847997092602a25e8b, type: 3}
+  - {fileID: 2800000, guid: 9fe434d495b0cd64488d11436645c5bb, type: 3}
+  - {fileID: 2800000, guid: 976efcca43a034d4f90226958bfccd66, type: 3}
+  - {fileID: 2800000, guid: d2fbc5bbc827aae4eba7cf53145b2961, type: 3}
+  - {fileID: 2800000, guid: 24af43a3351f6c343bb390a3c61d601a, type: 3}
+  - {fileID: 2800000, guid: 0699f1c58bcfee94585488afd1e1f2dd, type: 3}
+  - {fileID: 2800000, guid: 0689056a82114ed4195ad95d43b4ecf4, type: 3}
+  - {fileID: 2800000, guid: 25a0f8885d55b8941be15a689c80606a, type: 3}
+  - {fileID: 2800000, guid: 82659f38ff4eb884d97ac503c35f1ae7, type: 3}
+  - {fileID: 2800000, guid: fd68993720bb41e4d9c23ac4cab13fa8, type: 3}
+  - {fileID: 2800000, guid: 8ec40a06d0db956429d7583db542759f, type: 3}
+  FileNames:
+  - 1.png
+  - 2.png
+  - 3.png
+  - 4.png
+  - 5.png
+  - 6.png
+  - 7.png
+  - 8.png
+  - 9.png
+  - 10.png
+  - 11.png
+  - 12.png
+  - 13.png
+  - 14.png
+  - 15.png
+  - 16.png
+  - 17.png
+  - 18.png
+  - 19.png
+  - 20.png
+  - 21.png
+  - 22.png
+  - 23.png
+  - 24.png
+  - 25.png
+  - 26.png
+  - 27.png
+  - 28.png
+  - 29.png
+  - 30.png
+  - 31.png
+  - 32.png
+  - 33.png
+  - 34.png
+  - 35.png
+  - 36.png
+  - 37.png
+  - 38.png
+  - 39.png
+  - 40.png
+  - 41.png
+  - 42.png
+  - 43.png
+  - 44.png
+  - 45.png
+  - 46.png
+  - 47.png
+  - 48.png
+  - 49.png
+  - 50.png

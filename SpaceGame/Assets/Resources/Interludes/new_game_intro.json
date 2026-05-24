@@ -1,0 +1,18 @@
+{
+  "interludeId": "new_game_intro",
+  "startSceneId": 1,
+  "scenes": [
+    {
+      "id": 1,
+      "imageResource": "",
+      "text": "This is where the text will be...",
+      "nextSceneId": 2
+    },
+    {
+      "id": 2,
+      "imageResource": "",
+      "text": "Second bit of text",
+      "nextSceneId": 0
+    }
+  ]
+}
