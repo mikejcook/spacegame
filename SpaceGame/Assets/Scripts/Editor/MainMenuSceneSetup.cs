@@ -404,26 +404,28 @@ public static class MainMenuSceneSetup
 
         // Centred box ─────────────────────────────────────────────────────────
         // Layout budget (canvas units, 1920x1080 reference resolution):
-        //   3 portrait cells × 150px = 450
-        //   2 inter-cell spacing × 12 =  24
+        //   6 portrait cells × 150px = 900
+        //   5 inter-cell spacing × 12 =  60
         //   Grid padding (left+right) = 24
-        //   Subtotal content width    = 498
+        //   Subtotal content width    = 984
         //   ScrollView inset from box = 32  (16 each side)
-        //   Box internal margin       = 30  (~15 each side breathing room)
+        //   Box internal margin       = 44  (~22 each side breathing room)
         //   ───────────────────────────────────
-        //   Required box width        ≈ 560 → use 600 for breathing room
+        //   Required box width        ≈ 1060
         //
-        // Height: header(60) + divider(2) + gap(8) + scroll(>=434) + padding(16+16) = 536
-        const float boxW = 600f;
-        const float boxH = 536f;
+        // Height: header(60) + divider(2) + gap(8) + scroll(>=598) + padding(16+16) = 700
+        const float boxW = 1060f;
+        const float boxH = 700f;
 
         // Derived constants (all canvas units)
-        const float pad    = 16f;  // left/right/top/bottom padding
-        const float hdrH   = 60f;  // header height
-        const float divH   =  2f;  // divider height
-        const float gap    =  8f;  // gap between divider and scroll
-        const float scrollTop = pad + hdrH + divH + gap; // = 86
-        const float scrollBot = pad;                      // = 16
+        const float pad       = 16f;  // left/right/top/bottom padding
+        const float hdrH      = 60f;  // header height
+        const float divH      =  2f;  // divider height
+        const float gap       =  8f;  // gap between divider and filter bar
+        const float filterH   = 44f;  // filter toggle bar height
+        const float filterGap =  8f;  // gap between filter bar and scroll view
+        const float scrollTop = pad + hdrH + divH + gap + filterH + filterGap; // = 138
+        const float scrollBot = pad;                                            // = 16
 
         var box = MakeUIGO("Container", root.transform);
         PlaceRect(box, anchor(.5f, .5f), anchor(.5f, .5f), v2(0, 0), v2(boxW, boxH));
@@ -478,7 +480,7 @@ public static class MainMenuSceneSetup
             var lblGO = MakeUIGO("Label", closeGO.transform);
             Stretch(lblGO);
             var tmp       = lblGO.AddComponent<TextMeshProUGUI>();
-            tmp.text      = "✕";
+            tmp.text      = "X";   // plain ASCII — avoids LiberationSans SDF missing U+2715 (✕)
             tmp.fontSize  = 28;
             tmp.color     = TextWhite;
             tmp.alignment = TextAlignmentOptions.Center;
@@ -496,7 +498,33 @@ public static class MainMenuSceneSetup
             divider.AddComponent<Image>().color = AccentCyan;
         }
 
-        // ── ScrollView: stretch-anchored, fills everything below the divider ──
+        // ── Filter bar: three toggle buttons between divider and scroll ─────────
+        // Sits flush against the divider's bottom edge (offset by gap).
+        // PortraitPickerPanel manages active/inactive colours at runtime.
+        var filterBar = MakeUIGO("FilterBar", box.transform);
+        {
+            var rt = filterBar.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.sizeDelta        = new Vector2(-pad * 2f, filterH);
+            rt.anchoredPosition = new Vector2(0f, -(pad + hdrH + divH + gap));
+
+            var hlg = filterBar.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing                = 8;
+            hlg.childAlignment         = TextAnchor.MiddleLeft;
+            hlg.childControlWidth      = true;  // must be true for LayoutElement.preferredWidth to take effect
+            hlg.childControlHeight     = true;
+            hlg.childForceExpandWidth  = false;
+            hlg.childForceExpandHeight = true;
+        }
+
+        // "All" starts active (AccentCyan); others start inactive (BtnBack).
+        MakeFilterBtn(filterBar.transform, "FilterAll",       "All",       active: true);
+        MakeFilterBtn(filterBar.transform, "FilterMasculine", "Masculine", active: false);
+        MakeFilterBtn(filterBar.transform, "FilterFeminine",  "Feminine",  active: false);
+
+        // ── ScrollView: stretch-anchored, fills everything below the filter bar ─
         // offsetMin = (left, bottom) from anchor corners
         // offsetMax = (right, top) from anchor corners  (negative = inset)
         var svGO = MakeUIGO("ScrollView", box.transform);
@@ -532,7 +560,7 @@ public static class MainMenuSceneSetup
 
             var grid = gridContent.AddComponent<GridLayoutGroup>();
             grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = 3;
+            grid.constraintCount = 6;
             grid.cellSize        = new Vector2(150f, 150f);
             grid.spacing         = new Vector2(12f, 12f);
             grid.padding         = new RectOffset(12, 12, 12, 12);
@@ -807,6 +835,12 @@ public static class MainMenuSceneSetup
             FindRT(portraitPicker, "Container/ScrollView/Viewport/Content"));
         Set(pickerScript, "closeButton",
             Find<Button>(portraitPicker, "Container/Header/CloseButton"));
+        Set(pickerScript, "filterAllButton",
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterAll/Inner"));
+        Set(pickerScript, "filterMasculineButton",
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterMasculine/Inner"));
+        Set(pickerScript, "filterFeminineButton",
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterFeminine/Inner"));
         pickerScript.ApplyModifiedProperties();
 
         // Load game panel
@@ -877,6 +911,67 @@ public static class MainMenuSceneSetup
         return go;
     }
 
+    /// <summary>
+    /// Creates a bordered filter toggle button for the portrait picker.
+    ///
+    /// Hierarchy:
+    ///   {name}         (LayoutElement + border Image — wrapper)
+    ///     Inner        (Button + fill Image, inset 2px to reveal the border)
+    ///       Label      (TextMeshProUGUI)
+    ///
+    /// PortraitPickerPanel drives both the fill (btn.GetComponent&lt;Image&gt;()) and the
+    /// border (btn.transform.parent.GetComponent&lt;Image&gt;()) at runtime.
+    /// </summary>
+    static void MakeFilterBtn(Transform parent, string name, string label, bool active)
+    {
+        // Active:   full AccentCyan border + AccentCyan fill + dark text.
+        // Inactive: faint AccentCyan border (45% alpha) + BtnBack fill + subtle text.
+        var borderColor = active
+            ? AccentCyan
+            : new Color(AccentCyan.r, AccentCyan.g, AccentCyan.b, 0.45f);
+        var fillColor = active ? AccentCyan : BtnBack;
+        var txtColor  = active ? new Color(0.04f, 0.06f, 0.10f, 1f) : TextSubtle;
+
+        // ── Wrapper: LayoutElement + border Image ─────────────────────────────
+        var wrapper = MakeUIGO(name, parent);
+        var le      = wrapper.AddComponent<LayoutElement>();
+        le.preferredWidth = 200;
+        le.minWidth       = 200;
+        wrapper.AddComponent<Image>().color = borderColor;
+
+        // ── Inner: the actual Button, inset 2px on every edge ────────────────
+        var inner   = MakeUIGO("Inner", wrapper.transform);
+        var innerRT = inner.GetComponent<RectTransform>();
+        innerRT.anchorMin = Vector2.zero;
+        innerRT.anchorMax = Vector2.one;
+        innerRT.offsetMin = new Vector2( 2f,  2f);
+        innerRT.offsetMax = new Vector2(-2f, -2f);
+
+        var img   = inner.AddComponent<Image>();
+        img.color = fillColor;
+
+        var btn    = inner.AddComponent<Button>();
+        var colors = btn.colors;
+        // White base so PortraitPickerPanel can drive img.color freely;
+        // the ColorBlock only provides hover/press feedback on top.
+        colors.normalColor      = Color.white;
+        colors.highlightedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
+        colors.pressedColor     = new Color(0.72f, 0.72f, 0.72f, 1f);
+        colors.selectedColor    = Color.white;
+        btn.colors = colors;
+
+        // ── Label ─────────────────────────────────────────────────────────────
+        var lblGO = MakeUIGO("Label", inner.transform);
+        Stretch(lblGO);
+        var tmp = lblGO.AddComponent<TextMeshProUGUI>();
+        tmp.text               = label;
+        tmp.fontSize           = 22;
+        tmp.color              = txtColor;
+        tmp.alignment          = TextAlignmentOptions.Center;
+        tmp.fontStyle          = FontStyles.Bold;
+        tmp.enableWordWrapping = false; // never let the label wrap inside a fixed-width button
+    }
+
     static void MakeBackBtn(Transform parent, string name)
     {
         var go  = MakeUIGO(name, parent);
@@ -892,7 +987,7 @@ public static class MainMenuSceneSetup
         var txtGO = MakeUIGO("Label", go.transform);
         Stretch(txtGO);
         var tmp       = txtGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = "← BACK";
+        tmp.text      = "BACK";
         tmp.fontSize  = 19;
         tmp.color     = TextSubtle;
         tmp.alignment = TextAlignmentOptions.Center;
