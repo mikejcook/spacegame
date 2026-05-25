@@ -47,16 +47,6 @@ public class PortraitPickerPanel : MonoBehaviour
     [Tooltip("Shows only feminine-presenting portraits (filename starts with 'female_').")]
     [SerializeField] private Button filterFeminineButton;
 
-    [Header("Filter Button Colors")]
-    [Tooltip("Background color of the currently active filter button.")]
-    [SerializeField] private Color filterActiveColor   = new Color(0.30f, 0.85f, 1.00f, 1f); // AccentCyan
-    [Tooltip("Text color of the currently active filter button.")]
-    [SerializeField] private Color filterActiveText    = new Color(0.04f, 0.06f, 0.10f, 1f); // dark on cyan
-    [Tooltip("Background color of inactive filter buttons.")]
-    [SerializeField] private Color filterInactiveColor = new Color(0.12f, 0.12f, 0.18f, 1f); // BtnBack
-    [Tooltip("Text color of inactive filter buttons.")]
-    [SerializeField] private Color filterInactiveText  = new Color(0.60f, 0.72f, 0.85f, 1f); // TextSubtle
-
     [Header("Data")]
     [SerializeField] private PortraitLibrary portraitLibrary;
 
@@ -161,25 +151,13 @@ public class PortraitPickerPanel : MonoBehaviour
     {
         if (btn == null) return;
 
-        // Inner fill — the Button's own Image.
-        var img = btn.GetComponent<Image>();
-        if (img != null) img.color = active ? filterActiveColor : filterInactiveColor;
-
-        // Outer border — the wrapper parent's Image.
-        // Active: full AccentCyan border (blends with fill).
-        // Inactive: AccentCyan at 45% alpha so the border is visible against the dark
-        //           background without competing with the active button.
-        var borderImg = btn.transform.parent?.GetComponent<Image>();
-        if (borderImg != null)
+        // Active/inactive state is communicated via CanvasGroup alpha so it doesn't
+        // conflict with the Shift UI animator that drives the button's child Images.
+        var cg = btn.GetComponent<CanvasGroup>();
+        if (cg != null)
         {
-            borderImg.color = active
-                ? filterActiveColor
-                : new Color(filterActiveColor.r, filterActiveColor.g, filterActiveColor.b, 0.45f);
+            cg.alpha = active ? 1f : 0.5f;
         }
-
-        // Label.
-        var tmp = btn.GetComponentInChildren<TextMeshProUGUI>();
-        if (tmp != null) tmp.color = active ? filterActiveText : filterInactiveText;
     }
 
     private void RefreshGridVisibility()

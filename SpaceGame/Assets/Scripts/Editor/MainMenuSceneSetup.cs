@@ -274,28 +274,34 @@ public static class MainMenuSceneSetup
         }
 
         // Random button — fixed width
-        var randomBtn = MakeUIGO("RandomShipNameButton", shipRow.transform);
+        var randPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject randomBtn;
+        if (randPrefab != null)
         {
-            var le = randomBtn.AddComponent<LayoutElement>();
-            le.preferredWidth = 200; le.minWidth = 200;
-
-            var img = randomBtn.AddComponent<Image>();
-            img.color = BtnNormal;
+            randomBtn      = (GameObject)Object.Instantiate(randPrefab, shipRow.transform);
+            randomBtn.name = "RandomShipNameButton";
+            var mb         = randomBtn.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "RANDOM";
+        }
+        else
+        {
+            randomBtn = MakeUIGO("RandomShipNameButton", shipRow.transform);
+            randomBtn.AddComponent<Image>().color = BtnNormal;
             var btn    = randomBtn.AddComponent<Button>();
             var colors = btn.colors;
             colors.normalColor      = BtnNormal;
             colors.highlightedColor = BtnHighlight;
             colors.pressedColor     = BtnPressed;
             btn.colors = colors;
-
             var lblGO = MakeUIGO("Label", randomBtn.transform);
             Stretch(lblGO);
             var tmp       = lblGO.AddComponent<TextMeshProUGUI>();
-            tmp.text      = "Random";
-            tmp.fontSize  = 30;
-            tmp.color     = TextWhite;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.fontStyle = FontStyles.Bold;
+            tmp.text      = "RANDOM"; tmp.fontSize = 30; tmp.color = TextWhite;
+            tmp.alignment = TextAlignmentOptions.Center; tmp.fontStyle = FontStyles.Bold;
+        }
+        {
+            var le = randomBtn.GetComponent<LayoutElement>(); if (le == null) le = randomBtn.AddComponent<LayoutElement>();
+            le.preferredWidth = 200; le.minWidth = 200;
         }
 
         // ── RIGHT COLUMN — portrait ───────────────────────────────────────────
@@ -360,8 +366,6 @@ public static class MainMenuSceneSetup
             if (le == null) le = startBtn.AddComponent<LayoutElement>();
             le.preferredHeight = 80;
             le.minHeight       = 80;
-            var lbl = startBtn.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
-            if (lbl != null) lbl.fontSize = 32;
         }
 
         MakeSpacer(content.transform, 16); // breathing room below Begin Journey
@@ -462,28 +466,34 @@ public static class MainMenuSceneSetup
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
         }
 
-        var closeGO = MakeUIGO("CloseButton", header.transform);
+        var closePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject closeGO;
+        if (closePrefab != null)
         {
-            var le = closeGO.AddComponent<LayoutElement>();
-            le.preferredWidth  = 56; le.minWidth  = 56;
-            le.flexibleWidth   = 0;  // don't expand
-
-            var img    = closeGO.AddComponent<Image>();
-            img.color  = BtnBack;
+            closeGO      = (GameObject)Object.Instantiate(closePrefab, header.transform);
+            closeGO.name = "CloseButton";
+            var mb       = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "X";
+        }
+        else
+        {
+            closeGO = MakeUIGO("CloseButton", header.transform);
+            closeGO.AddComponent<Image>().color = BtnBack;
             var btn    = closeGO.AddComponent<Button>();
             var colors = btn.colors;
             colors.normalColor      = BtnBack;
             colors.highlightedColor = BtnNormal;
             colors.pressedColor     = BtnPressed;
             btn.colors = colors;
-
             var lblGO = MakeUIGO("Label", closeGO.transform);
             Stretch(lblGO);
             var tmp       = lblGO.AddComponent<TextMeshProUGUI>();
-            tmp.text      = "X";   // plain ASCII — avoids LiberationSans SDF missing U+2715 (✕)
-            tmp.fontSize  = 28;
-            tmp.color     = TextWhite;
+            tmp.text      = "X"; tmp.fontSize = 28; tmp.color = TextWhite;
             tmp.alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var le = closeGO.GetComponent<LayoutElement>(); if (le == null) le = closeGO.AddComponent<LayoutElement>();
+            le.preferredWidth = 56; le.minWidth = 56; le.flexibleWidth = 0;
         }
 
         // ── Divider: 2px cyan line, immediately below header ─────────────────
@@ -836,11 +846,11 @@ public static class MainMenuSceneSetup
         Set(pickerScript, "closeButton",
             Find<Button>(portraitPicker, "Container/Header/CloseButton"));
         Set(pickerScript, "filterAllButton",
-            Find<Button>(portraitPicker, "Container/FilterBar/FilterAll/Inner"));
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterAll"));
         Set(pickerScript, "filterMasculineButton",
-            Find<Button>(portraitPicker, "Container/FilterBar/FilterMasculine/Inner"));
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterMasculine"));
         Set(pickerScript, "filterFeminineButton",
-            Find<Button>(portraitPicker, "Container/FilterBar/FilterFeminine/Inner"));
+            Find<Button>(portraitPicker, "Container/FilterBar/FilterFeminine"));
         pickerScript.ApplyModifiedProperties();
 
         // Load game panel
@@ -881,116 +891,115 @@ public static class MainMenuSceneSetup
         PlaceRect(rule, anchor(.5f, 1f), anchor(.5f, 1f), v2(0, -115), v2(600, 2));
     }
 
+    const string MainBtnPrefabPath = "Assets/Shift - Complete Sci-Fi UI/Prefabs/Button/Main Button.prefab";
+
     static GameObject MakeMenuBtn(Transform parent, string name, string label, bool danger = false)
     {
-        var go  = MakeUIGO(name, parent);
-        var img = go.AddComponent<Image>();
-        img.color = danger ? BtnBack : BtnNormal;
-
-        var btn    = go.AddComponent<Button>();
-        var colors = btn.colors;
-        colors.normalColor      = danger ? BtnBack    : BtnNormal;
-        colors.highlightedColor = danger ? BtnNormal  : BtnHighlight;
-        colors.pressedColor     = BtnPressed;
-        colors.fadeDuration     = 0.08f;
-        btn.colors = colors;
-
-        var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 58;
-        le.minHeight       = 58;
-
-        var txtGO = MakeUIGO("Label", go.transform);
-        Stretch(txtGO);
-        var tmp       = txtGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = 22;
-        tmp.color     = danger ? TextSubtle : TextWhite;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.fontStyle = FontStyles.Bold;
-
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject go;
+        if (prefab != null)
+        {
+            go      = (GameObject)Object.Instantiate(prefab, parent);
+            go.name = name;
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = label;
+        }
+        else
+        {
+            Debug.LogWarning($"[SceneSetup] Main Button prefab not found at {MainBtnPrefabPath} — using plain button.");
+            go = MakeUIGO(name, parent);
+            go.AddComponent<Image>().color = danger ? BtnBack : BtnNormal;
+            var btn    = go.AddComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor      = danger ? BtnBack    : BtnNormal;
+            colors.highlightedColor = danger ? BtnNormal  : BtnHighlight;
+            colors.pressedColor     = BtnPressed;
+            colors.fadeDuration     = 0.08f;
+            btn.colors = colors;
+            var txtGO = MakeUIGO("Label", go.transform);
+            Stretch(txtGO);
+            var tmp       = txtGO.AddComponent<TextMeshProUGUI>();
+            tmp.text      = label;
+            tmp.fontSize  = 22;
+            tmp.color     = danger ? TextSubtle : TextWhite;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontStyle = FontStyles.Bold;
+        }
+        var le = go.GetComponent<LayoutElement>(); if (le == null) le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 58; le.minHeight = 58;
         return go;
     }
 
     /// <summary>
-    /// Creates a bordered filter toggle button for the portrait picker.
-    ///
-    /// Hierarchy:
-    ///   {name}         (LayoutElement + border Image — wrapper)
-    ///     Inner        (Button + fill Image, inset 2px to reveal the border)
-    ///       Label      (TextMeshProUGUI)
-    ///
-    /// PortraitPickerPanel drives both the fill (btn.GetComponent&lt;Image&gt;()) and the
-    /// border (btn.transform.parent.GetComponent&lt;Image&gt;()) at runtime.
+    /// Creates a Shift Main Button for the portrait picker filter bar.
+    /// PortraitPickerPanel drives active/inactive state via CanvasGroup.alpha at runtime.
     /// </summary>
     static void MakeFilterBtn(Transform parent, string name, string label, bool active)
     {
-        // Active:   full AccentCyan border + AccentCyan fill + dark text.
-        // Inactive: faint AccentCyan border (45% alpha) + BtnBack fill + subtle text.
-        var borderColor = active
-            ? AccentCyan
-            : new Color(AccentCyan.r, AccentCyan.g, AccentCyan.b, 0.45f);
-        var fillColor = active ? AccentCyan : BtnBack;
-        var txtColor  = active ? new Color(0.04f, 0.06f, 0.10f, 1f) : TextSubtle;
-
-        // ── Wrapper: LayoutElement + border Image ─────────────────────────────
-        var wrapper = MakeUIGO(name, parent);
-        var le      = wrapper.AddComponent<LayoutElement>();
-        le.preferredWidth = 200;
-        le.minWidth       = 200;
-        wrapper.AddComponent<Image>().color = borderColor;
-
-        // ── Inner: the actual Button, inset 2px on every edge ────────────────
-        var inner   = MakeUIGO("Inner", wrapper.transform);
-        var innerRT = inner.GetComponent<RectTransform>();
-        innerRT.anchorMin = Vector2.zero;
-        innerRT.anchorMax = Vector2.one;
-        innerRT.offsetMin = new Vector2( 2f,  2f);
-        innerRT.offsetMax = new Vector2(-2f, -2f);
-
-        var img   = inner.AddComponent<Image>();
-        img.color = fillColor;
-
-        var btn    = inner.AddComponent<Button>();
-        var colors = btn.colors;
-        // White base so PortraitPickerPanel can drive img.color freely;
-        // the ColorBlock only provides hover/press feedback on top.
-        colors.normalColor      = Color.white;
-        colors.highlightedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
-        colors.pressedColor     = new Color(0.72f, 0.72f, 0.72f, 1f);
-        colors.selectedColor    = Color.white;
-        btn.colors = colors;
-
-        // ── Label ─────────────────────────────────────────────────────────────
-        var lblGO = MakeUIGO("Label", inner.transform);
-        Stretch(lblGO);
-        var tmp = lblGO.AddComponent<TextMeshProUGUI>();
-        tmp.text               = label;
-        tmp.fontSize           = 22;
-        tmp.color              = txtColor;
-        tmp.alignment          = TextAlignmentOptions.Center;
-        tmp.fontStyle          = FontStyles.Bold;
-        tmp.enableWordWrapping = false; // never let the label wrap inside a fixed-width button
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject go;
+        if (prefab != null)
+        {
+            go      = (GameObject)Object.Instantiate(prefab, parent);
+            go.name = name;
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = label;
+        }
+        else
+        {
+            go = MakeUIGO(name, parent);
+            go.AddComponent<Image>().color = active ? AccentCyan : BtnBack;
+            var btn    = go.AddComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor      = Color.white;
+            colors.highlightedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
+            colors.pressedColor     = new Color(0.72f, 0.72f, 0.72f, 1f);
+            btn.colors = colors;
+            var lblGO = MakeUIGO("Label", go.transform);
+            Stretch(lblGO);
+            var tmp               = lblGO.AddComponent<TextMeshProUGUI>();
+            tmp.text              = label;
+            tmp.fontSize          = 22;
+            tmp.color             = active ? new Color(0.04f, 0.06f, 0.10f, 1f) : TextSubtle;
+            tmp.alignment         = TextAlignmentOptions.Center;
+            tmp.fontStyle         = FontStyles.Bold;
+            tmp.enableWordWrapping = false;
+        }
+        var le = go.GetComponent<LayoutElement>(); if (le == null) le = go.AddComponent<LayoutElement>();
+        le.preferredWidth = 200; le.minWidth = 200;
+        // CanvasGroup: PortraitPickerPanel.SetFilterBtnActive drives alpha for active/inactive state.
+        var cg = go.GetComponent<CanvasGroup>(); if (cg == null) cg = go.AddComponent<CanvasGroup>();
+        cg.alpha = active ? 1f : 0.5f;
     }
 
     static void MakeBackBtn(Transform parent, string name)
     {
-        var go  = MakeUIGO(name, parent);
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject go;
+        if (prefab != null)
+        {
+            go      = (GameObject)Object.Instantiate(prefab, parent);
+            go.name = name;
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "BACK";
+        }
+        else
+        {
+            go = MakeUIGO(name, parent);
+            go.AddComponent<Image>().color = BtnBack;
+            var btn = go.AddComponent<Button>();
+            var c   = btn.colors;
+            c.normalColor      = BtnBack;
+            c.highlightedColor = BtnNormal;
+            c.pressedColor     = BtnPressed;
+            btn.colors = c;
+            var txtGO = MakeUIGO("Label", go.transform);
+            Stretch(txtGO);
+            var tmp       = txtGO.AddComponent<TextMeshProUGUI>();
+            tmp.text      = "BACK"; tmp.fontSize = 19; tmp.color = TextSubtle;
+            tmp.alignment = TextAlignmentOptions.Center;
+        }
         PlaceRect(go, anchor(0f, 0f), anchor(0f, 0f), v2(110, 36), v2(180, 50));
-        go.AddComponent<Image>().color = BtnBack;
-        var btn = go.AddComponent<Button>();
-        var c   = btn.colors;
-        c.normalColor      = BtnBack;
-        c.highlightedColor = BtnNormal;
-        c.pressedColor     = BtnPressed;
-        btn.colors = c;
-
-        var txtGO = MakeUIGO("Label", go.transform);
-        Stretch(txtGO);
-        var tmp       = txtGO.AddComponent<TextMeshProUGUI>();
-        tmp.text      = "BACK";
-        tmp.fontSize  = 19;
-        tmp.color     = TextSubtle;
-        tmp.alignment = TextAlignmentOptions.Center;
     }
 
     static void MakeFieldLabel(Transform parent, string name, string text)
@@ -1036,7 +1045,7 @@ public static class MainMenuSceneSetup
     /// </summary>
     static void MakeTMPInputField(GameObject go, string placeholder, int fontSize)
     {
-        var field  = go.GetComponent<TMP_InputField>() ?? go.AddComponent<TMP_InputField>();
+        var field = go.GetComponent<TMP_InputField>(); if (field == null) field = go.AddComponent<TMP_InputField>();
 
         var area   = MakeUIGO("Text Area", go.transform);
         var areaRT = area.GetComponent<RectTransform>();
