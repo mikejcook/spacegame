@@ -5,50 +5,54 @@ using System.IO;
 using System.Linq;
 
 /// <summary>
-/// Editor utility that scans the BIG PORTRAITS PACK folder, picks the first 50
-/// portraits (sorted numerically), and writes them into a PortraitLibrary
-/// ScriptableObject at Assets/Resources/PortraitLibrary.asset.
+/// Editor utility that scans Assets/Resources/Portraits/ and writes the
+/// found portraits into the PortraitLibrary ScriptableObject at
+/// Assets/Resources/PortraitLibrary.asset.
+///
+/// Files are sorted males first (male_1 … male_25) then females (female_1 … female_25).
 ///
 /// Run via:  Star Captain -> Build Portrait Library
 /// </summary>
 public static class PortraitLibraryBuilder
 {
-    private const string PortraitsFolder  = "Assets/BIG PORTRAITS PACK (by Batareya)/PORTRAITS";
-    private const string OutputAssetPath  = "Assets/Resources/PortraitLibrary.asset";
-    private const int    MaxPortraits     = 50;
+    private const string PortraitsFolder = "Assets/Resources/Portraits";
+    private const string OutputAssetPath = "Assets/Resources/PortraitLibrary.asset";
+    private const int    MaxPortraits    = 50;
 
     [MenuItem("Star Captain/Build Portrait Library")]
     public static void Build()
     {
-        // 1. Ensure the Resources folder exists
+        // 1. Ensure Resources folder exists
         if (!AssetDatabase.IsValidFolder("Assets/Resources"))
             AssetDatabase.CreateFolder("Assets", "Resources");
 
-        // 2. Find all textures in the portraits folder
+        // 2. Find all textures in Portraits
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { PortraitsFolder });
 
         if (guids.Length == 0)
         {
             EditorUtility.DisplayDialog(
                 "Portrait Library Builder",
-                $"No textures found in:\n{PortraitsFolder}\n\nMake sure the BIG PORTRAITS PACK is imported.",
+                $"No textures found in:\n{PortraitsFolder}\n\nMake sure Assets/Resources/Portraits/ exists and contains PNG files.",
                 "OK");
             return;
         }
 
-        // 3. Filter to .png only, sort numerically by filename, take first N
+        // 3. Filter to .png, sort males first (numerically), then females
         var sortedPaths = guids
             .Select(AssetDatabase.GUIDToAssetPath)
             .Where(p => p.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p =>
+            .OrderBy(p => Path.GetFileNameWithoutExtension(p).StartsWith("male_") ? 0 : 1)
+            .ThenBy(p =>
             {
                 string stem = Path.GetFileNameWithoutExtension(p);
-                return int.TryParse(stem, out int n) ? n : int.MaxValue;
+                int    idx  = stem.LastIndexOf('_');
+                return idx >= 0 && int.TryParse(stem.Substring(idx + 1), out int n) ? n : 0;
             })
             .Take(MaxPortraits)
             .ToArray();
 
-        // 4. Load textures
+        // 4. Load textures + record filenames
         var textures  = new Texture2D[sortedPaths.Length];
         var fileNames = new string[sortedPaths.Length];
 
@@ -76,14 +80,8 @@ public static class PortraitLibraryBuilder
         Debug.Log($"[PortraitLibraryBuilder] Built library with {library.Count} portraits at {OutputAssetPath}");
         EditorUtility.DisplayDialog(
             "Portrait Library Built",
-            $"Successfully loaded {library.Count} portraits.\n\nAsset saved to:\n{OutputAssetPath}\n\nAssign it to your PortraitPickerPanel in the Inspector.",
+            $"Successfully loaded {library.Count} portraits from Portrait.\n\nAsset saved to:\n{OutputAssetPath}",
             "OK");
-    }
-
-    [MenuItem("Star Captain/Build Portrait Library", validate = true)]
-    public static bool BuildValidate()
-    {
-        return AssetDatabase.IsValidFolder(PortraitsFolder);
     }
 }
 #endif

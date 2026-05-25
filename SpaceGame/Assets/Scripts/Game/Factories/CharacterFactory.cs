@@ -30,7 +30,7 @@ public static class CharacterFactory
             CurrentHealth   = 12,
             Background      = "A seasoned spacer who decided to strike out on their own.",
             Homeworld       = "Earth",
-            PortraitId      = string.IsNullOrEmpty(portraitFileName) ? "portrait_default" : portraitFileName
+            PortraitId      = string.IsNullOrEmpty(portraitFileName) ? "male_1.png" : portraitFileName
         };
 
         captain.Skills = new Dictionary<string, int>
@@ -58,7 +58,7 @@ public static class CharacterFactory
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
-            PortraitId    = "portrait_pilot_01",
+            PortraitId    = "male_5.png",
             Background    = "Former colonial courier pilot, fast and reckless.",
             Homeworld     = GenerateHomeworld(),
         };
@@ -86,7 +86,7 @@ public static class CharacterFactory
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
-            PortraitId    = "portrait_engineer_01",
+            PortraitId    = "female_6.png",
             Background    = "Self-taught ship mechanic who can fix anything with duct tape and spite.",
             Homeworld     = GenerateHomeworld(),
         };

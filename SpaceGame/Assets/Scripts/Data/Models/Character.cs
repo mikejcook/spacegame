@@ -31,8 +31,8 @@ public class Character
     // Gender — stored as a tinyint (maps to the Gender enum)
     public Gender Gender { get; set; } = Gender.NonBinary;
 
-    // Portrait references a sprite name in Resources/Portraits/
-    public string PortraitId { get; set; } = "portrait_default";
+    // Portrait references a filename in Resources/PortraitsNew/ (e.g. "male_1.png")
+    public string PortraitId { get; set; } = "male_1.png";
 
     // Progression
     public int Level                { get; set; } = 1;
