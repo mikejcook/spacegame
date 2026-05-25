@@ -144,7 +144,7 @@ public static class DiceRoller
         int extraBonus = 0)
     {
         if (party == null || party.Count == 0)
-            return RollSkillCheck(new Character { Name = "Nobody" }, skillName, difficultyClass);
+            return RollSkillCheck(new Character { FirstName = "Nobody" }, skillName, difficultyClass);
 
         // Find best-skilled member
         Character lead = party[0];

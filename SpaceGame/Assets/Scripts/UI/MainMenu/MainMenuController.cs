@@ -237,20 +237,24 @@ public class MainMenuController : MonoBehaviour
 
         string portraitFileName = _selectedPortraitFileName;
 
-        // ── Show opening story interlude, then start the game ─────────────
-        var interlude = StoryInterlude.LoadFromResources(Constants.Interludes.NewGameIntro);
+        // ── Prepare game data first so interlude tokens have live values ──
+        GameManager.Instance.PrepareNewGame(captainName, shipName, portraitFileName);
+
+        // ── Show opening story interlude, then launch the game scene ──────
+        var stories   = StoryCollection.LoadFromResources();
+        var interlude = stories?.GetInterlude(Constants.Interludes.NewGameIntroId);
 
         if (interlude != null && storyInterludeController != null)
         {
             storyInterludeController.Play(interlude, () =>
             {
-                GameManager.Instance.StartNewGame(captainName, shipName, portraitFileName);
+                GameManager.Instance.LaunchNewGame();
             });
         }
         else
         {
             // Fallback: interlude not configured — go straight to game
-            GameManager.Instance.StartNewGame(captainName, shipName, portraitFileName);
+            GameManager.Instance.LaunchNewGame();
         }
     }
 

@@ -28,17 +28,24 @@ using TMPro;
 ///
 /// ── Usage ────────────────────────────────────────────────────────────────────
 ///
-///   var interlude = StoryInterlude.LoadFromResources("Interludes/new_game_intro");
-///   storyInterludeController.Play(interlude, () => GameManager.Instance.StartNewGame(...));
+///   // Prepare game data first so token substitution has live values to work with.
+///   GameManager.Instance.PrepareNewGame(captainName, shipName, portraitFileName);
+///
+///   var stories   = StoryCollection.LoadFromResources();
+///   var interlude = stories?.GetInterlude(Constants.Interludes.NewGameIntroId);
+///   storyInterludeController.Play(interlude, () => GameManager.Instance.LaunchNewGame());
 ///
 /// ── JSON Format ──────────────────────────────────────────────────────────────
+///
+///   Scene text supports {Namespace.Target.Field} substitution via StoryTextResolver.
+///   Example: "Welcome aboard, {Character.Captain.Name}. Your {Ship.ShipClass} awaits."
 ///
 ///   {
 ///     "interludeId": "new_game_intro",
 ///     "startSceneId": 1,
 ///     "scenes": [
-///       { "id": 1, "imageResource": "", "text": "This is where the text will be...", "nextSceneId": 2 },
-///       { "id": 2, "imageResource": "", "text": "Second bit of text",                "nextSceneId": 0 }
+///       { "id": 1, "imageResource": "", "text": "Year 2387. The stars await.", "nextSceneId": 2 },
+///       { "id": 2, "imageResource": "", "text": "Your crew is ready, Captain.", "nextSceneId": 0 }
 ///     ]
 ///   }
 ///
@@ -94,16 +101,6 @@ public class StoryInterludeController : MonoBehaviour
     // Public API
     // -----------------------------------------------------------------------
 
-    /// <summary>
-    /// Convenience overload — loads the interlude JSON from Resources then plays it.
-    /// </summary>
-    /// <param name="resourcePath">Resources-relative path without extension, e.g. "Interludes/new_game_intro".</param>
-    /// <param name="onComplete">Fired when the final scene is tapped.</param>
-    public void PlayFromResources(string resourcePath, Action onComplete)
-    {
-        var interlude = StoryInterlude.LoadFromResources(resourcePath);
-        Play(interlude, onComplete);
-    }
 
     /// <summary>
     /// Begin the interlude sequence.
@@ -162,7 +159,7 @@ public class StoryInterludeController : MonoBehaviour
         }
 
         // ── Caption ──────────────────────────────────────────────────────
-        if (captionText) captionText.text = scene.text;
+        if (captionText) captionText.text = StoryTextResolver.Resolve(scene.text);
 
         // ── Tap hint ─────────────────────────────────────────────────────
         if (tapHint) tapHint.SetActive(true);

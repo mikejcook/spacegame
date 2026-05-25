@@ -39,9 +39,11 @@ public class GameManager : MonoBehaviour
     // -----------------------------------------------------------------------
     // Active game session data
     // -----------------------------------------------------------------------
-    public SaveGame CurrentSave  { get; private set; }
-    public Ship     PlayerShip   { get; private set; }
-    public Character PlayerCaptain { get; private set; }
+    public SaveGame  CurrentSave    { get; private set; }
+    public Ship      PlayerShip     { get; private set; }
+    public Character PlayerCaptain  { get; private set; }
+    public Character PlayerPilot    { get; private set; }
+    public Character PlayerEngineer { get; private set; }
 
     // -----------------------------------------------------------------------
     // Unity lifecycle
@@ -72,19 +74,24 @@ public class GameManager : MonoBehaviour
     // Game flow
     // -----------------------------------------------------------------------
 
-    /// <summary>Start a brand-new game with the given captain name, ship name, and portrait.</summary>
-    public void StartNewGame(string captainName, string shipName = "Horizon", string portraitFileName = "")
+    /// <summary>
+    /// Creates all new-game data (save record, captain, crew, ship, star system)
+    /// and populates the Player* properties, but does NOT load the game scene.
+    /// Call this before playing an opening interlude, then call
+    /// <see cref="LaunchNewGame"/> when the interlude completes.
+    /// </summary>
+    public void PrepareNewGame(string captainName, string shipName = "Horizon", string portraitFileName = "")
     {
         SetState(GameState.Loading);
 
         // Build the save record
         CurrentSave = new SaveGame
         {
-            CaptainName   = captainName,
-            ShipName      = shipName,
-            Credits       = Constants.Economy.StartingCredits,
-            CreatedAt     = System.DateTime.Now,
-            LastSavedAt   = System.DateTime.Now
+            CaptainName = captainName,
+            ShipName    = shipName,
+            Credits     = Constants.Economy.StartingCredits,
+            CreatedAt   = System.DateTime.Now,
+            LastSavedAt = System.DateTime.Now
         };
         Database.SaveGames.Insert(CurrentSave);
 
@@ -95,12 +102,12 @@ public class GameManager : MonoBehaviour
         CurrentSave.CaptainId    = PlayerCaptain.Id;
 
         // Create starting pilot and engineer
-        var pilot    = CharacterFactory.CreateStartingPilot();
-        var engineer = CharacterFactory.CreateStartingEngineer();
-        pilot.SaveGameId    = CurrentSave.Id;
-        engineer.SaveGameId = CurrentSave.Id;
-        Database.Characters.Insert(pilot);
-        Database.Characters.Insert(engineer);
+        PlayerPilot              = CharacterFactory.CreateStartingPilot();
+        PlayerEngineer           = CharacterFactory.CreateStartingEngineer();
+        PlayerPilot.SaveGameId   = CurrentSave.Id;
+        PlayerEngineer.SaveGameId = CurrentSave.Id;
+        Database.Characters.Insert(PlayerPilot);
+        Database.Characters.Insert(PlayerEngineer);
 
         // Create starting ship
         PlayerShip            = Ship.CreateStartingShip(shipName);
@@ -120,8 +127,23 @@ public class GameManager : MonoBehaviour
 
         CurrentSave.CurrentSystemId = sol.Id;
         Database.SaveGames.Update(CurrentSave);
+    }
 
-        LoadGameScene();
+    /// <summary>
+    /// Transitions to the game scene. Call this after <see cref="PrepareNewGame"/>
+    /// and any opening interlude have completed.
+    /// </summary>
+    public void LaunchNewGame() => LoadGameScene();
+
+    /// <summary>
+    /// Convenience method: prepares a new game and immediately loads the game scene
+    /// without playing any interlude. Prefer <see cref="PrepareNewGame"/> +
+    /// <see cref="LaunchNewGame"/> when an opening interlude is involved.
+    /// </summary>
+    public void StartNewGame(string captainName, string shipName = "Horizon", string portraitFileName = "")
+    {
+        PrepareNewGame(captainName, shipName, portraitFileName);
+        LaunchNewGame();
     }
 
     /// <summary>Resume an existing save.</summary>
@@ -129,9 +151,11 @@ public class GameManager : MonoBehaviour
     {
         SetState(GameState.Loading);
 
-        CurrentSave   = Database.SaveGames.Get(saveId);
-        PlayerCaptain = Database.Characters.Get(CurrentSave.CaptainId);
-        PlayerShip    = Database.Ships.Get(CurrentSave.ShipId);
+        CurrentSave     = Database.SaveGames.Get(saveId);
+        PlayerCaptain   = Database.Characters.Get(CurrentSave.CaptainId);
+        PlayerShip      = Database.Ships.Get(CurrentSave.ShipId);
+        PlayerPilot     = Database.GetCrewByRole(CurrentSave.Id, Constants.Crew.Roles.Pilot);
+        PlayerEngineer  = Database.GetCrewByRole(CurrentSave.Id, Constants.Crew.Roles.Engineer);
 
         LoadGameScene();
     }

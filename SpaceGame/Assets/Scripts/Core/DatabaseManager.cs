@@ -32,6 +32,16 @@ public class DatabaseManager : MonoBehaviour
         string path = Path.Combine(Application.persistentDataPath, Constants.Database.FileName);
         Debug.Log($"[DatabaseManager] Opening database at: {path}");
 
+#if UNITY_EDITOR
+        // In the editor, always start with a fresh database so schema changes take effect.
+        // Remove this block (or gate it behind a menu toggle) before shipping.
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+            Debug.Log("[DatabaseManager] Editor mode: existing database deleted for schema refresh.");
+        }
+#endif
+
         _db = new SQLiteConnection(path);
 
         CreateTables();
@@ -66,6 +76,10 @@ public class DatabaseManager : MonoBehaviour
 
     public List<Character> GetCrewForSave(int saveGameId)
         => Characters.Query().Where(c => c.SaveGameId == saveGameId).ToList();
+
+    /// <summary>Returns the first crew member with the given role for a save, or null.</summary>
+    public Character GetCrewByRole(int saveGameId, string role)
+        => Characters.Query().Where(c => c.SaveGameId == saveGameId && c.Role == role).FirstOrDefault();
 
     public List<PointOfInterest> GetPOIsForSystem(int starSystemId)
         => POIs.Query().Where(p => p.StarSystemId == starSystemId).ToList();

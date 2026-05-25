@@ -3,8 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// Factory for creating Character instances with appropriate starting stats.
-/// Named crew members are placeholders — you'll want to replace them with
-/// a proper recruitment/procedural system later.
+/// Names and genders are generated via NameGenerator. Pass a specific Gender to
+/// override the random pick (e.g. for characters whose gender is fixed by lore).
 /// </summary>
 public static class CharacterFactory
 {
@@ -12,11 +12,17 @@ public static class CharacterFactory
     // Starting crew
     // ---------------------------------------------------------------------------
 
+    /// <summary>
+    /// Creates the player captain. The full name string is stored as-is in FirstName
+    /// (no last name split). The captain has no gender — pronouns are always second-person.
+    /// </summary>
     public static Character CreateCaptain(string name, string portraitFileName = "")
     {
         var captain = new Character
         {
-            Name            = name,
+            FirstName       = name,
+            LastName        = "",
+            Gender          = Gender.None,
             Role            = Constants.Crew.Roles.Captain,
             IsPlayerCaptain = true,
             Level           = 1,
@@ -24,11 +30,9 @@ public static class CharacterFactory
             CurrentHealth   = 12,
             Background      = "A seasoned spacer who decided to strike out on their own.",
             Homeworld       = "Earth",
-            // PortraitId stores the filename chosen during new-game setup (e.g. "7.png")
             PortraitId      = string.IsNullOrEmpty(portraitFileName) ? "portrait_default" : portraitFileName
         };
 
-        // Captains are generalists with a command focus
         captain.Skills = new Dictionary<string, int>
         {
             [Constants.Skills.Command]    = 2,
@@ -43,16 +47,20 @@ public static class CharacterFactory
 
     public static Character CreateStartingPilot()
     {
+        var generated = NameGenerator.Generate();
+
         var pilot = new Character
         {
-            Name          = "Alex Chen",
+            FirstName     = generated.firstName,
+            LastName      = generated.lastName,
+            Gender        = generated.gender,
             Role          = Constants.Crew.Roles.Pilot,
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
             PortraitId    = "portrait_pilot_01",
             Background    = "Former colonial courier pilot, fast and reckless.",
-            Homeworld     = "Mars"
+            Homeworld     = GenerateHomeworld(),
         };
 
         pilot.Skills = new Dictionary<string, int>
@@ -67,16 +75,20 @@ public static class CharacterFactory
 
     public static Character CreateStartingEngineer()
     {
+        var generated = NameGenerator.Generate();
+
         var engineer = new Character
         {
-            Name          = "Mira Santos",
+            FirstName     = generated.firstName,
+            LastName      = generated.lastName,
+            Gender        = generated.gender,
             Role          = Constants.Crew.Roles.Engineer,
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
             PortraitId    = "portrait_engineer_01",
             Background    = "Self-taught ship mechanic who can fix anything with duct tape and spite.",
-            Homeworld     = "Titan Colony"
+            Homeworld     = GenerateHomeworld(),
         };
 
         engineer.Skills = new Dictionary<string, int>
@@ -99,9 +111,13 @@ public static class CharacterFactory
     /// </summary>
     public static Character CreateRandomCrewMember(string role, int level = 1)
     {
+        var generated = NameGenerator.Generate();
+
         var crew = new Character
         {
-            Name          = GenerateRandomName(),
+            FirstName     = generated.firstName,
+            LastName      = generated.lastName,
+            Gender        = generated.gender,
             Role          = role,
             Level         = level,
             MaxHealth     = 8 + (level * 2),
@@ -122,7 +138,7 @@ public static class CharacterFactory
     private static Dictionary<string, int> GenerateSkillsForRole(string role, int level)
     {
         var skills     = new Dictionary<string, int>();
-        int totalPoints = level + 2; // grows with level
+        int totalPoints = level + 2;
 
         string primary = role switch
         {
@@ -152,35 +168,14 @@ public static class CharacterFactory
         return skills;
     }
 
-    private static readonly string[] FirstNames =
-    {
-        "Jordan", "Riley", "Sam", "Morgan", "Casey", "Drew", "Avery", "Quinn",
-        "Kai", "Reese", "Dakota", "Skyler", "Ren", "Noa", "Blair", "Sage"
-    };
-
-    private static readonly string[] LastNames =
-    {
-        "Chen", "Patel", "Kim", "Santos", "Okonkwo", "Reyes", "Fischer",
-        "Nakamura", "Petrov", "Osei", "Lindqvist", "Mbeki", "Kowalski", "Diallo"
-    };
-
     private static readonly string[] Homeworlds =
     {
         "Earth", "Mars", "Titan Colony", "Europa Station", "Ceres",
         "Proxima b", "New Shanghai", "Brasilia Station", "Lunar City"
     };
 
-    private static string GenerateRandomName()
-    {
-        var rng = new System.Random();
-        return $"{FirstNames[rng.Next(FirstNames.Length)]} {LastNames[rng.Next(LastNames.Length)]}";
-    }
-
     private static string GenerateHomeworld()
-    {
-        var rng = new System.Random();
-        return Homeworlds[rng.Next(Homeworlds.Length)];
-    }
+        => Homeworlds[Random.Range(0, Homeworlds.Length)];
 
     private static string GenerateBackground(string role)
     {

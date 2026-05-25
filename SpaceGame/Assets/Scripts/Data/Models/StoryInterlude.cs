@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 /// <summary>
 /// An ordered chain of <see cref="StoryScene"/> objects that play one after another.
@@ -8,17 +7,17 @@ using UnityEngine;
 /// Scenes are linked via their <c>nextSceneId</c> field — not by array position —
 /// so scenes can branch, loop, or appear in any order in the JSON.
 ///
-/// How to use
-/// ----------
-/// 1. Create a JSON file in Assets/Resources/Interludes/ (e.g. new_game_intro.json).
-/// 2. Load it at runtime:
-///    <code>
-///    var interlude = StoryInterlude.LoadFromResources("Interludes/new_game_intro");
-///    storyInterludeController.Play(interlude, OnInterludeComplete);
-///    </code>
+/// Interludes are stored as items in the shared <c>Resources/Interludes/stories.json</c>
+/// collection file.  Do not load them directly — use <see cref="StoryCollection"/> instead:
 ///
-/// JSON structure example
-/// ----------------------
+/// <code>
+/// var stories   = StoryCollection.LoadFromResources();
+/// var interlude = stories?.GetInterlude(Constants.Interludes.NewGameIntroId);
+/// storyInterludeController.Play(interlude, OnInterludeComplete);
+/// </code>
+///
+/// JSON structure (one item in the "interludes" array of stories.json)
+/// -------------------------------------------------------------------
 /// {
 ///   "interludeId": "new_game_intro",
 ///   "startSceneId": 1,
@@ -57,31 +56,4 @@ public class StoryInterlude
         return scenes.Find(s => s.id == id);
     }
 
-    // -----------------------------------------------------------------------
-    // Factory
-    // -----------------------------------------------------------------------
-
-    /// <summary>
-    /// Loads and deserialises a StoryInterlude from a JSON TextAsset in Resources.
-    /// </summary>
-    /// <param name="resourcePath">
-    /// Path relative to any Resources folder, without extension.
-    /// Example: <c>"Interludes/new_game_intro"</c>
-    /// </param>
-    /// <returns>The deserialised interlude, or <c>null</c> on failure.</returns>
-    public static StoryInterlude LoadFromResources(string resourcePath)
-    {
-        var asset = Resources.Load<TextAsset>(resourcePath);
-        if (asset == null)
-        {
-            Debug.LogWarning($"[StoryInterlude] Could not find TextAsset at Resources/{resourcePath}");
-            return null;
-        }
-
-        var interlude = JsonUtility.FromJson<StoryInterlude>(asset.text);
-        if (interlude == null)
-            Debug.LogWarning($"[StoryInterlude] Failed to parse JSON at Resources/{resourcePath}");
-
-        return interlude;
-    }
 }

@@ -7,7 +7,7 @@ using SQLite;
 
 public enum ShipClass
 {
-    SmallFreighter,
+    Freighter,
     Corvette,
     Frigate,
     Cruiser
@@ -87,9 +87,9 @@ public class Ship
 
     private int ClassStat(string stat) => (ShipClass, stat) switch
     {
-        (ShipClass.SmallFreighter, "attack")  => 0,
-        (ShipClass.SmallFreighter, "defense") => 1,
-        (ShipClass.SmallFreighter, "sensors") => 1,
+        (ShipClass.Freighter, "attack")  => 0,
+        (ShipClass.Freighter, "defense") => 1,
+        (ShipClass.Freighter, "sensors") => 1,
         (ShipClass.Corvette,       "attack")  => 2,
         (ShipClass.Corvette,       "defense") => 2,
         (ShipClass.Corvette,       "sensors") => 2,
@@ -135,7 +135,7 @@ public class Ship
         var ship = new Ship
         {
             Name           = name,
-            ShipClass      = ShipClass.SmallFreighter,
+            ShipClass      = ShipClass.Freighter,
             MaxHullPoints  = 50,
             HullPoints     = 50,
             MaxShieldPoints = 20,

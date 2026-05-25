@@ -114,7 +114,10 @@ public static class Constants
 
     public static class Interludes
     {
-        /// <summary>Intro sequence played when a new game begins.</summary>
-        public const string NewGameIntro = "Interludes/new_game_intro";
+        /// <summary>Resources path to the single story collection file (no extension).</summary>
+        public const string StoriesPath = "Interludes/stories";
+
+        /// <summary>interludeId of the intro sequence played when a new game begins.</summary>
+        public const string NewGameIntroId = "new_game_intro";
     }
 }

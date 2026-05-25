@@ -89,6 +89,40 @@ Notes:
 - `MainMenuSceneSetup.WireController` is the reference example for this
   pattern.
 
+## UI architecture conventions
+
+### Full-screen overlays live on their own Canvas
+
+Story interludes, modals, loading screens, and other full-screen overlays must
+each live on their **own Canvas** with a high `sortingOrder` (100+). Nesting
+them as children of the main gameplay Canvas risks rendering-order surprises
+(later siblings draw on top, but Unity's batching can reorder this in ways that
+are hard to debug) and tangles show/hide logic with the rest of the UI.
+
+Recipe for a new overlay:
+
+```
+OverlayController          (GameObject — holds the controller MonoBehaviour)
+  Canvas                   (ScreenSpaceOverlay, sortingOrder = 100+)
+    OverlayRoot            (panel; SetActive(false) by default)
+      ... overlay content ...
+```
+
+### The OverlayRoot show/hide pattern
+
+The MonoBehaviour controller goes on a **parent** GameObject; the panel you
+toggle with `SetActive(true/false)` is a **child** named `OverlayRoot` (or
+similar).
+
+**Never call `SetActive(false)` on the GameObject the controller itself lives
+on** — once disabled, that GameObject's `MonoBehaviour` no longer receives
+`Update`/coroutines, and there is no `Update` left to re-enable it. The
+overlay becomes permanently hidden until something external reactivates it.
+
+The controller stays alive on the parent; only the visible content panel
+toggles. This is the same lifecycle reason `PortraitPickerPanel.Awake()` does
+*not* call `SetActive(false)` on itself (see the comment in that file).
+
 ## Unity UI gotchas that bit us (none are Unity 6 specific)
 
 ### `ChildForceExpandHeight` overrides explicit `LayoutElement.flexibleHeight = 0`
@@ -165,6 +199,154 @@ small absolute pixel offsets for borders, rules, and dividers — and when you d
 use them, expect that anything < ~6 canvas units may disappear at the lowest
 supported resolution. If a hairline divider matters visually, draw it with a
 sprite or accept that it'll be 1 device pixel.
+
+## Runtime data conventions
+
+### JSON data files live in `Assets/Resources/` as TextAssets
+
+Runtime-loadable data — story interludes, encounter tables, dialogue trees,
+balance tables, etc. — goes under `Assets/Resources/<subfolder>/*.json`. Load
+them as `TextAsset`s and parse with `JsonUtility`:
+
+```csharp
+var asset = Resources.Load<TextAsset>("Data/encounter_table");  // no .json extension
+var data  = JsonUtility.FromJson<EncounterTable>(asset.text);
+```
+
+Story interludes specifically are **not** loaded individually — they all live in
+`Resources/Interludes/stories.json` as a collection. Use `StoryCollection` to
+load and look up by id:
+
+```csharp
+var stories   = StoryCollection.LoadFromResources();
+var interlude = stories?.GetInterlude(Constants.Interludes.NewGameIntroId);
+storyInterludeController.Play(interlude, OnComplete);
+```
+
+Notes:
+
+- The path passed to `Resources.Load` is relative to **any** `Resources` folder
+  and has **no file extension**.
+- `JsonUtility` is fast and allocation-light but only supports public fields /
+  `[SerializeField]` private fields, no dictionaries, no polymorphism. If a
+  schema outgrows that, switch to `Newtonsoft.Json` (already a project
+  dependency under `Assets/Packages/Newtonsoft.Json.13.0.4/`).
+- Everything under `Resources/` is included in the build whether referenced or
+  not — keep large unused assets out of it.
+
+## Gameplay sequencing gotchas
+
+### Input lock after scene transitions
+
+If a single tap both triggers a scene/panel transition *and* the destination's
+tap handler becomes active on the same frame, **one tap can advance two scenes**
+because the destination receives the same pointer event that originated on the
+source.
+
+**Rule:** when you display a new screen/panel/interlude that has its own tap
+handler, lock input for one frame before arming the handler:
+
+```csharp
+IEnumerator ShowNextInterlude()
+{
+    interludeRoot.SetActive(true);
+    interludeTapHandler.enabled = false;
+    yield return null;                  // skip one frame
+    interludeTapHandler.enabled = true;
+}
+```
+
+A single `yield return null` is enough; the pointer-up event that triggered the
+transition has been consumed by the next `Update` tick.
+
+## Character system conventions
+
+### `Character.Name` is computed — never assign it directly
+
+`Name` is an `[Ignore]` read-only property derived from `FirstName` and `LastName`.
+It has no setter, so object initializer syntax like `new Character { Name = "..." }`
+**will not compile**. Always set `FirstName` (and `LastName` if needed) instead.
+
+```csharp
+// Wrong — compile error
+var c = new Character { Name = "Alex Chen" };
+
+// Correct
+var c = new Character { FirstName = "Alex", LastName = "Chen" };
+```
+
+`Name` returns `FirstName` when `LastName` is empty or null, so single-name characters
+(like the captain) work naturally without trailing spaces.
+
+### The captain has no gender (`Gender.None`)
+
+The player captain is always addressed in second person. The captain's record stores
+`Gender = Gender.None` and `LastName = ""` — the full player-entered name goes into
+`FirstName`. Never assign a gendered value to the captain or add gender selection UI
+for them.
+
+`GetPronoun()` on a `Gender.None` character returns second-person forms:
+`you / you / your / yours / yourself`.
+
+### Pronoun system — use `GetPronoun(PronounType)` everywhere
+
+Never hard-code gendered pronouns in narrative strings. Use `character.GetPronoun()`
+with the appropriate `Character.PronounType`:
+
+| PronounType        | Male      | Female    | NonBinary  | None (captain) |
+|--------------------|-----------|-----------|------------|----------------|
+| Subject            | he        | she       | they       | you            |
+| Object             | him       | her       | them       | you            |
+| PossessiveAdj      | his       | her       | their      | your           |
+| PossessivePronoun  | his       | hers      | theirs     | yours          |
+| Reflexive          | himself   | herself   | themselves | yourself       |
+
+Usage in narrative text:
+
+```csharp
+// "The pilot rushed to their station and secured themselves in."
+$"The pilot rushed to {pilot.GetPronoun(PronounType.PossessiveAdj)} station " +
+$"and secured {pilot.GetPronoun(PronounType.Reflexive)} in."
+```
+
+### `Gender` enum lives in its own file
+
+`Gender` (`Male`, `Female`, `NonBinary`, `None`) is defined in
+`Assets/Scripts/Data/Models/Gender.cs` and shared by both `Character` and
+`NameGenerator`. Do not redeclare it locally in either class.
+
+### All character creation goes through `CharacterFactory`
+
+Never construct a `Character` with stats/skills inline outside of `CharacterFactory`.
+The three entry points are:
+
+- `CharacterFactory.CreateCaptain(name, portraitFileName)` — player captain
+- `CharacterFactory.CreateStartingPilot/Engineer()` — fixed starting crew, random name/gender via `NameGenerator`
+- `CharacterFactory.CreateRandomCrewMember(role, level)` — procedural recruitment
+
+### `NameGenerator` is a lazy-loaded static utility
+
+`NameGenerator.Generate(gender?)` loads `Resources/Data/names.json` on first call
+and caches it. Call it freely; there's no setup cost after the first call. Pass a
+`Gender` to fix the gender, or omit it to let `RandomGender()` pick (45% male,
+45% female, 10% non-binary). `RandomGender()` is public for cases like
+`CreateCaptain` that need a gender value without generating a full name.
+
+## Database schema changes (development)
+
+`DatabaseManager.Initialize()` contains a `#if UNITY_EDITOR` block that **deletes
+the database file on every editor launch** so schema changes always take effect
+cleanly. This is intentional during active development.
+
+Key things to know:
+
+- SQLite-net's `CreateTable<T>()` uses `IF NOT EXISTS` — it is purely additive and
+  will **not** add, rename, or drop columns on an existing table. Any structural
+  schema change silently fails against an old database without the delete block.
+- The delete block must stay in place until the game is content-complete and saves
+  need to persist. At that point replace it with a proper versioned migration.
+- On-device builds are unaffected — the `#if UNITY_EDITOR` guard means players
+  never lose their saves.
 
 ## Files to know
 
