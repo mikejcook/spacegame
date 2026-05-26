@@ -89,6 +89,128 @@ Notes:
 - `MainMenuSceneSetup.WireController` is the reference example for this
   pattern.
 
+### Button onClick listeners added in editor scripts do not persist
+
+`Button.onClick.AddListener(...)` called from an editor build script is **not
+serialised** — the listener is lost the moment the scene is saved. This looks
+like it works in the same Play session the builder runs in, but fails on every
+subsequent launch.
+
+**Rule:** never wire runtime behaviour via `onClick.AddListener` in an editor
+script. Instead:
+
+1. Expose the `Button` as a `[SerializeField]` on the runtime MonoBehaviour.
+2. Wire it via `SerializedObject` in the editor script (same as any other reference).
+3. Add the `onClick` listener in the MonoBehaviour's `Start()` or `Awake()`.
+
+```csharp
+// Editor script — just wire the reference
+Set(so, "returnToMenuButton", Find<Button>(body, "SidePanel/Content/ReturnButton"));
+
+// Runtime MonoBehaviour — add the listener in Start()
+private void Start()
+{
+    returnToMenuButton?.onClick.AddListener(() => GameManager.Instance?.ReturnToMainMenu());
+}
+```
+
+## Shift UI toolkit (Michsky.UI.Shift)
+
+The project includes the **Shift — Complete Sci-Fi UI** asset pack under
+`Assets/Shift - Complete Sci-Fi UI/`. Its namespace is `Michsky.UI.Shift`.
+Prefer Shift prefabs and components over plain Unity UI wherever they fit —
+they provide consistent sci-fi styling (animated hover/press states, sound
+feedback) and save manual styling work.
+
+### Components in active use
+
+**`MainButton` / `Main Button.prefab`** — used for every interactive button in
+the game: main menu nav buttons, Back buttons, filter toggles, and the Random
+ship-name button. The constant path is:
+
+```csharp
+const string MainBtnPrefabPath =
+    "Assets/Shift - Complete Sci-Fi UI/Prefabs/Button/Main Button.prefab";
+```
+
+Pattern for instantiating in an editor builder script:
+
+```csharp
+var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+if (prefab != null)
+{
+    var go  = (GameObject)Object.Instantiate(prefab, parent);
+    go.name = "MyButton";
+    var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+    if (mb != null) mb.buttonText = "LABEL";   // syncs all three TMP variants
+}
+else
+{
+    // fallback: plain Button + TMP label (keep in sync with styled version)
+    Debug.LogWarning("[SceneSetup] Shift prefab not found — using plain button.");
+    ...
+}
+```
+
+Always include a plain-Unity fallback so the builder succeeds on machines
+where the package hasn't imported yet. See `MakeMenuBtn()` /`MakeBackBtn()` /
+`MakeFilterBtn()` in `MainMenuSceneSetup.cs` for the reference pattern.
+
+**`UIElementSound`** — attached automatically to every Shift button prefab. It
+plays hover and click sounds through a scene `AudioSource` on a GameObject
+named `"UI Audio"`. Wire `audioObject` in the builder's post-pass rather than
+relying on the runtime `GameObject.Find("UI Audio")` lookup (which can race
+against script execution order):
+
+```csharp
+// After all buttons are built, wire audio in one pass:
+var uiAudio = uiAudioGO.GetComponent<AudioSource>();
+foreach (var ues in canvasGO.GetComponentsInChildren<Michsky.UI.Shift.UIElementSound>(true))
+{
+    var so = new SerializedObject(ues);
+    so.FindProperty("audioObject").objectReferenceValue = uiAudio;
+    so.ApplyModifiedProperties();
+}
+```
+
+Every scene that contains Shift buttons **must** create the `"UI Audio"`
+`GameObject` + `AudioSource` before the canvas is built so this post-pass has
+something to wire to. `MainMenuSceneSetup` and `GameSceneSetup` both do this
+at the top of `Setup()`.
+
+### Components available — use these instead of rolling your own
+
+The following Shift prefabs exist under `Assets/Shift - Complete Sci-Fi UI/Prefabs/`
+and should be used when adding new UI rather than building plain-Unity equivalents:
+
+| Prefab path (relative) | Shift component | When to use |
+|---|---|---|
+| `Button/Main Button.prefab` | `MainButton` | All nav/action buttons — already in use |
+| `Input Field/Standard (Left Aligned).prefab` | `CustomInputField` | Text entry fields (captain name, ship name, etc.) |
+| `Slider/Slider.prefab` | `SliderManager` | Volume controls, any numeric range input |
+| `Switch/Switch.prefab` | `SwitchManager` | Boolean toggles (e.g. settings on/off) |
+| `Horizontal Selector/Horizontal Selector.prefab` | `HorizontalSelector` | Cycling through a small set of options |
+| `Modal Window/Exit.prefab` | `ModalWindowManager` | Confirmation dialogs ("Are you sure?") |
+
+The input fields and sliders in `SettingsPanel` and `BuildNewGamePanel` are
+currently plain Unity components — replace them with Shift prefabs when
+touching those builders.
+
+### `MainButton.buttonText` syncs all three TMP variants
+
+`MainButton` maintains three `TextMeshProUGUI` references (`normalText`,
+`highlightedText`, `pressedText`) so the button label updates across all
+animation states. Setting `mb.buttonText = "LABEL"` in the editor script (or
+Inspector) triggers `OnEnable` to push the string to all three. Do **not** set
+them individually — that would break when the animation swaps text objects.
+
+### Shift prefab instantiation does not persist `onClick` listeners
+
+Same rule as for all editor-script wiring (see "Button onClick listeners" below):
+never call `button.onClick.AddListener(...)` on a Shift button from an editor
+script. Expose the button as a `[SerializeField]`, wire it via `SerializedObject`,
+and add the listener in the runtime MonoBehaviour's `Start()`.
+
 ## UI architecture conventions
 
 ### Full-screen overlays live on their own Canvas
@@ -122,6 +244,42 @@ overlay becomes permanently hidden until something external reactivates it.
 The controller stays alive on the parent; only the visible content panel
 toggles. This is the same lifecycle reason `PortraitPickerPanel.Awake()` does
 *not* call `SetActive(false)` on itself (see the comment in that file).
+
+## Scene management conventions
+
+### Every game scene must be registered in Build Settings
+
+`SceneManager.LoadScene("SceneName")` **fails silently** if the scene is not
+listed in File → Build Settings. The scene loads fine when opened directly in
+the editor (double-click or File → Open Scene), which makes the failure easy to
+miss during development.
+
+Symptom: `LaunchNewGame()` (or any `SceneManager.LoadScene` call) appears to do
+nothing — no error in the Console, no crash, just stays on the current scene.
+
+**Rule:** any time a new `.unity` scene file is created, immediately add it to
+Build Settings (File → Build Settings → Add Open Scenes). Treat an unregistered
+scene the same way you'd treat an uncompiled script — it doesn't exist at
+runtime.
+
+Current scenes that must be in Build Settings:
+
+| Scene name   | Constant               | Builder menu item                    |
+|--------------|------------------------|--------------------------------------|
+| `MainMenu`   | `Constants.Scenes.MainMenu` | Star Captain → Setup Main Menu Scene |
+| `GameScene`  | `Constants.Scenes.Game`     | Star Captain → Setup Game Scene      |
+
+### `GameManager` persists across scenes — do not recreate it
+
+`GameManager` uses `DontDestroyOnLoad` and is created once in `MainMenu`.
+`GameScene` (and any future scenes) must **not** create their own `GameManager`.
+Runtime controllers in those scenes call `GameManager.Instance` to access live
+data.
+
+If a scene needs to be playable in isolation for layout inspection (e.g. opening
+`GameScene.unity` directly without going through the menu), the runtime
+controller should gracefully handle a null `GameManager.Instance` — typically by
+showing placeholder text rather than throwing a NullReferenceException.
 
 ## Unity UI gotchas that bit us (none are Unity 6 specific)
 
@@ -186,6 +344,24 @@ For reliable margins on a stretched RectTransform, prefer one of:
 
 Mixing `sizeDelta` with stretched anchors and expecting margin semantics is
 the bug that produces "looks fine in editor, asymmetric on device" reports.
+
+### `TextAlignmentOptions` — use the correct enum names
+
+TextMeshPro's `TextAlignmentOptions` does **not** have `Midpoint` or
+`MidpointLeft`. The correct names are:
+
+| Intent                        | Correct value                        |
+|-------------------------------|--------------------------------------|
+| Horizontally and vertically centred | `TextAlignmentOptions.Center`  |
+| Left-aligned, vertically centred    | `TextAlignmentOptions.Left`    |
+| Right-aligned, vertically centred   | `TextAlignmentOptions.Right`   |
+| Top-left                            | `TextAlignmentOptions.TopLeft` |
+| Top-centred                         | `TextAlignmentOptions.Top`     |
+
+The full set of valid values follows the pattern `{Vertical}{Horizontal}` where
+vertical is one of *(nothing)*, `Top`, `Bottom`, `Baseline`, `Midline`,
+`Capline` and horizontal is one of *(nothing = centre)*, `Left`, `Right`,
+`Justified`, `Flush`, `GeoAligned`. When in doubt, use `Center` or `Left`.
 
 ### Small canvas-unit values become sub-pixel on real devices
 
@@ -353,15 +529,24 @@ Key things to know:
 - `Assets/Scripts/Editor/MainMenuSceneSetup.cs` — generates the entire MainMenu
   Canvas + wires every `[SerializeField]` on `MainMenuController` and
   `PortraitPickerPanel`. This is where most UI-shape decisions live.
+- `Assets/Scripts/Editor/GameSceneSetup.cs` — generates the GameScene (System
+  View) Canvas + wires every `[SerializeField]` on `SystemViewController`.
+  Menu item: **Star Captain → Setup Game Scene**.
 - `Assets/Scripts/UI/MainMenu/MainMenuController.cs` — runtime driver: panel
   switching, validation, ship-name randomizer, portrait selection callback.
 - `Assets/Scripts/UI/MainMenu/PortraitPickerPanel.cs` — populates the portrait
   grid lazily on first open from `PortraitLibrary` (a ScriptableObject under
   `Assets/Resources/`). Built by **Star Captain → Build Portrait Library**.
+- `Assets/Scripts/UI/SystemView/SystemViewController.cs` — runtime driver for
+  the in-game System View: reads `GameManager` data, spawns POI nodes into the
+  map area at their normalised `SystemX/SystemY` positions, handles POI detail
+  panel show/hide, and wires the return-to-menu button.
 - `Assets/Scripts/Data/PortraitLibrary.cs` — ScriptableObject holding the
   portrait textures + filenames.
-- `Assets/Scenes/MainMenu.unity` — the saved snapshot; do not hand-edit unless
-  you're patching a single property. Re-run the builder instead.
+- `Assets/Scenes/MainMenu.unity` — saved snapshot of the MainMenu build; do not
+  hand-edit. Re-run the builder instead.
+- `Assets/Scenes/GameScene.unity` — saved snapshot of the GameScene build; do
+  not hand-edit. Re-run the builder instead.
 
 ## When the user reports a UI bug
 

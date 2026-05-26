@@ -17,17 +17,17 @@ public static class StarSystemGenerator
     {
         return new StarSystem
         {
-            Name           = "Sol",
-            StarType       = StarType.YellowDwarf,
-            IsKnown        = true,
-            GalaxyX        = 0.5f,
-            GalaxyY        = 0.5f,
-            IsExplored     = true,
+            Name            = "Sol",
+            StarType        = StarType.YellowDwarf,
+            IsKnown         = true,
+            GalaxyX         = 0.5f,
+            GalaxyY         = 0.5f,
+            IsExplored      = true,
             HasSpaceStation = true,
-            DangerLevel    = 1,
-            Seed           = 0,
-            Description    = "Home system of humanity. Earth, Mars, and several orbital stations " +
-                             "make Sol the hub of known space trade."
+            DangerLevel     = 1,
+            Seed            = 0,
+            Description     = "Home system of humanity. Earth, Mars, and several orbital stations " +
+                              "make Sol the hub of known space trade."
         };
     }
 
@@ -35,17 +35,17 @@ public static class StarSystemGenerator
     {
         return new StarSystem
         {
-            Name           = "Alpha Centauri",
-            StarType       = StarType.BinarySystem,
-            IsKnown        = true,
-            GalaxyX        = 0.54f,
-            GalaxyY        = 0.49f,
-            IsExplored     = false,
+            Name            = "Alpha Centauri",
+            StarType        = StarType.YellowDwarf,
+            IsKnown         = true,
+            GalaxyX         = 0.54f,
+            GalaxyY         = 0.49f,
+            IsExplored      = false,
             HasSpaceStation = true,
-            DangerLevel    = 2,
-            Seed           = 1,
-            Description    = "Nearest star system to Sol. A binary pair hosts a handful of " +
-                             "colonised worlds and a busy trade station."
+            DangerLevel     = 2,
+            Seed            = 1,
+            Description     = "Nearest star system to Sol. A yellow dwarf hosts a handful of " +
+                              "colonised worlds and a busy trade station."
         };
     }
 
@@ -53,17 +53,17 @@ public static class StarSystemGenerator
     {
         return new StarSystem
         {
-            Name           = "Proxima Centauri",
-            StarType       = StarType.RedDwarf,
-            IsKnown        = true,
-            GalaxyX        = 0.53f,
-            GalaxyY        = 0.48f,
-            IsExplored     = false,
+            Name            = "Proxima Centauri",
+            StarType        = StarType.RedDwarf,
+            IsKnown         = true,
+            GalaxyX         = 0.53f,
+            GalaxyY         = 0.48f,
+            IsExplored      = false,
             HasSpaceStation = false,
-            DangerLevel    = 3,
-            Seed           = 2,
-            Description    = "A red dwarf with a tidally-locked habitable world. Rumours of " +
-                             "pre-human ruins on the surface draw explorers and treasure-hunters alike."
+            DangerLevel     = 3,
+            Seed            = 2,
+            Description     = "A red dwarf with a tidally-locked habitable world. Rumours of " +
+                              "pre-human ruins on the surface draw explorers and treasure-hunters alike."
         };
     }
 
@@ -71,9 +71,7 @@ public static class StarSystemGenerator
     // Procedural system generation
     // ---------------------------------------------------------------------------
 
-    /// <summary>
-    /// Generate a fully random star system from a seed.
-    /// </summary>
+    /// <summary>Generate a fully random star system from a seed.</summary>
     public static StarSystem GenerateSystem(
         string name,
         float galaxyX,
@@ -86,30 +84,136 @@ public static class StarSystemGenerator
         var starTypes = (StarType[])Enum.GetValues(typeof(StarType));
         var starType  = starTypes[rng.Next(starTypes.Length)];
 
-        int  dangerLevel  = rng.Next(1, 6);
-        bool hasStation   = isKnown || rng.Next(0, 10) < 2;
+        int  dangerLevel = rng.Next(1, 6);
+        bool hasStation  = isKnown || rng.Next(0, 10) < 2;
 
         return new StarSystem
         {
-            Name           = name,
-            StarType       = starType,
-            IsKnown        = isKnown,
-            GalaxyX        = galaxyX,
-            GalaxyY        = galaxyY,
-            IsExplored     = false,
+            Name            = name,
+            StarType        = starType,
+            IsKnown         = isKnown,
+            GalaxyX         = galaxyX,
+            GalaxyY         = galaxyY,
+            IsExplored      = false,
             HasSpaceStation = hasStation,
-            DangerLevel    = dangerLevel,
-            Seed           = seed,
-            Description    = BuildSystemDescription(starType, dangerLevel, hasStation)
+            DangerLevel     = dangerLevel,
+            Seed            = seed,
+            Description     = BuildSystemDescription(starType, dangerLevel, hasStation)
         };
     }
 
     // ---------------------------------------------------------------------------
-    // POI generation for a system
+    // Sol POI generation — hand-crafted
     // ---------------------------------------------------------------------------
 
     /// <summary>
-    /// Generate all POIs for a star system.
+    /// Generates Sol's eight planets plus Earth Station.
+    /// Orbital radii increase from Mercury (innermost) to Neptune (outermost).
+    /// Angles are seeded so each session uses the same "random" placement.
+    /// Call after sol has been inserted into the database (needs sol.Id).
+    /// </summary>
+    public static List<PointOfInterest> GenerateSolPOIs(StarSystem sol, int saveGameId)
+    {
+        var rng  = new Random(sol.Seed + 9999);
+        var pois = new List<PointOfInterest>();
+
+        // ── Planets in orbital order ───────────────────────────────────────
+        // Radii are in normalised map space (0-1), star at (0.5, 0.5).
+        // Each planet gets a fully random angle from the seeded rng.
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Mercury", type: PlanetType.Barren, variant: 1, orbitalRadius: 0.07f,
+            hasAtmosphere: false, isHabitable: false,
+            desc: "A scorched, airless rock baked by the sun. Rich in heavy metals."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Venus", type: PlanetType.Cloudy, variant: 1, orbitalRadius: 0.12f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "A hellish world shrouded in thick, toxic clouds. Surface pressure crushes unshielded hulls."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Earth", type: PlanetType.Terrestrial, variant: 1, orbitalRadius: 0.17f,
+            hasAtmosphere: true, isHabitable: true,
+            desc: "Humanity's birthplace. Still the most populated world in known space, and the seat of the Colonial Authority."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Mars", type: PlanetType.Arid, variant: 1, orbitalRadius: 0.22f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "The first world humanity terraformed. Dome cities dot the rust-red surface; full breathable atmosphere is still a century away."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Jupiter", type: PlanetType.GaseousOrange, variant: 1, orbitalRadius: 0.30f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "The system's gas colossus. Hydrogen-3 mining platforms skim its upper atmosphere; its moons host the largest orbital shipyards in Sol."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Saturn", type: PlanetType.GaseousYellow, variant: 1, orbitalRadius: 0.36f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "Its iconic rings make it the most recognisable sight in Sol. Ring-mining consortia operate here under heavy Authority licence."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Uranus", type: PlanetType.Icy, variant: 1, orbitalRadius: 0.41f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "A frigid ice giant tilted almost on its side. Remote, inhospitable, but a useful waypoint for deep-system runs."));
+
+        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+            name: "Neptune", type: PlanetType.Ocean, variant: 1, orbitalRadius: 0.46f,
+            hasAtmosphere: true, isHabitable: false,
+            desc: "The outermost major planet. Deep, swirling cobalt storms rage across its surface. Few ships venture this far without good reason."));
+
+        // ── Earth Station ──────────────────────────────────────────────────
+        // Placed near Earth's orbital radius at a fixed angle offset
+        float earthAngle = (float)(rng.NextDouble() * Math.PI * 2) + 0.6f;
+        pois.Add(new PointOfInterest
+        {
+            SaveGameId   = saveGameId,
+            StarSystemId = sol.Id,
+            Name         = "Earth Station",
+            POIType      = Constants.POI.Types.SpaceStation,
+            SystemX      = Math.Clamp(0.5f + 0.17f * (float)Math.Cos(earthAngle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + 0.17f * (float)Math.Sin(earthAngle), 0.05f, 0.95f),
+            DangerLevel  = 0,
+            IsBoardable  = true,
+            Description  = "Humanity's oldest space station — still the busiest port in known space. " +
+                           "Trade, repairs, crew recruitment, and rumours in equal measure."
+        });
+
+        return pois;
+    }
+
+    private static PointOfInterest MakeSolPlanet(
+        StarSystem sol, int saveGameId, Random rng,
+        string name, PlanetType type, int variant, float orbitalRadius,
+        bool hasAtmosphere, bool isHabitable, string desc)
+    {
+        float angle = (float)(rng.NextDouble() * Math.PI * 2);
+        float x = Math.Clamp(0.5f + orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
+        float y = Math.Clamp(0.5f + orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
+
+        return new PointOfInterest
+        {
+            SaveGameId    = saveGameId,
+            StarSystemId  = sol.Id,
+            Name          = name,
+            POIType       = Constants.POI.Types.Planet,
+            PlanetType    = type,
+            PlanetVariant = variant,
+            HasAtmosphere = hasAtmosphere,
+            IsHabitable   = isHabitable,
+            SystemX       = x,
+            SystemY       = y,
+            DangerLevel   = 1,
+            Description   = desc,
+            Resources     = GeneratePlanetResources(type, rng)
+        };
+    }
+
+    // ---------------------------------------------------------------------------
+    // General POI generation (non-Sol procedural systems)
+    // ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// Generate all POIs for a procedurally generated star system.
     /// Call after the StarSystem has been inserted into the DB (needs system.Id).
     /// </summary>
     public static List<PointOfInterest> GeneratePOIsForSystem(StarSystem system, int saveGameId)
@@ -120,7 +224,7 @@ public static class StarSystemGenerator
         // Planets (1-6)
         int planetCount = rng.Next(1, 7);
         for (int i = 0; i < planetCount; i++)
-            pois.Add(GeneratePlanet(system, saveGameId, i, rng));
+            pois.Add(GeneratePlanet(system, saveGameId, i, planetCount, rng));
 
         // Asteroid field (50% chance)
         if (rng.Next(0, 10) < 5)
@@ -134,7 +238,7 @@ public static class StarSystemGenerator
         if (rng.Next(0, 10) < 1)
             pois.Add(GenerateAnomaly(system, saveGameId, rng));
 
-        // Space station (if the system has one)
+        // Space station
         if (system.HasSpaceStation)
             pois.Add(GenerateSpaceStation(system, saveGameId, rng));
 
@@ -146,42 +250,49 @@ public static class StarSystemGenerator
     // ---------------------------------------------------------------------------
 
     private static PointOfInterest GeneratePlanet(
-        StarSystem system, int saveGameId, int index, Random rng)
+        StarSystem system, int saveGameId, int index, int total, Random rng)
     {
-        string[] types       = { "Terrestrial", "GasGiant", "IceWorld", "DesertWorld", "OceanWorld", "VolcanicWorld", "Barren" };
-        string   planetType  = types[rng.Next(types.Length)];
-        bool     hasAtmo     = planetType != "Barren" && rng.Next(0, 10) < 7;
-        bool     habitable   = hasAtmo && planetType == "Terrestrial" && rng.Next(0, 10) < 4;
+        // Pick a random planet type from all available types
+        var allTypes  = (PlanetType[])Enum.GetValues(typeof(PlanetType));
+        var type      = allTypes[rng.Next(allTypes.Length)];
+        int variant   = rng.Next(1, 6);
+        bool hasAtmo  = !IsAirlessType(type) && rng.Next(0, 10) < 7;
+        bool habitable = hasAtmo && type == PlanetType.Terrestrial && rng.Next(0, 10) < 4;
+
+        float angle = (float)(rng.NextDouble() * Math.PI * 2);
+        float radius = 0.08f + (index / (float)Math.Max(total, 1)) * 0.35f;
 
         return new PointOfInterest
         {
-            SaveGameId   = saveGameId,
-            StarSystemId = system.Id,
-            Name         = $"{system.Name} {RomanNumeral(index + 1)}",
-            POIType      = Constants.POI.Types.Planet,
-            PlanetType   = planetType,
+            SaveGameId    = saveGameId,
+            StarSystemId  = system.Id,
+            Name          = $"{system.Name} {RomanNumeral(index + 1)}",
+            POIType       = Constants.POI.Types.Planet,
+            PlanetType    = type,
+            PlanetVariant = variant,
             HasAtmosphere = hasAtmo,
-            IsHabitable  = habitable,
-            SystemX      = Spread(rng, index, 6),
-            SystemY      = (float)(0.3 + rng.NextDouble() * 0.4),
-            DangerLevel  = Math.Clamp(system.DangerLevel + rng.Next(-1, 2), 1, 5),
-            IsBoardable  = false,
-            Description  = BuildPlanetDescription(planetType, habitable),
-            Resources    = GeneratePlanetResources(planetType, rng)
+            IsHabitable   = habitable,
+            SystemX       = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
+            SystemY       = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
+            DangerLevel   = Math.Clamp(system.DangerLevel + rng.Next(-1, 2), 1, 5),
+            Description   = BuildPlanetDescription(type, habitable),
+            Resources     = GeneratePlanetResources(type, rng)
         };
     }
 
     private static PointOfInterest GenerateAsteroidField(
         StarSystem system, int saveGameId, Random rng)
     {
+        float angle  = (float)(rng.NextDouble() * Math.PI * 2);
+        float radius = 0.25f + (float)rng.NextDouble() * 0.15f;
         return new PointOfInterest
         {
             SaveGameId   = saveGameId,
             StarSystemId = system.Id,
             Name         = $"{system.Name} Asteroid Belt",
             POIType      = Constants.POI.Types.AsteroidField,
-            SystemX      = (float)rng.NextDouble(),
-            SystemY      = (float)rng.NextDouble(),
+            SystemX      = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel  = system.DangerLevel,
             Description  = "A dense field of rocky debris — rich in minerals but hazardous to navigate.",
             Resources    = new Dictionary<string, int>
@@ -196,15 +307,17 @@ public static class StarSystemGenerator
     private static PointOfInterest GenerateDerelict(
         StarSystem system, int saveGameId, Random rng)
     {
-        bool isShip = rng.Next(0, 2) == 0;
+        bool isShip  = rng.Next(0, 2) == 0;
+        float angle  = (float)(rng.NextDouble() * Math.PI * 2);
+        float radius = 0.20f + (float)rng.NextDouble() * 0.20f;
         return new PointOfInterest
         {
             SaveGameId   = saveGameId,
             StarSystemId = system.Id,
             Name         = isShip ? "Derelict Vessel" : "Derelict Station",
             POIType      = isShip ? Constants.POI.Types.DerelictShip : Constants.POI.Types.DerelictStation,
-            SystemX      = (float)rng.NextDouble(),
-            SystemY      = (float)rng.NextDouble(),
+            SystemX      = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel  = Math.Clamp(system.DangerLevel + 1, 1, 5),
             IsBoardable  = true,
             IsLooted     = false,
@@ -217,15 +330,17 @@ public static class StarSystemGenerator
     private static PointOfInterest GenerateAnomaly(
         StarSystem system, int saveGameId, Random rng)
     {
-        string[] anomalyTypes = { "Spatial Rift", "Gravitational Lens", "Exotic Radiation Source", "Unknown Signal" };
+        string[] types = { "Spatial Rift", "Gravitational Lens", "Exotic Radiation Source", "Unknown Signal" };
+        float angle    = (float)(rng.NextDouble() * Math.PI * 2);
+        float radius   = 0.15f + (float)rng.NextDouble() * 0.30f;
         return new PointOfInterest
         {
             SaveGameId   = saveGameId,
             StarSystemId = system.Id,
-            Name         = anomalyTypes[rng.Next(anomalyTypes.Length)],
+            Name         = types[rng.Next(types.Length)],
             POIType      = Constants.POI.Types.Anomaly,
-            SystemX      = (float)rng.NextDouble(),
-            SystemY      = (float)rng.NextDouble(),
+            SystemX      = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel  = Math.Clamp(system.DangerLevel + 2, 1, 5),
             Description  = "Sensors are going haywire. Approach with extreme caution."
         };
@@ -234,14 +349,16 @@ public static class StarSystemGenerator
     private static PointOfInterest GenerateSpaceStation(
         StarSystem system, int saveGameId, Random rng)
     {
+        float angle  = (float)(rng.NextDouble() * Math.PI * 2);
+        float radius = 0.10f + (float)rng.NextDouble() * 0.15f;
         return new PointOfInterest
         {
             SaveGameId   = saveGameId,
             StarSystemId = system.Id,
             Name         = $"{system.Name} Station",
             POIType      = Constants.POI.Types.SpaceStation,
-            SystemX      = 0.5f + (float)(rng.NextDouble() * 0.1 - 0.05f),
-            SystemY      = 0.5f + (float)(rng.NextDouble() * 0.1 - 0.05f),
+            SystemX      = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel  = 0,
             IsBoardable  = true,
             Description  = "A bustling waystation offering trade, repairs, crew recruitment, and a bar with surprisingly decent food."
@@ -252,17 +369,33 @@ public static class StarSystemGenerator
     // Resource tables
     // ---------------------------------------------------------------------------
 
-    private static Dictionary<string, int> GeneratePlanetResources(string planetType, Random rng)
+    private static Dictionary<string, int> GeneratePlanetResources(PlanetType type, Random rng)
     {
-        return planetType switch
+        if (type.IsGaseous())
+            return new Dictionary<string, int>
+            {
+                ["Hydrogen"] = rng.Next(100, 500),
+                ["Helium3"]  = rng.Next(50, 200)
+            };
+
+        return type switch
         {
-            "Terrestrial"  => new() { ["Organics"] = rng.Next(20, 100), ["Iron"] = rng.Next(10, 50) },
-            "GasGiant"     => new() { ["Hydrogen"] = rng.Next(100, 500), ["Helium3"] = rng.Next(50, 200) },
-            "IceWorld"     => new() { ["Water"] = rng.Next(100, 300), ["Hydrogen"] = rng.Next(20, 80) },
-            "DesertWorld"  => new() { ["Silicon"] = rng.Next(50, 150), ["Iron"] = rng.Next(30, 100) },
-            "OceanWorld"   => new() { ["Water"] = rng.Next(200, 600), ["Organics"] = rng.Next(50, 200) },
-            "VolcanicWorld" => new() { ["Iron"] = rng.Next(100, 300), ["Titanium"] = rng.Next(30, 100) },
-            _              => new()
+            PlanetType.Terrestrial or PlanetType.Lush or PlanetType.Tropical or PlanetType.Oasis
+                => new Dictionary<string, int> { ["Organics"] = rng.Next(20, 100), ["Iron"] = rng.Next(10, 50) },
+
+            PlanetType.Ocean or PlanetType.Aquamarine
+                => new Dictionary<string, int> { ["Water"] = rng.Next(200, 600), ["Organics"] = rng.Next(50, 200) },
+
+            PlanetType.Frozen or PlanetType.Glacial or PlanetType.Icy or PlanetType.Snowy
+                => new Dictionary<string, int> { ["Water"] = rng.Next(100, 300), ["Hydrogen"] = rng.Next(20, 80) },
+
+            PlanetType.Magma
+                => new Dictionary<string, int> { ["Iron"] = rng.Next(100, 300), ["Titanium"] = rng.Next(30, 100) },
+
+            PlanetType.Arid or PlanetType.Dry or PlanetType.Muddy
+                => new Dictionary<string, int> { ["Silicon"] = rng.Next(50, 150), ["Iron"] = rng.Next(30, 100) },
+
+            _ => new Dictionary<string, int>()  // Airless, Barren, Cratered, Lunar, Rocky
         };
     }
 
@@ -274,16 +407,12 @@ public static class StarSystemGenerator
     {
         string star = starType switch
         {
-            StarType.YellowDwarf  => "A yellow dwarf star",
-            StarType.RedDwarf     => "A dim red dwarf",
-            StarType.BlueGiant    => "A massive blue giant",
-            StarType.WhiteDwarf   => "The cooling remnant of a dead star",
-            StarType.NeutronStar  => "A dense, rapidly-spinning neutron star",
-            StarType.BinarySystem => "A binary star pair",
-            _                     => "An unusual stellar object"
+            StarType.YellowDwarf => "A yellow dwarf star",
+            StarType.RedDwarf    => "A dim red dwarf",
+            StarType.BlueGiant   => "A massive blue giant",
+            _                    => "An unusual stellar object"
         };
-
-        string danger = dangerLevel switch
+        string danger  = dangerLevel switch
         {
             1 => "relatively safe",
             2 => "mildly hazardous",
@@ -291,23 +420,37 @@ public static class StarSystemGenerator
             4 => "quite dangerous",
             _ => "extremely perilous"
         };
-
         string station = hasStation ? " A space station orbits here." : "";
         return $"{star}, {danger} for travellers.{station}";
     }
 
-    private static string BuildPlanetDescription(string type, bool habitable)
+    private static string BuildPlanetDescription(PlanetType type, bool habitable)
     {
-        string suffix = habitable ? " Life has taken hold here." : "";
+        string suffix = habitable ? " Signs of life detected." : "";
         return type switch
         {
-            "Terrestrial"   => $"A rocky world with varied terrain.{suffix}",
-            "GasGiant"      => "A vast gas giant. No surface to land on, but rich in atmospheric gases.",
-            "IceWorld"      => "A frozen world locked in perpetual winter.",
-            "DesertWorld"   => "A scorched, arid planet baking under its star.",
-            "OceanWorld"    => $"Covered almost entirely by deep oceans.{suffix}",
-            "VolcanicWorld" => "Tectonically violent. Rich in heavy metals, dangerous to approach.",
-            _               => "A barren, airless rock — unremarkable, but quiet."
+            PlanetType.Terrestrial => $"A rocky world with varied terrain.{suffix}",
+            PlanetType.Lush        => $"Verdant and alive, draped in dense vegetation.{suffix}",
+            PlanetType.Tropical    => $"Hot and humid, teeming with biology.{suffix}",
+            PlanetType.Oasis       => $"Arid wastelands broken by fertile green zones.{suffix}",
+            PlanetType.Ocean       => $"Almost entirely covered by deep, dark ocean.{suffix}",
+            PlanetType.Aquamarine  => "A shallow-seas world, mineral-rich and strikingly blue.",
+            PlanetType.Arid        => "A scorched, arid planet baking under its star.",
+            PlanetType.Dry         => "Cracked earth and dust storms. Little moisture remains.",
+            PlanetType.Muddy       => "Thick mud and shallow bogs stretch as far as sensors can tell.",
+            PlanetType.Cloudy      => "Smothered in dense cloud cover. Surface conditions unknown.",
+            PlanetType.Frozen      => "A frozen world locked in perpetual winter.",
+            PlanetType.Glacial     => "Vast glacial sheets grind across an ancient surface.",
+            PlanetType.Icy         => "Perpetual ice and sub-zero temperatures. Hostile to most life.",
+            PlanetType.Snowy       => "Blanketed in snow. Cold, quiet, and largely unexplored.",
+            PlanetType.Barren      => "A barren, airless rock — unremarkable, but quiet.",
+            PlanetType.Airless     => "No atmosphere. Ancient impact craters scar the surface.",
+            PlanetType.Lunar       => "Grey and pocked with craters, resembling an ancient moon.",
+            PlanetType.Cratered    => "Heavily scarred by ancient impacts. Something hit this world hard.",
+            PlanetType.Rocky       => "Rugged terrain, sheer cliffs, and little else.",
+            PlanetType.Magma       => "Tectonically violent. Rich in heavy metals, dangerous to approach.",
+            _ when type.IsGaseous() => "A vast gas giant — no surface to land on, but rich in atmospheric gases.",
+            _                       => "An unremarkable world."
         };
     }
 
@@ -315,17 +458,12 @@ public static class StarSystemGenerator
     // Utilities
     // ---------------------------------------------------------------------------
 
-    /// <summary>Spread POIs evenly across the X axis with some random jitter.</summary>
-    private static float Spread(Random rng, int index, int total)
-    {
-        float step   = 1.0f / (total + 1);
-        float jitter = (float)(rng.NextDouble() * step * 0.4 - step * 0.2);
-        return Math.Clamp(step * (index + 1) + jitter, 0.05f, 0.95f);
-    }
+    private static bool IsAirlessType(PlanetType type) =>
+        type is PlanetType.Airless or PlanetType.Barren or PlanetType.Lunar or PlanetType.Cratered;
 
     private static string RomanNumeral(int n) => n switch
     {
-        1 => "I",  2 => "II", 3 => "III", 4 => "IV",  5 => "V",
+        1 => "I",  2 => "II",  3 => "III", 4 => "IV",  5 => "V",
         6 => "VI", 7 => "VII", 8 => "VIII", 9 => "IX", 10 => "X",
         _ => n.ToString()
     };

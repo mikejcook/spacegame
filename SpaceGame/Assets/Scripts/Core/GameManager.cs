@@ -121,7 +121,7 @@ public class GameManager : MonoBehaviour
         Database.StarSystems.Insert(sol);
 
         // Generate and insert Sol's POIs
-        var solPOIs = StarSystemGenerator.GeneratePOIsForSystem(sol, CurrentSave.Id);
+        var solPOIs = StarSystemGenerator.GenerateSolPOIs(sol, CurrentSave.Id);
         foreach (var poi in solPOIs)
             Database.POIs.Insert(poi);
 
@@ -186,8 +186,7 @@ public class GameManager : MonoBehaviour
         SetState(GameState.Paused);
         Time.timeScale = 0f;
     }
-
-    public void ResumeGame()
+    public void UnpauseGame()
     {
         if (CurrentState != GameState.Paused) return;
         SetState(GameState.InGame);
@@ -195,35 +194,18 @@ public class GameManager : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
-    // Economy helpers
+    // Internal helpers
     // -----------------------------------------------------------------------
-    public bool SpendCredits(int amount)
-    {
-        if (CurrentSave == null || CurrentSave.Credits < amount) return false;
-        CurrentSave.Credits -= amount;
-        EventBus.Publish(new CreditsChangedEvent(CurrentSave.Credits));
-        return true;
-    }
-
-    public void AddCredits(int amount)
-    {
-        if (CurrentSave == null) return;
-        CurrentSave.Credits += amount;
-        EventBus.Publish(new CreditsChangedEvent(CurrentSave.Credits));
-    }
-
-    // -----------------------------------------------------------------------
-    // Internals
-    // -----------------------------------------------------------------------
-    private void LoadGameScene()
-    {
-        SceneManager.LoadScene(Constants.Scenes.Game);
-        SetState(GameState.InGame);
-    }
 
     private void SetState(GameState newState)
     {
         CurrentState = newState;
-        EventBus.Publish(new GameStateChangedEvent(newState));
+        Debug.Log($"[GameManager] State → {newState}");
+    }
+
+    private void LoadGameScene()
+    {
+        SetState(GameState.InGame);
+        SceneManager.LoadScene(Constants.Scenes.Game);
     }
 }

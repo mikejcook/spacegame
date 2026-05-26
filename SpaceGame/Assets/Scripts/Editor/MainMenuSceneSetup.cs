@@ -58,6 +58,7 @@ public static class MainMenuSceneSetup
         var camGO = MakeGO("Main Camera", null);
         camGO.AddComponent<Camera>().clearFlags = CameraClearFlags.SolidColor;
         camGO.GetComponent<Camera>().backgroundColor = new Color(0.04f, 0.06f, 0.10f, 1f);
+        camGO.AddComponent<AudioListener>();
         camGO.tag = "MainCamera";
         Undo.RegisterCreatedObjectUndo(camGO, "Create Main Camera");
 
@@ -73,6 +74,13 @@ public static class MainMenuSceneSetup
 #endif
             Undo.RegisterCreatedObjectUndo(es, "Create EventSystem");
         }
+
+        // "UI Audio" — AudioSource that Shift's UIElementSound finds via GameObject.Find at runtime.
+        // UIElementSound.OnEnable does: audioObject = GameObject.Find("UI Audio").GetComponent<AudioSource>()
+        // Without this object in the scene every button hover/click throws an UnassignedReferenceException.
+        var uiAudioGO = MakeGO("UI Audio", null);
+        uiAudioGO.AddComponent<AudioSource>();
+        Undo.RegisterCreatedObjectUndo(uiAudioGO, "Create UI Audio");
 
         // Canvas
         var canvasGO = MakeGO("Canvas", null);
@@ -114,6 +122,19 @@ public static class MainMenuSceneSetup
         var controller = ctrlGO.AddComponent<MainMenuController>();
         WireController(controller, mainPanel, newGamePanel, loadGamePanel,
                        settingsPanel, portraitPickerPanel, storyCtrl);
+
+        // Wire UIElementSound.audioObject on every Shift button.
+        // UIElementSound.OnEnable does GameObject.Find("UI Audio") at runtime, but that
+        // lookup can fail if script execution order puts the button's OnEnable before the
+        // scene is fully initialised. Assigning the reference directly in the builder is
+        // the same pattern we use for all other serialised fields and is guaranteed.
+        var uiAudioSource = uiAudioGO.GetComponent<AudioSource>();
+        foreach (var ues in canvasGO.GetComponentsInChildren<Michsky.UI.Shift.UIElementSound>(true))
+        {
+            var uesSO = new SerializedObject(ues);
+            uesSO.FindProperty("audioObject").objectReferenceValue = uiAudioSource;
+            uesSO.ApplyModifiedProperties();
+        }
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
