@@ -82,51 +82,139 @@ public class GameManager : MonoBehaviour
     /// </summary>
     public void PrepareNewGame(string captainName, string shipName = "Horizon", string portraitFileName = "")
     {
+        if (Database == null || Database.SaveGames == null)
+        {
+            Debug.LogError("[GameManager] PrepareNewGame: DatabaseManager is not ready.");
+            return;
+        }
+
         SetState(GameState.Loading);
 
-        // Build the save record
-        CurrentSave = new SaveGame
+        try
         {
-            CaptainName = captainName,
-            ShipName    = shipName,
-            Credits     = Constants.Economy.StartingCredits,
-            CreatedAt   = System.DateTime.Now,
-            LastSavedAt = System.DateTime.Now
-        };
-        Database.SaveGames.Insert(CurrentSave);
+            // Build the save record
+            CurrentSave = new SaveGame
+            {
+                CaptainName = captainName,
+                ShipName    = shipName,
+                Credits     = Constants.Economy.StartingCredits,
+                CreatedAt   = System.DateTime.Now,
+                LastSavedAt = System.DateTime.Now
+            };
+            Database.SaveGames.Insert(CurrentSave);
+            Debug.Log($"[GameManager] Save record created (Id={CurrentSave.Id}).");
 
-        // Create starting captain (with chosen portrait)
-        PlayerCaptain            = CharacterFactory.CreateCaptain(captainName, portraitFileName);
-        PlayerCaptain.SaveGameId = CurrentSave.Id;
-        Database.Characters.Insert(PlayerCaptain);
-        CurrentSave.CaptainId    = PlayerCaptain.Id;
+            // Create starting captain (with chosen portrait)
+            PlayerCaptain            = CharacterFactory.CreateCaptain(captainName, portraitFileName);
+            PlayerCaptain.SaveGameId = CurrentSave.Id;
+            Database.Characters.Insert(PlayerCaptain);
+            CurrentSave.CaptainId    = PlayerCaptain.Id;
 
-        // Create starting pilot and engineer
-        PlayerPilot              = CharacterFactory.CreateStartingPilot();
-        PlayerEngineer           = CharacterFactory.CreateStartingEngineer();
-        PlayerPilot.SaveGameId   = CurrentSave.Id;
-        PlayerEngineer.SaveGameId = CurrentSave.Id;
-        Database.Characters.Insert(PlayerPilot);
-        Database.Characters.Insert(PlayerEngineer);
+            // Create starting pilot and engineer
+            PlayerPilot               = CharacterFactory.CreateStartingPilot();
+            PlayerEngineer            = CharacterFactory.CreateStartingEngineer();
+            PlayerPilot.SaveGameId    = CurrentSave.Id;
+            PlayerEngineer.SaveGameId = CurrentSave.Id;
+            Database.Characters.Insert(PlayerPilot);
+            Database.Characters.Insert(PlayerEngineer);
+            Debug.Log($"[GameManager] Crew created: {PlayerPilot.Name}, {PlayerEngineer.Name}.");
 
-        // Create starting ship
-        PlayerShip            = Ship.CreateStartingShip(shipName);
-        PlayerShip.SaveGameId = CurrentSave.Id;
-        Database.Ships.Insert(PlayerShip);
-        CurrentSave.ShipId    = PlayerShip.Id;
+            // Create starting ship
+            PlayerShip            = Ship.CreateStartingShip(shipName);
+            PlayerShip.SaveGameId = CurrentSave.Id;
+            Database.Ships.Insert(PlayerShip);
+            CurrentSave.ShipId    = PlayerShip.Id;
 
-        // Generate Sol system as the starting system
-        var sol            = StarSystemGenerator.GenerateSolSystem();
-        sol.SaveGameId     = CurrentSave.Id;
-        Database.StarSystems.Insert(sol);
+            // ── Sol — starting system ─────────────────────────────────────
+            var sol        = StarSystemGenerator.GenerateSolSystem();
+            sol.SaveGameId = CurrentSave.Id;
+            Database.StarSystems.Insert(sol);
+            Debug.Log($"[GameManager] Sol inserted (Id={sol.Id}).");
 
-        // Generate and insert Sol's POIs
-        var solPOIs = StarSystemGenerator.GenerateSolPOIs(sol, CurrentSave.Id);
-        foreach (var poi in solPOIs)
-            Database.POIs.Insert(poi);
+            var solPOIs = StarSystemGenerator.GenerateSolPOIs(sol, CurrentSave.Id);
+            foreach (var poi in solPOIs) Database.POIs.Insert(poi);
+            Debug.Log($"[GameManager] {solPOIs.Count} Sol POIs inserted.");
 
-        CurrentSave.CurrentSystemId = sol.Id;
-        Database.SaveGames.Update(CurrentSave);
+            CurrentSave.CurrentSystemId = sol.Id;
+
+            // ── Sol cluster — Alpha Centauri & Proxima Centauri ───────────
+            InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id);
+            InsertSystemWithPOIs(StarSystemGenerator.GenerateProximaCentauri(), CurrentSave.Id);
+
+            // ── 10 extra systems from the CSV catalogue ────────────────────
+            var catalogueAsset = Resources.Load<TextAsset>("Data/systems");
+            if (catalogueAsset != null)
+            {
+                var catalogue = StarSystemGenerator.ParseSystemsCSV(catalogueAsset.text);
+
+                // Exclude the three hand-crafted systems
+                var excluded = new System.Collections.Generic.HashSet<string>(
+                    System.StringComparer.OrdinalIgnoreCase)
+                    { "Sol", "Alpha Centauri", "Proxima Centauri" };
+
+                // Shuffle with a save-specific seed and take 10
+                var rng        = new System.Random(CurrentSave.Id ^ 0x1337);
+                var candidates = new System.Collections.Generic.List<(string name, StarType starType)>();
+                foreach (var entry in catalogue)
+                    if (!excluded.Contains(entry.name)) candidates.Add(entry);
+                candidates.Sort((_, __) => rng.Next(-1, 2));   // Fisher-Yates-ish
+                int take = System.Math.Min(10, candidates.Count);
+
+                // Get well-spread galaxy positions for the batch.
+                // Pass the three fixed cluster positions so no random system
+                // lands on top of Sol, Alpha Centauri, or Proxima Centauri.
+                var solCluster = new (float gx, float gy)[]
+                {
+                    (StarSystemGenerator.SolGX,     StarSystemGenerator.SolGY),
+                    (StarSystemGenerator.AlphaGX,   StarSystemGenerator.AlphaGY),
+                    (StarSystemGenerator.ProximaGX, StarSystemGenerator.ProximaGY),
+                };
+                var positions = StarSystemGenerator.GenerateGalaxyPositions(
+                    take, CurrentSave.Id,
+                    innerR:          0.12f,
+                    outerR:          0.27f,
+                    avoidPositions:  solCluster,
+                    minSpacing:      0.09f);
+
+                for (int i = 0; i < take; i++)
+                {
+                    var sys = StarSystemGenerator.GenerateExtraSystem(
+                        candidates[i].name,
+                        candidates[i].starType,
+                        positions[i].gx,
+                        positions[i].gy,
+                        seed:       CurrentSave.Id + 200 + i,
+                        saveGameId: CurrentSave.Id);
+                    InsertSystemWithPOIs(sys, CurrentSave.Id);
+                }
+                Debug.Log($"[GameManager] {take} extra systems inserted from catalogue.");
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] Data/systems.csv not found in Resources — " +
+                                 "only Sol, Alpha Centauri, and Proxima Centauri were created.");
+            }
+
+            Database.SaveGames.Update(CurrentSave);
+            Debug.Log("[GameManager] PrepareNewGame complete.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameManager] PrepareNewGame failed: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Inserts a star system into the database (setting its SaveGameId) then
+    /// generates and inserts all of its POIs. Shared by PrepareNewGame for all
+    /// non-Sol systems so the same flow isn't duplicated for each one.
+    /// </summary>
+    private void InsertSystemWithPOIs(StarSystem system, int saveGameId)
+    {
+        system.SaveGameId = saveGameId;
+        Database.StarSystems.Insert(system);
+        var pois = StarSystemGenerator.GeneratePOIsForSystem(system, saveGameId);
+        foreach (var poi in pois) Database.POIs.Insert(poi);
     }
 
     /// <summary>

@@ -19,7 +19,13 @@ MonoBehaviour:
   m_PlatformBuildProfile:
     rid: 1990354080284016655
   m_OverrideGlobalSceneList: 1
-  m_Scenes: []
+  m_Scenes:
+  - m_enabled: 1
+    m_path: Assets/Scenes/MainMenu.unity
+    m_guid: 3134db720f390ba4aae6a8d552f76d46
+  - m_enabled: 1
+    m_path: Assets/Scenes/GameScene.unity
+    m_guid: 3bcc90c58d57a294ea8cf4bbdd1e4fb6
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
@@ -49,7 +55,7 @@ MonoBehaviour:
         m_ExportAsGoogleAndroidProject: 0
         m_DebugSymbolLevel: 1
         m_DebugSymbolFormat: 5
-        m_CurrentDeploymentTargetId: __builtin__target_default
+        m_CurrentDeploymentTargetId: emulator-5554
         m_BuildType: 2
         m_LinkTimeOptimization: 0
         m_BuildAppBundle: 0

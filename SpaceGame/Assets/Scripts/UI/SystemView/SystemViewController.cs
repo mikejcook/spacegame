@@ -41,6 +41,10 @@ public class SystemViewController : MonoBehaviour
     // Inspector references — wired by GameSceneSetup editor script
     // -----------------------------------------------------------------------
 
+    [Header("Background")]
+    [Tooltip("Full-screen RawImage. A random starfield texture from Resources/Backgrounds is applied at Start().")]
+    [SerializeField] private RawImage starfieldBackground;
+
     [Header("Header")]
     [SerializeField] private TMP_Text systemNameText;
 
@@ -57,6 +61,15 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button shipNavButton;
     [SerializeField] private Button crewNavButton;
 
+    [Header("Player Ship")]
+    [Tooltip("Sprite extracted from the ship prefab — wired by GameSceneSetup.")]
+    [SerializeField] private Sprite shipSprite;
+
+    [Header("Galaxy View")]
+    [Tooltip("Root GalaxyView panel — toggled when the Galaxy nav button is pressed.")]
+    [SerializeField] private GameObject          galaxyViewPanel;
+    [SerializeField] private GalaxyViewController galaxyViewController;
+
     [Header("POI Detail Panel")]
     [Tooltip("Root panel toggled by SetActive. The card + all detail fields live inside.")]
     [SerializeField] private GameObject poiDetailPanel;
@@ -71,7 +84,16 @@ public class SystemViewController : MonoBehaviour
 
     private StarSystem            _currentSystem;
     private List<PointOfInterest> _pois;
-    private readonly List<GameObject> _poiNodes = new List<GameObject>();
+    private readonly List<PointOfInterest> _sortedPois = new List<PointOfInterest>();
+    private readonly List<GameObject>      _poiNodes   = new List<GameObject>();
+    private readonly List<GameObject>      _orbitRings = new List<GameObject>();
+
+    // ── Ship state ────────────────────────────────────────────────────────────
+    private GameObject      _shipNodeGO;
+    private RectTransform   _shipRT;
+    private PointOfInterest _shipCurrentPoi;
+    private bool            _shipFlying;
+    private Coroutine       _flyCoroutine;
 
     private PlanetLibrary _planetLibrary;
 
@@ -91,6 +113,9 @@ public class SystemViewController : MonoBehaviour
 
     private void Start()
     {
+        // Pick a random starfield background
+        ApplyRandomStarfield();
+
         // Load the planet/star sprite library
         _planetLibrary = Resources.Load<PlanetLibrary>("PlanetLibrary");
         if (_planetLibrary == null || !_planetLibrary.IsValid)
@@ -100,11 +125,41 @@ public class SystemViewController : MonoBehaviour
         // Wire listeners
         poiDetailCloseButton?.onClick.AddListener(HidePOIDetail);
 
-        // Nav buttons — listeners added when screens are implemented
-        // systemNavButton?.onClick.AddListener(OnSystemNav);
-        // galaxyNavButton?.onClick.AddListener(OnGalaxyNav);
-        // shipNavButton?.onClick.AddListener(OnShipNav);
-        // crewNavButton?.onClick.AddListener(OnCrewNav);
+        // Nav buttons
+        systemNavButton?.onClick.AddListener(ShowSystemView);
+        galaxyNavButton?.onClick.AddListener(ShowGalaxyView);
+        // shipNavButton and crewNavButton wired when those screens are implemented
+
+        // ── Neutralise the Shift MainButton Animator on the close button ──
+        //
+        // The Shift Animator's Normal "state" is a transition clip whose t=0
+        // visually looks highlighted; combined with Unity's deferred-playable-
+        // binding race on re-enable, every attempt to seek past t=0 on show
+        // (Play, Rebind+Play+Update, CanvasGroup writes) has been silently
+        // overwritten by the Animator's first sample. We take the Animator
+        // out of the loop entirely and drive the hover / press visuals
+        // ourselves:
+        //   1. Disable the Animator component so it can never sample again.
+        //   2. Switch the Button's transition mode to None so Selectable does
+        //      not try to drive triggers on a disabled Animator.
+        //   3. Attach ShiftMainButtonPointerVisuals — writes the
+        //      Normal / Highlighted / Pressed child CanvasGroup alphas
+        //      directly from IPointer* events, with no Animator involved.
+        //
+        // We can do all of this while the panel is still inactive (its
+        // initial state from GameSceneSetup) — GetComponent / AddComponent
+        // work on inactive GameObjects, and the disabled Animator never
+        // initialises when the panel later activates.
+        if (poiDetailCloseButton != null)
+        {
+            var anim = poiDetailCloseButton.GetComponent<Animator>();
+            if (anim != null) anim.enabled = false;
+
+            poiDetailCloseButton.transition = Selectable.Transition.None;
+
+            if (poiDetailCloseButton.GetComponent<ShiftMainButtonPointerVisuals>() == null)
+                poiDetailCloseButton.gameObject.AddComponent<ShiftMainButtonPointerVisuals>();
+        }
 
         HidePOIDetail();
 
@@ -120,6 +175,31 @@ public class SystemViewController : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
+    // Starfield background
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Loads all Texture2D assets from Resources/Backgrounds and applies a
+    /// randomly chosen one to the starfield RawImage. Called once in Start().
+    /// </summary>
+    private void ApplyRandomStarfield()
+    {
+        if (starfieldBackground == null) return;
+
+        var textures = Resources.LoadAll<Texture2D>("Backgrounds");
+        if (textures == null || textures.Length == 0)
+        {
+            Debug.LogWarning("[SystemViewController] No starfield textures found in Resources/Backgrounds. " +
+                             "Ensure starfield PNGs are present in that folder.");
+            return;
+        }
+
+        var tex = textures[Random.Range(0, textures.Length)];
+        starfieldBackground.texture = tex;
+        starfieldBackground.color   = Color.white;
+    }
+
+    // -----------------------------------------------------------------------
     // Data population
     // -----------------------------------------------------------------------
 
@@ -127,7 +207,7 @@ public class SystemViewController : MonoBehaviour
     {
         if (gm.CurrentSave == null)
         {
-            Debug.LogWarning("[SystemViewController] No active save — showing placeholder.");
+            Debug.LogError("[SystemViewController] CurrentSave is null — PrepareNewGame likely failed. Check GameManager logs.");
             ShowPlaceholder();
             return;
         }
@@ -183,35 +263,152 @@ public class SystemViewController : MonoBehaviour
     {
         if (systemMapArea == null) return;
 
-        foreach (var n in _poiNodes)
-            if (n != null) Destroy(n);
+        // ── Clean up previous nodes, rings and ship ───────────────────────
+        if (_flyCoroutine != null) { StopCoroutine(_flyCoroutine); _flyCoroutine = null; }
+        foreach (var node in _poiNodes)   if (node != null) Destroy(node);
+        foreach (var ring in _orbitRings) if (ring != null) Destroy(ring);
+        if (_shipNodeGO != null) Destroy(_shipNodeGO);
         _poiNodes.Clear();
+        _orbitRings.Clear();
+        _sortedPois.Clear();
+        _shipNodeGO     = null;
+        _shipRT         = null;
+        _shipCurrentPoi = null;
+        _shipFlying     = false;
 
         if (_pois == null) return;
 
-        foreach (var poi in _pois)
-            _poiNodes.Add(SpawnPOINode(poi));
+        // Force a layout pass so systemMapArea.rect is accurate
+        Canvas.ForceUpdateCanvases();
+
+        // ── Pixel bounds for orbits ───────────────────────────────────────
+        // Map area is landscape (≈1920×870 canvas units); use the shorter axis
+        // so orbits stay circular regardless of aspect ratio.
+        Rect  mapRect    = systemMapArea.rect;
+        float mapShort   = Mathf.Min(mapRect.width, mapRect.height);
+        float minOrbitPx = 65f + 40f;          // clear the 130 px star + breathing room
+        float maxOrbitPx = mapShort * 0.5f * 0.88f;
+
+        // ── Find each POI's normalised orbital radius ─────────────────────
+        // Data is stored as  SystemX/Y = 0.5 ± r*cos/sin(angle)
+        int n = _pois.Count;
+        var normRadii = new float[n];
+        float maxNormR = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float dx = _pois[i].SystemX - 0.5f;
+            float dy = _pois[i].SystemY - 0.5f;
+            normRadii[i] = Mathf.Sqrt(dx * dx + dy * dy);
+            if (normRadii[i] > maxNormR) maxNormR = normRadii[i];
+        }
+        if (maxNormR < 0.01f) maxNormR = 0.5f;
+
+        // ── Sort POIs by orbit radius ─────────────────────────────────────
+        var indices = new int[n];
+        for (int i = 0; i < n; i++) indices[i] = i;
+        System.Array.Sort(indices, (a, b) => normRadii[a].CompareTo(normRadii[b]));
+
+        // ── Assign pixel orbit radii with enforced minimum spacing ────────
+        // 1. Start from an ideal Lerp distribution that preserves relative spacing.
+        // 2. Walk sorted orbits and bump each up by minGapPx if needed.
+        // 3. If the last orbit overflowed maxOrbitPx, compress proportionally.
+        const float MinGapPx = 55f;
+
+        var orbitPxArr = new float[n];
+        for (int i = 0; i < n; i++)
+        {
+            float t = normRadii[indices[i]] / maxNormR;
+            orbitPxArr[i] = Mathf.Lerp(minOrbitPx, maxOrbitPx, t);
+        }
+        for (int i = 1; i < n; i++)
+            orbitPxArr[i] = Mathf.Max(orbitPxArr[i], orbitPxArr[i - 1] + MinGapPx);
+
+        if (n > 1 && orbitPxArr[n - 1] > maxOrbitPx)
+        {
+            float overflow  = orbitPxArr[n - 1] - minOrbitPx;
+            float available = maxOrbitPx          - minOrbitPx;
+            float scale     = available / overflow;
+            for (int i = 0; i < n; i++)
+                orbitPxArr[i] = minOrbitPx + (orbitPxArr[i] - minOrbitPx) * scale;
+        }
+
+        // ── Scale node sizes down for dense systems ───────────────────────
+        float sizeMult = n <= 5 ? 1.00f
+                       : n <= 8 ? 0.82f
+                                : 0.68f;
+
+        // ── Spawn orbit rings first (rendered behind planet nodes) ────────
+        for (int i = 0; i < n; i++)
+            _orbitRings.Add(SpawnOrbitRing(orbitPxArr[i]));
+
+        // ── Spawn POI nodes on top ────────────────────────────────────────
+        for (int i = 0; i < n; i++)
+        {
+            var   poi    = _pois[indices[i]];
+            bool  planet = poi.POIType == Constants.POI.Types.Planet;
+            float base_  = planet ? (poi.PlanetType.IsGaseous() ? 80f : 62f) : 48f;
+            float size   = base_ * sizeMult;
+
+            float dx    = poi.SystemX - 0.5f;
+            float dy    = poi.SystemY - 0.5f;
+            float angle = Mathf.Atan2(dy, dx);
+
+            _sortedPois.Add(poi);
+            _poiNodes.Add(SpawnPOINode(poi, orbitPxArr[i], angle, size));
+        }
+
+        // ── Spawn ship on top of everything ──────────────────────────────
+        var startPoi = FindBestStartPoi();
+        if (startPoi != null)
+        {
+            int startIdx = _sortedPois.IndexOf(startPoi);
+            if (startIdx >= 0)
+            {
+                var startPos = _poiNodes[startIdx].GetComponent<RectTransform>().anchoredPosition;
+                SpawnShip(startPos, startPoi);
+            }
+        }
     }
 
-    private GameObject SpawnPOINode(PointOfInterest poi)
+    /// <summary>
+    /// Spawns a subtle circular orbit-ring indicator centred on the star.
+    /// </summary>
+    private GameObject SpawnOrbitRing(float orbitPx)
     {
-        bool isPlanet = poi.POIType == Constants.POI.Types.Planet;
+        var go = new GameObject("OrbitRing", typeof(RectTransform));
+        go.transform.SetParent(systemMapArea, false);
 
-        // ── Size: gas giants > solid planets > everything else ────────────
-        float nodeSize = isPlanet
-            ? (poi.PlanetType.IsGaseous() ? 90f : 68f)
-            : 52f;
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0.5f, 0.5f);
+        rt.anchorMax        = new Vector2(0.5f, 0.5f);
+        rt.pivot            = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta        = new Vector2(orbitPx * 2f, orbitPx * 2f);
 
-        // ── Container: positioned by anchor within the map area ───────────
+        var ring      = go.AddComponent<UIRingGraphic>();
+        ring.color     = new Color(0.45f, 0.75f, 1.00f, 0.18f);   // subtle cyan tint
+        ring.Thickness = 1.5f;
+        ring.Segments  = 90;
+
+        return go;
+    }
+
+    private GameObject SpawnPOINode(PointOfInterest poi,
+                                    float orbitPx, float angle, float nodeSize)
+    {
+        // ── Container: anchored to map centre, offset along the orbit ─────
         var nodeGO = new GameObject(poi.Name, typeof(RectTransform));
         nodeGO.transform.SetParent(systemMapArea, false);
 
-        var rt              = nodeGO.GetComponent<RectTransform>();
-        rt.anchorMin        = new Vector2(poi.SystemX, poi.SystemY);
-        rt.anchorMax        = new Vector2(poi.SystemX, poi.SystemY);
+        var rt = nodeGO.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0.5f, 0.5f);
+        rt.anchorMax        = new Vector2(0.5f, 0.5f);
         rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
+        rt.anchoredPosition = new Vector2(orbitPx * Mathf.Cos(angle),
+                                          orbitPx * Mathf.Sin(angle));
         rt.sizeDelta        = new Vector2(nodeSize, nodeSize);
+
+        bool isPlanet = poi.POIType == Constants.POI.Types.Planet;
 
         // ── Visual image ──────────────────────────────────────────────────
         var img = nodeGO.AddComponent<Image>();
@@ -248,33 +445,198 @@ public class SystemViewController : MonoBehaviour
         btn.targetGraphic = img;
 
         var capturedPoi = poi;
-        btn.onClick.AddListener(() => ShowPOIDetail(capturedPoi));
-
-        // ── Name label (below the node) ───────────────────────────────────
-        var labelGO = new GameObject("Label", typeof(RectTransform));
-        labelGO.transform.SetParent(nodeGO.transform, false);
-
-        var labelRT              = labelGO.GetComponent<RectTransform>();
-        labelRT.anchorMin        = new Vector2(0.5f, 0f);
-        labelRT.anchorMax        = new Vector2(0.5f, 0f);
-        labelRT.pivot            = new Vector2(0.5f, 1f);
-        labelRT.anchoredPosition = new Vector2(0f, -4f);
-        labelRT.sizeDelta        = new Vector2(180f, 32f);
-
-        var tmp                = labelGO.AddComponent<TextMeshProUGUI>();
-        tmp.text               = poi.Name;
-        tmp.fontSize           = 16f;
-        tmp.color              = new Color(0.80f, 0.90f, 1.00f, 1f);
-        tmp.alignment          = TextAlignmentOptions.Top;
-        tmp.enableWordWrapping = false;
-        tmp.overflowMode       = TextOverflowModes.Ellipsis;
+        btn.onClick.AddListener(() => OnPOIClicked(capturedPoi));
 
         return nodeGO;
     }
 
     // -----------------------------------------------------------------------
+    // Player ship
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Creates the ship UI node as the last child of systemMapArea (renders on top).
+    /// </summary>
+    private void SpawnShip(Vector2 startPos, PointOfInterest startPoi)
+    {
+        _shipNodeGO = new GameObject("PlayerShip", typeof(RectTransform));
+        _shipNodeGO.transform.SetParent(systemMapArea, false);
+
+        _shipRT             = _shipNodeGO.GetComponent<RectTransform>();
+        _shipRT.anchorMin   = new Vector2(0.5f, 0.5f);
+        _shipRT.anchorMax   = new Vector2(0.5f, 0.5f);
+        _shipRT.pivot       = new Vector2(0.5f, 0.5f);
+        _shipRT.sizeDelta   = new Vector2(50f, 50f);
+        _shipRT.anchoredPosition = startPos;
+
+        var img = _shipNodeGO.AddComponent<Image>();
+        if (shipSprite != null)
+        {
+            img.sprite         = shipSprite;
+            img.color          = Color.white;
+            img.preserveAspect = true;
+            img.type           = Image.Type.Simple;
+        }
+        else
+        {
+            // Fallback: bright cyan triangle-ish square if sprite not wired
+            img.sprite = null;
+            img.color  = new Color(0.2f, 0.9f, 1.0f, 1f);
+        }
+
+        _shipCurrentPoi = startPoi;
+    }
+
+    /// <summary>
+    /// Called when any POI is tapped. If the ship is already there, show the
+    /// popup immediately. If it's flying, ignore the tap. Otherwise fly there first.
+    /// </summary>
+    private void OnPOIClicked(PointOfInterest poi)
+    {
+        if (_shipFlying) return;
+
+        if (poi == _shipCurrentPoi)
+        {
+            ShowPOIDetail(poi);
+            return;
+        }
+
+        int targetIdx = _sortedPois.IndexOf(poi);
+        if (targetIdx < 0 || _shipRT == null) return;
+
+        Vector2 fromPos = _shipRT.anchoredPosition;
+        Vector2 toPos   = _poiNodes[targetIdx].GetComponent<RectTransform>().anchoredPosition;
+
+        if (_flyCoroutine != null) StopCoroutine(_flyCoroutine);
+        _flyCoroutine = StartCoroutine(FlyShipToCoroutine(poi, fromPos, toPos));
+    }
+
+    /// <summary>
+    /// Flies the ship from <paramref name="fromPos"/> to <paramref name="toPos"/>
+    /// with smooth acceleration/deceleration, then shows the POI popup on arrival.
+    /// </summary>
+    private System.Collections.IEnumerator FlyShipToCoroutine(
+        PointOfInterest target, Vector2 fromPos, Vector2 toPos)
+    {
+        _shipFlying = true;
+
+        Vector2 dir      = toPos - fromPos;
+        float   distance = dir.magnitude;
+        if (distance < 0.1f)
+        {
+            // Already there (shouldn't normally happen but handle gracefully)
+            _shipCurrentPoi = target;
+            _shipFlying     = false;
+            ShowPOIDetail(target);
+            yield break;
+        }
+
+        // Duration scales with distance; clamped so short hops feel snappy
+        // and long cross-system flights aren't a slog.
+        float duration = Mathf.Clamp(distance / 280f, 0.6f, 3.2f);
+
+        // The raw sprite points RIGHT (+X). Standard Atan2(y,x) gives the angle
+        // from +X to the flight direction, which is exactly the Z-rotation we need.
+        float targetAngleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
+        float startAngleDeg  = _shipRT.localEulerAngles.z;
+        // Normalise to shortest arc
+        float deltaAngle = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            // Position: smooth-step (ease in + ease out) gives the feel of
+            // thrusting, cruising, then braking.
+            float posT = t * t * (3f - 2f * t);
+            _shipRT.anchoredPosition = Vector2.Lerp(fromPos, toPos, posT);
+
+            // Rotation: snap to heading quickly (first 25 % of flight), then hold.
+            float rotT = Mathf.Clamp01(t / 0.25f);
+            float rot  = startAngleDeg + rotT * deltaAngle;
+            _shipRT.localEulerAngles = new Vector3(0f, 0f, rot);
+
+            yield return null;
+        }
+
+        _shipRT.anchoredPosition = toPos;
+        _shipCurrentPoi          = target;
+        _shipFlying              = false;
+        _flyCoroutine            = null;
+
+        ShowPOIDetail(target);
+    }
+
+    /// <summary>
+    /// Picks the best POI to start the ship at. Priority: named "Earth" →
+    /// first habitable planet → first planet → first POI.
+    /// </summary>
+    private PointOfInterest FindBestStartPoi()
+    {
+        if (_sortedPois == null || _sortedPois.Count == 0) return null;
+
+        // 1. Exact name match for "Earth"
+        foreach (var p in _sortedPois)
+            if (p.Name == "Earth") return p;
+
+        // 2. First habitable planet
+        foreach (var p in _sortedPois)
+            if (p.POIType == Constants.POI.Types.Planet && p.IsHabitable) return p;
+
+        // 3. First planet of any kind
+        foreach (var p in _sortedPois)
+            if (p.POIType == Constants.POI.Types.Planet) return p;
+
+        // 4. Anything
+        return _sortedPois[0];
+    }
+
+    // -----------------------------------------------------------------------
+    // View switching (System ↔ Galaxy)
+    // -----------------------------------------------------------------------
+
+    private void ShowSystemView()
+    {
+        // Reveal the system map
+        if (systemMapArea != null) systemMapArea.gameObject.SetActive(true);
+
+        // Hide the galaxy panel
+        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+    }
+
+    private void ShowGalaxyView()
+    {
+        // Close any open POI popup before switching away
+        HidePOIDetail();
+
+        // Hide the system map so only the galaxy panel is visible
+        if (systemMapArea != null) systemMapArea.gameObject.SetActive(false);
+
+        if (galaxyViewPanel != null)
+        {
+            galaxyViewPanel.SetActive(true);
+
+            // Notify the galaxy controller which system the player is currently in
+            // so it can highlight the correct node.
+            if (galaxyViewController != null && _currentSystem != null)
+                galaxyViewController.SetCurrentSystem(_currentSystem.Id);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // POI Detail Panel
     // -----------------------------------------------------------------------
+
+    // ── Show / Hide ──────────────────────────────────────────────────────────
+    //
+    // Plain SetActive(true/false) is fine here because the close button's
+    // Animator is permanently disabled in Start() — there is no animator that
+    // could be left in a bad state across enable/disable cycles. The close
+    // button's CanvasGroup alphas were locked once in Start() and never
+    // change, so SetActive(false) → SetActive(true) leaves the visual
+    // identical to before.
 
     private void ShowPOIDetail(PointOfInterest poi)
     {
@@ -290,6 +652,7 @@ public class SystemViewController : MonoBehaviour
     private void HidePOIDetail()
     {
         if (poiDetailPanel != null) poiDetailPanel.SetActive(false);
+        UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
     }
 
     // -----------------------------------------------------------------------

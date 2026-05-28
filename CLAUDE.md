@@ -16,8 +16,8 @@ the MainMenu builder, or layout code.
   on `CanvasScaler`).
 - **Render mode:** Screen-Space Overlay.
 - **Text:** TextMeshPro everywhere — never `UnityEngine.UI.Text`.
-- **Persistence:** SQLite via SQLitePCLRaw; saves managed by `DatabaseManager`
-  under `GameManager`.
+- **Persistence:** SQLite via SQLite4Unity3d (`Assets/Scripts/SQLite.cs` +
+  native `libsqlite3.so`); saves managed by `DatabaseManager` under `GameManager`.
 
 ## How the MainMenu scene gets built
 
@@ -211,6 +211,78 @@ never call `button.onClick.AddListener(...)` on a Shift button from an editor
 script. Expose the button as a `[SerializeField]`, wire it via `SerializedObject`,
 and add the listener in the runtime MonoBehaviour's `Start()`.
 
+### Shift `MainButton` on a re-enabled panel renders stuck-highlighted
+
+The Shift Main Button animator clips are **transition** clips, not static state
+clips. The `Normal` clip is a 0.167 s blend of child `CanvasGroup` alphas:
+`Normal: 0→1`, `Highlighted: 1→0`. At `t=0` the button visually looks
+highlighted; only at `t=1` does it look correct at rest.
+
+Combined with three other facts this becomes a real bug:
+
+1. The animator's default state is `Normal`, so on every fresh `OnEnable` the
+   Animator initialises to `Normal at t=0` — the highlighted-looking frame.
+2. `Animator.Play("Normal", 0, 1.0f)` called on the same frame as
+   `SetActive(true)` silently no-ops because the Animator's playables haven't
+   bound yet (`hasBoundPlayables` is false). `Rebind()` + `Update(0f)` does
+   not reliably win the binding race either.
+3. Direct child `CanvasGroup` alpha writes are silently overwritten by the
+   Animator's first deferred sample at `Normal t=0` later in the same frame.
+
+Symptom: the second and later opens of any panel containing a Shift `MainButton`
+show the button glowing at rest. Hovering makes it look normal briefly — that's
+the cross-fade from the stuck-at-`Normal t=0` source state into the destination
+`Highlighted t=0` state, which momentarily blends to a normal-looking frame.
+
+**Rule:** never hide a panel containing a Shift `MainButton` via `SetActive(false)`.
+Use a `CanvasGroup` (`alpha = 0`, `blocksRaycasts = false`) so the button's
+GameObject stays active and its Animator stays continuously bound. The reference
+example is `SystemViewController.ShowPOIDetail` / `HidePOIDetail`:
+
+```csharp
+// Start() — keep the panel ACTIVE for the scene's lifetime; cache a CanvasGroup
+// for show/hide.
+if (poiDetailPanel != null)
+{
+    poiDetailPanel.SetActive(true);
+    _poiDetailCanvasGroup = poiDetailPanel.GetComponent<CanvasGroup>()
+                            ?? poiDetailPanel.AddComponent<CanvasGroup>();
+}
+HidePOIDetail();   // sets alpha=0, blocksRaycasts=false, interactable=false
+
+// ShowPOIDetail — reveal via CanvasGroup, then snap the Animator to the end
+// of the Normal clip. This call is reliable here because the panel has been
+// active since Start() — the Animator's playables are already bound.
+_poiDetailCanvasGroup.alpha          = 1f;
+_poiDetailCanvasGroup.blocksRaycasts = true;
+_poiDetailCanvasGroup.interactable   = true;
+
+var anim = closeButton.GetComponent<Animator>();
+if (anim != null && anim.runtimeAnimatorController != null)
+{
+    anim.Play("Normal", 0, 1.0f);
+    anim.Update(0f);
+}
+```
+
+Things that look reasonable but **do not work** (and the reasons they don't):
+
+| Attempt                                          | Why it fails                                                |
+|--------------------------------------------------|-------------------------------------------------------------|
+| `anim.Play("Normal", -1, 0f)` on show            | Plays the highlighted-looking frame                         |
+| `anim.Play("Normal", 0, 1.0f)` on show           | No-op on the same frame as SetActive — playables not bound  |
+| `anim.Rebind() + Play(...) + Update(0f)` on show | Same binding race; first deferred sample lands at `Normal t=0` and overwrites |
+| Direct child `CanvasGroup` alpha writes on show  | Same — Animator's first deferred sample overwrites them     |
+| `ResetTrigger(...) + SetTrigger("Normal")`       | Triggers are buffered until binding completes; sample still at `t=0` first |
+| `button.OnPointerExit(dummyEvent)`               | Only clears `isPointerInside`; doesn't drive the Animator   |
+| `anim.keepAnimatorStateOnDisable = false`        | Already false in the prefab; not what's wrong               |
+
+The animator's default `KeepAnimatorControllerStateOnDisable = false` is
+already correct in the prefab — the bug isn't about preserving state across
+disables, it's about the *first samplable frame after a fresh enable* looking
+wrong, and Unity's deferred playable-binding making same-frame fixes unreliable.
+The only robust escape is to never let the Animator disable in the first place.
+
 ## UI architecture conventions
 
 ### Full-screen overlays live on their own Canvas
@@ -376,6 +448,41 @@ use them, expect that anything < ~6 canvas units may disappear at the lowest
 supported resolution. If a hairline divider matters visually, draw it with a
 sprite or accept that it'll be 1 device pixel.
 
+## Android deployment gotchas
+
+### 16KB page alignment required for all native libraries (Android 15+)
+
+Android 15 (API 35+) and any emulator with `16k` in its name enforce a minimum
+`PT_LOAD` segment alignment of 16384 bytes. Any `.so` compiled with the default
+4KB alignment (`p_align = 0x1000`) will be rejected at load time with:
+
+```
+dlopen failed: "...libfoo.so" program alignment (4096) cannot be smaller than
+system page size (16384)
+```
+
+**Rule:** every native `.so` added to the project must be compiled (or recompiled)
+with `-Wl,-z,max-page-size=16384`. Libraries compiled with 16KB alignment load
+correctly on both 4KB-page and 16KB-page devices (16384 is a multiple of 4096).
+`build-sqlite3-arm64.ps1` demonstrates the correct NDK compile invocation.
+
+This is not Unity-version-specific — it is an Android OS requirement. If a
+prebuilt third-party `.so` triggers this error, you must rebuild it from source
+with the flag above, or find a distribution that provides 16KB-aligned binaries.
+
+### Android namespace isolation blocks bare `dlopen` from native code
+
+Since Android 7.0 (API 24), the linker enforces namespace isolation. Native code
+(IL2CPP) calling `dlopen("foo")` runs in a restricted namespace that does not
+include the app's private lib directory. The call fails even when `libfoo.so` is
+correctly extracted to `/data/app/.../lib/arm64/`.
+
+The fix is a Java-side preload: a class that calls `System.loadLibrary("foo")`,
+which uses the app's ClassLoader namespace (which does include the private lib
+directory). Once the JVM has loaded the library it is resident in the process;
+IL2CPP's subsequent `dlopen` finds it via the linker cache. See
+`SQLitePreload.java` and `DatabaseManager.PreloadNativeLibrary()` for the pattern.
+
 ## Runtime data conventions
 
 ### JSON data files live in `Assets/Resources/` as TextAssets
@@ -507,6 +614,40 @@ and caches it. Call it freely; there's no setup cost after the first call. Pass 
 `Gender` to fix the gender, or omit it to let `RandomGender()` pick (45% male,
 45% female, 10% non-binary). `RandomGender()` is public for cases like
 `CreateCaptain` that need a gender value without generating a full name.
+
+## SQLite Android setup
+
+SQLite4Unity3d uses `[DllImport("sqlite3")]` — it requires a native `libsqlite3.so`
+for each target ABI. Three files beyond the library itself make this work on Android:
+
+**`Assets/Plugins/Android/libs/arm64-v8a/libsqlite3.so`** — the native library.
+Must be compiled with 16KB page alignment (see gotcha below). To rebuild it, run:
+```
+.\build-sqlite3-arm64.ps1
+```
+from `code/spacegame/`. The script auto-detects Unity's NDK, downloads the SQLite
+amalgamation, compiles with `-Wl,-z,max-page-size=16384`, and writes the output
+directly into the plugin folder. Rerun it if you update the NDK or need a different
+SQLite version.
+
+**`Assets/Plugins/Android/SQLitePreload.java`** — a Java class with a single static
+`load()` method that calls `System.loadLibrary("sqlite3")`. This is necessary because
+Android's linker namespace isolation prevents IL2CPP's bare `dlopen("sqlite3")` from
+finding app-private libraries; the Java class loader resolves the app namespace
+correctly. `DatabaseManager.Initialize()` calls this via JNI before opening the
+`SQLiteConnection`.
+
+**`Assets/Plugins/Android/AndroidManifest.xml`** — must contain
+`android:extractNativeLibs="true"` on the `<application>` element so the `.so` is
+unpacked from the APK on install. This was generated via Unity's Player Settings UI
+("Custom Main Manifest") and must not be replaced with a hand-written minimal
+manifest — doing so silently drops Unity's own application attributes.
+
+### Rule: do not hand-edit AndroidManifest.xml from scratch
+
+If you need to add attributes, open the existing manifest and add only what's needed.
+Never replace it with a minimal file — Unity merges its own settings into your custom
+manifest, and a replacement strips those settings without any warning.
 
 ## Database schema changes (development)
 

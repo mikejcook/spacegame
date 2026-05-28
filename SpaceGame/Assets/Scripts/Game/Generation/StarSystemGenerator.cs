@@ -13,6 +13,18 @@ public static class StarSystemGenerator
     // Known / hand-crafted systems
     // ---------------------------------------------------------------------------
 
+    // ── Sol cluster galaxy positions ────────────────────────────────────────
+    // Placed in a spiral-arm region (~0.14 units from galactic centre).
+    // The three systems form a small triangle with ~5–7 % horizontal separation
+    // so their labels don't overlap at the default zoom level.
+
+    public const float SolGX          = 0.595f;
+    public const float SolGY          = 0.448f;
+    public const float AlphaGX        = 0.658f;   // ~6 % right, slightly up
+    public const float AlphaGY        = 0.458f;
+    public const float ProximaGX      = 0.628f;   // ~3 % right, below Sol
+    public const float ProximaGY      = 0.428f;
+
     public static StarSystem GenerateSolSystem()
     {
         return new StarSystem
@@ -20,8 +32,8 @@ public static class StarSystemGenerator
             Name            = "Sol",
             StarType        = StarType.YellowDwarf,
             IsKnown         = true,
-            GalaxyX         = 0.5f,
-            GalaxyY         = 0.5f,
+            GalaxyX         = SolGX,
+            GalaxyY         = SolGY,
             IsExplored      = true,
             HasSpaceStation = true,
             DangerLevel     = 1,
@@ -38,8 +50,8 @@ public static class StarSystemGenerator
             Name            = "Alpha Centauri",
             StarType        = StarType.YellowDwarf,
             IsKnown         = true,
-            GalaxyX         = 0.54f,
-            GalaxyY         = 0.49f,
+            GalaxyX         = AlphaGX,
+            GalaxyY         = AlphaGY,
             IsExplored      = false,
             HasSpaceStation = true,
             DangerLevel     = 2,
@@ -56,8 +68,8 @@ public static class StarSystemGenerator
             Name            = "Proxima Centauri",
             StarType        = StarType.RedDwarf,
             IsKnown         = true,
-            GalaxyX         = 0.53f,
-            GalaxyY         = 0.48f,
+            GalaxyX         = ProximaGX,
+            GalaxyY         = ProximaGY,
             IsExplored      = false,
             HasSpaceStation = false,
             DangerLevel     = 3,
@@ -65,6 +77,168 @@ public static class StarSystemGenerator
             Description     = "A red dwarf with a tidally-locked habitable world. Rumours of " +
                               "pre-human ruins on the surface draw explorers and treasure-hunters alike."
         };
+    }
+
+    // ---------------------------------------------------------------------------
+    // CSV catalogue helpers
+    // ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// Parses a "Name,StarType" CSV (with a header row) into an array of tuples.
+    /// StarType values "Yellow", "Red", "Blue" are mapped to the StarType enum.
+    /// </summary>
+    public static (string name, StarType starType)[] ParseSystemsCSV(string csvText)
+    {
+        if (string.IsNullOrEmpty(csvText)) return Array.Empty<(string, StarType)>();
+
+        var result    = new List<(string, StarType)>();
+        var lines     = csvText.Split('\n');
+        bool skipNext = true;   // skip header row
+
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith('#')) continue;
+
+            if (skipNext) { skipNext = false; continue; }  // header
+
+            var parts = line.Split(',');
+            if (parts.Length < 2) continue;
+
+            result.Add((parts[0].Trim(), ParseStarType(parts[1].Trim())));
+        }
+        return result.ToArray();
+    }
+
+    private static StarType ParseStarType(string s) =>
+        s.ToLowerInvariant() switch
+        {
+            "yellow" or "yellow dwarf" or "yellowdwarf" => StarType.YellowDwarf,
+            "red"    or "red dwarf"    or "reddwarf"    => StarType.RedDwarf,
+            "blue"   or "blue giant"   or "bluegiant"   => StarType.BlueGiant,
+            _                                            => StarType.YellowDwarf
+        };
+
+    /// <summary>
+    /// Builds a <see cref="StarSystem"/> from a CSV catalogue entry.
+    /// The system is marked <see cref="StarSystem.IsKnown"/> = true so it
+    /// appears on the galaxy map, but not yet explored.
+    /// </summary>
+    public static StarSystem GenerateExtraSystem(
+        string   name,
+        StarType starType,
+        float    galaxyX,
+        float    galaxyY,
+        int      seed,
+        int      saveGameId)
+    {
+        var rng         = new Random(seed);
+        int dangerLevel = rng.Next(1, 6);
+        bool hasStation = rng.Next(0, 10) < 2;   // 20 % chance
+
+        return new StarSystem
+        {
+            Name            = name,
+            StarType        = starType,
+            IsKnown         = true,
+            GalaxyX         = galaxyX,
+            GalaxyY         = galaxyY,
+            IsExplored      = false,
+            HasSpaceStation = hasStation,
+            DangerLevel     = dangerLevel,
+            Seed            = seed,
+            SaveGameId      = saveGameId,
+            Description     = BuildSystemDescription(starType, dangerLevel, hasStation)
+        };
+    }
+
+    /// <summary>
+    /// Returns <paramref name="count"/> galaxy-map positions spread around the
+    /// galactic disk using a golden-angle spiral.  Any candidate that falls within
+    /// <paramref name="minSpacing"/> of an <paramref name="avoidPositions"/> entry
+    /// (or of another already-placed position) is retried up to 40 times before
+    /// accepting the best available fallback.
+    /// </summary>
+    public static (float gx, float gy)[] GenerateGalaxyPositions(
+        int                  count,
+        int                  seed,
+        float                innerR         = 0.10f,
+        float                outerR         = 0.38f,
+        (float gx, float gy)[] avoidPositions = null,
+        float                minSpacing     = 0.09f)
+    {
+        if (count <= 0) return Array.Empty<(float, float)>();
+
+        var rng = new Random(seed ^ 0xABCDEF);
+
+        // Golden angle in radians (~137.508°)
+        const double GoldenAngle = 2.39996322972865332;
+        double startAngle = rng.NextDouble() * Math.PI * 2;
+
+        var result = new (float gx, float gy)[count];
+        var placed = new List<(float gx, float gy)>(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            float bestGx = 0f, bestGy = 0f;
+
+            for (int attempt = 0; attempt < 40; attempt++)
+            {
+                float gx, gy;
+
+                if (attempt == 0)
+                {
+                    // Primary: golden-angle spiral position
+                    float t      = (i + 0.5f) / count;
+                    float r      = innerR + t * (outerR - innerR);
+                    float jitter = (float)(rng.NextDouble() - 0.5) * 0.035f;
+                    r = Math.Clamp(r + jitter, innerR, outerR);
+                    double angle = startAngle + i * GoldenAngle;
+                    gx = Math.Clamp(0.5f + r * (float)Math.Cos(angle), 0.05f, 0.95f);
+                    gy = Math.Clamp(0.5f + r * (float)Math.Sin(angle), 0.05f, 0.95f);
+                }
+                else
+                {
+                    // Fallback: random position anywhere in the ring
+                    float r      = innerR + (float)rng.NextDouble() * (outerR - innerR);
+                    double angle = rng.NextDouble() * Math.PI * 2;
+                    gx = Math.Clamp(0.5f + r * (float)Math.Cos(angle), 0.05f, 0.95f);
+                    gy = Math.Clamp(0.5f + r * (float)Math.Sin(angle), 0.05f, 0.95f);
+                }
+
+                if (!TooClose(gx, gy, avoidPositions, minSpacing) &&
+                    !TooClose(gx, gy, placed,          minSpacing))
+                {
+                    bestGx = gx;
+                    bestGy = gy;
+                    goto placed;
+                }
+
+                // Keep the first attempt as the last-resort fallback
+                if (attempt == 0) { bestGx = gx; bestGy = gy; }
+            }
+
+            placed:
+            result[i] = (bestGx, bestGy);
+            placed.Add((bestGx, bestGy));
+        }
+        return result;
+    }
+
+    private static bool TooClose(
+        float gx, float gy,
+        IEnumerable<(float gx, float gy)> others,
+        float minDist)
+    {
+        if (others == null) return false;
+        float d2 = minDist * minDist;
+        foreach (var o in others)
+        {
+            float dx = gx - o.gx;
+            float dy = gy - o.gy;
+            if (dx * dx + dy * dy < d2) return true;
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------------------

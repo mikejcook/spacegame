@@ -1,0 +1,816 @@
+C:\Users\mikej>C:\Users\mikej\AppData\Local\Android\Sdk\platform-tools\adb.exe logcat -s Unity
+--------- beginning of main
+05-26 01:29:10.146 12401 12401 V Unity   : Context Type: GameActivity
+05-26 01:29:10.236 12401 12432 I Unity   : UnityApplication::CreateInstance
+05-26 01:29:10.236 12401 12432 I Unity   : GameActivity Package Version '4.4.0'
+05-26 01:29:10.238 12401 12432 I Unity   : Starting Game Loop
+05-26 01:29:10.250 12401 12432 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:29:10.258 12401 12432 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:29:10.279 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:29:10.291 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:29:10.292 12401 12432 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 01:29:10.294 12401 12432 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:29:10.345 12401 12432 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 01:29:10.536 12401 12432 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 01:29:10.547 12401 12432 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 01:29:10.548 12401 12432 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 01:29:10.548 12401 12432 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 01:29:10.548 12401 12432 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 01:29:11.187 12401 12432 I Unity   : Company Name: mikecook
+05-26 01:29:11.187 12401 12432 I Unity   : Product Name: spacegame
+05-26 01:29:12.577 12401 12432 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:29:12.578 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 01:29:12.578 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:29:12.579 12401 12432 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:29:12.579 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:29:15.949 12401 12432 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 01:29:15.949 12401 12432 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:29:15.949 12401 12432 I Unity   : DatabaseManager:Initialize()
+05-26 01:29:15.949 12401 12432 I Unity   :
+05-26 01:29:15.992 12401 12432 E Unity   : DllNotFoundException: Unable to load DLL 'e_sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'e_sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "e_sqlite3" not found
+05-26 01:29:15.992 12401 12432 E Unity   :   at SQLitePCL.SQLite3Provider_e_sqlite3+NativeMethods.sqlite3_libversion_number () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:29:15.992 12401 12432 E Unity   :   at SQLitePCL.raw.SetProvider (SQLitePCL.ISQLite3Provider imp) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:29:15.992 12401 12432 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:29:15.992 12401 12432 E Unity   : Rethrow as TypeInitializationException: The type initializer for 'SQLite.SQLiteConnection' threw an exception.
+05-26 01:29:15.992 12401 12432 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:29:15.992 12401 12432 E Unity   :
+05-26 01:30:33.826 12401 12432 W Unity   : Hiding input field is not supported when using Game Activity.
+05-26 01:30:33.826 12401 12432 W Unity   : TMPro.TMP_InputField:ActivateInputFieldInternal()
+05-26 01:30:33.826 12401 12432 W Unity   : TMPro.TMP_InputField:LateUpdate()
+05-26 01:30:33.826 12401 12432 W Unity   :
+05-26 01:30:33.826 12401 12432 W Unity   : [ line 1585378256]
+05-26 01:30:33.826 12401 12432 W Unity   :
+05-26 01:30:34.237 12401 12432 W Unity   : Timeout while waiting for keyboard to become visible
+05-26 01:30:34.362 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:34.661 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:34.661 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:34.661 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:35.891 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:35.891 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:30:35.897 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:35.930 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:36.016 12401 12432 I Unity   : [GameManager] State → Loading
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:30:36.016 12401 12432 I Unity   : GameManager:SetState(GameState)
+05-26 01:30:36.016 12401 12432 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:30:36.016 12401 12432 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:30:36.016 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:30:36.016 12401 12432 I Unity   :
+05-26 01:30:36.537 12401 12432 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:30:36.537 12401 12432 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:36.537 12401 12432 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:36.537 12401 12432 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:36.537 12401 12432 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:36.537 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:36.537 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:30:41.102 12401 12432 I Unity   : [GameManager] State → Loading
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:30:41.102 12401 12432 I Unity   : GameManager:SetState(GameState)
+05-26 01:30:41.102 12401 12432 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:30:41.102 12401 12432 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:30:41.102 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:30:41.102 12401 12432 I Unity   :
+05-26 01:30:41.103 12401 12432 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:30:41.103 12401 12432 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:41.103 12401 12432 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:41.103 12401 12432 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:41.103 12401 12432 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:41.103 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:41.103 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:30:42.212 12401 12432 I Unity   : [GameManager] State → Loading
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:30:42.212 12401 12432 I Unity   : GameManager:SetState(GameState)
+05-26 01:30:42.212 12401 12432 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:30:42.212 12401 12432 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:30:42.212 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:30:42.212 12401 12432 I Unity   :
+05-26 01:30:42.214 12401 12432 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:30:42.214 12401 12432 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:42.214 12401 12432 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:42.214 12401 12432 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:42.214 12401 12432 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:42.214 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:30:42.214 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:30:46.415 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:46.476 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:46.476 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:46.478 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:53.094 12401 12432 I Unity   : Handle cmd APP_CMD_EDITOR_ACTION(18)
+05-26 01:30:53.094 12401 12432 I Unity   :     EditorAction IME_ACTION_DONE(6)
+05-26 01:30:53.128 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:53.128 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:30:53.128 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:53.164 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:53.793 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:53.793 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:53.813 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:53.843 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:54.924 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:54.924 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:30:54.947 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:54.977 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:55.425 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:55.426 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:55.444 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:55.479 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.117 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:56.117 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:30:56.119 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.142 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:56.142 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:56.145 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.162 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.193 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.733 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:56.733 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:30:56.733 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:56.762 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:57.432 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:30:57.432 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:30:57.432 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:30:57.460 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:03.851 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:31:03.851 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:31:03.861 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:03.896 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:05.116 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:05.160 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:31:05.160 12401 12432 I Unity   :     Keyboard Visible = True
+05-26 01:31:05.162 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:08.011 12401 12432 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:31:08.011 12401 12432 I Unity   :     Keyboard Visible = False
+05-26 01:31:08.027 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:08.062 12401 12432 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:31:08.068 12401 12432 I Unity   : [GameManager] State → Loading
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:31:08.068 12401 12432 I Unity   : GameManager:SetState(GameState)
+05-26 01:31:08.068 12401 12432 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:31:08.068 12401 12432 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:31:08.068 12401 12432 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:31:08.068 12401 12432 I Unity   :
+05-26 01:31:08.083 12401 12432 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:31:08.083 12401 12432 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:31:08.083 12401 12432 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:31:08.083 12401 12432 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:31:08.083 12401 12432 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:31:08.083 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:31:08.083 12401 12432 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:31:19.755 12401 12432 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:31:19.915 12401 12432 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:31:20.194 12401 12432 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:31:20.337 12401 12432 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:31:20.338 12401 12432 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:31:20.339 12401 12432 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:32:20.206 12401 12432 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:33:41.509 12859 12859 V Unity   : Context Type: GameActivity
+05-26 01:33:41.559 12859 12879 I Unity   : UnityApplication::CreateInstance
+05-26 01:33:41.559 12859 12879 I Unity   : GameActivity Package Version '4.4.0'
+05-26 01:33:41.562 12859 12879 I Unity   : Starting Game Loop
+05-26 01:33:41.574 12859 12879 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:33:41.589 12859 12879 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:33:41.643 12859 12879 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:33:41.660 12859 12879 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:33:41.661 12859 12879 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 01:33:41.679 12859 12879 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:33:41.715 12859 12879 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 01:33:41.940 12859 12879 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 01:33:41.942 12859 12879 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 01:33:41.943 12859 12879 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 01:33:41.943 12859 12879 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 01:33:41.944 12859 12879 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 01:33:42.467 12859 12879 I Unity   : Company Name: mikecook
+05-26 01:33:42.467 12859 12879 I Unity   : Product Name: spacegame
+05-26 01:33:43.683 12859 12879 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:33:43.683 12859 12879 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 01:33:43.683 12859 12879 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:33:43.683 12859 12879 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:33:43.683 12859 12879 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:33:46.834 12859 12879 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 01:33:46.834 12859 12879 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:33:46.834 12859 12879 I Unity   : DatabaseManager:Initialize()
+05-26 01:33:46.834 12859 12879 I Unity   :
+05-26 01:33:46.875 12859 12879 E Unity   : DllNotFoundException: Unable to load DLL 'e_sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'e_sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "e_sqlite3" not found
+05-26 01:33:46.875 12859 12879 E Unity   :   at SQLitePCL.SQLite3Provider_e_sqlite3+NativeMethods.sqlite3_libversion_number () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:33:46.875 12859 12879 E Unity   :   at SQLitePCL.raw.SetProvider (SQLitePCL.ISQLite3Provider imp) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:33:46.875 12859 12879 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:33:46.875 12859 12879 E Unity   : Rethrow as TypeInitializationException: The type initializer for 'SQLite.SQLiteConnection' threw an exception.
+05-26 01:33:46.875 12859 12879 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:33:46.875 12859 12879 E Unity   :
+05-26 01:34:22.346 12859 12879 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:34:22.526 12859 12879 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:34:22.839 12859 12879 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:34:22.956 12859 12879 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:34:22.961 12859 12879 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:34:22.962 12859 12879 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:35:22.837 12859 12879 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:36:10.289 13186 13186 V Unity   : Context Type: GameActivity
+05-26 01:36:10.348 13186 13211 I Unity   : UnityApplication::CreateInstance
+05-26 01:36:10.348 13186 13211 I Unity   : GameActivity Package Version '4.4.0'
+05-26 01:36:10.350 13186 13211 I Unity   : Starting Game Loop
+05-26 01:36:10.383 13186 13211 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:36:10.384 13186 13211 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:36:10.413 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:10.441 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:10.443 13186 13211 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 01:36:10.447 13186 13211 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:36:10.614 13186 13211 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 01:36:10.942 13186 13211 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 01:36:10.946 13186 13211 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 01:36:10.947 13186 13211 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 01:36:10.947 13186 13211 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 01:36:10.948 13186 13211 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 01:36:11.546 13186 13211 I Unity   : Company Name: mikecook
+05-26 01:36:11.546 13186 13211 I Unity   : Product Name: spacegame
+05-26 01:36:12.877 13186 13211 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:36:12.877 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 01:36:12.877 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:36:12.877 13186 13211 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:36:12.877 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:16.115 13186 13211 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 01:36:16.115 13186 13211 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:36:16.115 13186 13211 I Unity   : DatabaseManager:Initialize()
+05-26 01:36:16.115 13186 13211 I Unity   :
+05-26 01:36:16.154 13186 13211 E Unity   : DllNotFoundException: Unable to load DLL 'e_sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'e_sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "e_sqlite3" not found
+05-26 01:36:16.154 13186 13211 E Unity   :   at SQLitePCL.SQLite3Provider_e_sqlite3+NativeMethods.sqlite3_libversion_number () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:16.154 13186 13211 E Unity   :   at SQLitePCL.raw.SetProvider (SQLitePCL.ISQLite3Provider imp) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:16.154 13186 13211 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:16.154 13186 13211 E Unity   : Rethrow as TypeInitializationException: The type initializer for 'SQLite.SQLiteConnection' threw an exception.
+05-26 01:36:16.154 13186 13211 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:16.154 13186 13211 E Unity   :
+05-26 01:36:19.625 13186 13211 W Unity   : Hiding input field is not supported when using Game Activity.
+05-26 01:36:19.625 13186 13211 W Unity   : TMPro.TMP_InputField:ActivateInputFieldInternal()
+05-26 01:36:19.625 13186 13211 W Unity   : TMPro.TMP_InputField:LateUpdate()
+05-26 01:36:19.625 13186 13211 W Unity   :
+05-26 01:36:19.625 13186 13211 W Unity   : [ line 1585230800]
+05-26 01:36:19.625 13186 13211 W Unity   :
+05-26 01:36:19.948 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:20.014 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:20.014 13186 13211 I Unity   :     Keyboard Visible = True
+05-26 01:36:20.018 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:23.927 13186 13211 I Unity   : Handle cmd APP_CMD_EDITOR_ACTION(18)
+05-26 01:36:23.928 13186 13211 I Unity   :     EditorAction IME_ACTION_DONE(6)
+05-26 01:36:23.951 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:23.951 13186 13211 I Unity   :     Keyboard Visible = False
+05-26 01:36:23.951 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:23.994 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:24.992 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:25.028 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:25.028 13186 13211 I Unity   :     Keyboard Visible = True
+05-26 01:36:25.035 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:34.277 13186 13211 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:36:34.472 13186 13211 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:36:34.984 13186 13211 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:36:35.184 13186 13211 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:36:35.197 13186 13211 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:36:35.200 13186 13211 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:36:41.233 13186 13211 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:36:41.237 13186 13211 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:36:41.242 13186 13211 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:36:41.381 13186 13211 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:36:41.382 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:36:41.389 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:41.390 13186 13211 I Unity   :     Keyboard Visible = False
+05-26 01:36:41.390 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:41.448 13186 13211 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:36:41.675 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:41.678 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:41.708 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:42.528 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:42.571 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:42.571 13186 13211 I Unity   :     Keyboard Visible = True
+05-26 01:36:42.575 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:44.774 13186 13211 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:36:44.774 13186 13211 I Unity   :     Keyboard Visible = False
+05-26 01:36:44.785 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:44.805 13186 13211 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:36:44.867 13186 13211 I Unity   : [GameManager] State → Loading
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:36:44.867 13186 13211 I Unity   : GameManager:SetState(GameState)
+05-26 01:36:44.867 13186 13211 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:36:44.867 13186 13211 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:36:44.867 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:36:44.867 13186 13211 I Unity   :
+05-26 01:36:45.359 13186 13211 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:36:45.359 13186 13211 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:45.359 13186 13211 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:45.359 13186 13211 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:45.359 13186 13211 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:45.359 13186 13211 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:45.359 13186 13211 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:36:47.073 13186 13211 I Unity   : [GameManager] State → Loading
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:36:47.073 13186 13211 I Unity   : GameManager:SetState(GameState)
+05-26 01:36:47.073 13186 13211 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:36:47.073 13186 13211 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:36:47.073 13186 13211 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:36:47.073 13186 13211 I Unity   :
+05-26 01:36:47.075 13186 13211 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:36:47.075 13186 13211 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:47.075 13186 13211 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:47.075 13186 13211 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:47.075 13186 13211 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:47.075 13186 13211 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:36:47.075 13186 13211 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:41:03.536 13684 13684 V Unity   : Context Type: GameActivity
+05-26 01:41:03.587 13684 13706 I Unity   : UnityApplication::CreateInstance
+05-26 01:41:03.588 13684 13706 I Unity   : GameActivity Package Version '4.4.0'
+05-26 01:41:03.591 13684 13706 I Unity   : Starting Game Loop
+05-26 01:41:03.609 13684 13706 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:41:03.625 13684 13706 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:41:03.673 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:03.696 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:03.697 13684 13706 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 01:41:03.700 13684 13706 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:41:03.783 13684 13706 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 01:41:04.200 13684 13706 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 01:41:04.208 13684 13706 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 01:41:04.212 13684 13706 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 01:41:04.212 13684 13706 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 01:41:04.212 13684 13706 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 01:41:04.878 13684 13706 I Unity   : Company Name: mikecook
+05-26 01:41:04.878 13684 13706 I Unity   : Product Name: spacegame
+05-26 01:41:06.100 13684 13706 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:41:06.100 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 01:41:06.100 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:41:06.100 13684 13706 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:41:06.100 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:09.229 13684 13706 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 01:41:09.229 13684 13706 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:41:09.229 13684 13706 I Unity   : DatabaseManager:Initialize()
+05-26 01:41:09.229 13684 13706 I Unity   :
+05-26 01:41:09.270 13684 13706 E Unity   : DllNotFoundException: Unable to load DLL 'e_sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'e_sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "e_sqlite3" not found
+05-26 01:41:09.270 13684 13706 E Unity   :   at SQLitePCL.SQLite3Provider_e_sqlite3+NativeMethods.sqlite3_libversion_number () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:09.270 13684 13706 E Unity   :   at SQLitePCL.raw.SetProvider (SQLitePCL.ISQLite3Provider imp) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:09.270 13684 13706 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:09.270 13684 13706 E Unity   : Rethrow as TypeInitializationException: The type initializer for 'SQLite.SQLiteConnection' threw an exception.
+05-26 01:41:09.270 13684 13706 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:09.270 13684 13706 E Unity   :
+05-26 01:41:12.521 13684 13706 W Unity   : Hiding input field is not supported when using Game Activity.
+05-26 01:41:12.521 13684 13706 W Unity   : TMPro.TMP_InputField:ActivateInputFieldInternal()
+05-26 01:41:12.521 13684 13706 W Unity   : TMPro.TMP_InputField:LateUpdate()
+05-26 01:41:12.521 13684 13706 W Unity   :
+05-26 01:41:12.521 13684 13706 W Unity   : [ line 1585755088]
+05-26 01:41:12.521 13684 13706 W Unity   :
+05-26 01:41:12.910 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:12.922 13684 13706 W Unity   : Timeout while waiting for keyboard to become visible
+05-26 01:41:13.019 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:13.019 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:13.019 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:21.113 13684 13706 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:41:21.397 13684 13706 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:41:21.922 13684 13706 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:41:22.060 13684 13706 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:41:22.063 13684 13706 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:41:22.064 13684 13706 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:41:26.119 13684 13706 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:41:26.124 13684 13706 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:41:26.132 13684 13706 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:41:26.278 13684 13706 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:41:26.278 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:41:26.278 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:26.278 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:26.278 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:26.286 13684 13706 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:41:26.501 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:26.515 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:26.515 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:26.533 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:26.533 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:26.533 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:26.533 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:26.563 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:27.771 13684 13706 W Unity   : Timeout while waiting for keyboard to become visible
+05-26 01:41:30.073 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.073 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:30.073 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.091 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.092 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:30.093 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.106 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.106 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:30.107 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.164 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.164 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:30.169 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.170 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.170 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:30.170 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.235 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.627 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:30.627 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:30.643 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:30.665 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:32.685 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:32.774 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:32.774 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:32.780 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:35.550 13684 13706 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:41:35.727 13684 13706 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:41:36.254 13684 13706 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:41:36.294 13684 13706 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:41:36.294 13684 13706 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:41:36.294 13684 13706 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:41:45.383 13684 13706 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 01:41:45.386 13684 13706 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 01:41:45.395 13684 13706 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 01:41:45.516 13684 13706 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 01:41:45.516 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 01:41:45.589 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:45.589 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:45.589 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:45.618 13684 13706 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 01:41:45.752 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:45.846 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:46.330 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:46.330 13684 13706 I Unity   :     Keyboard Visible = True
+05-26 01:41:46.347 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:46.381 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:48.659 13684 13706 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 01:41:48.659 13684 13706 I Unity   :     Keyboard Visible = False
+05-26 01:41:48.664 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:48.697 13684 13706 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 01:41:48.793 13684 13706 I Unity   : [GameManager] State → Loading
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 01:41:48.793 13684 13706 I Unity   : GameManager:SetState(GameState)
+05-26 01:41:48.793 13684 13706 I Unity   : GameManager:PrepareNewGame(String, String, String)
+05-26 01:41:48.793 13684 13706 I Unity   : MainMenuController:OnStartGameClicked()
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 01:41:48.793 13684 13706 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 01:41:48.793 13684 13706 I Unity   :
+05-26 01:41:49.247 13684 13706 E Unity   : NullReferenceException: Object reference not set to an instance of an object.
+05-26 01:41:49.247 13684 13706 E Unity   :   at GameManager.PrepareNewGame (System.String captainName, System.String shipName, System.String portraitFileName) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:49.247 13684 13706 E Unity   :   at MainMenuController.OnStartGameClicked () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:49.247 13684 13706 E Unity   :   at UnityEngine.Events.UnityEvent.Invoke () [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:49.247 13684 13706 E Unity   :   at UnityEngine.EventSystems.ExecuteEvents.Execute[T] (UnityEngine.GameObject target, UnityEngine.EventSystems.BaseEventData eventData, UnityEngine.EventSystems.ExecuteEvents+EventFunction`1[T1] functor) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:49.247 13684 13706 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointerButton (UnityEngine.InputSystem.UI.PointerModel+ButtonState& button, UnityEngine.EventSystems.PointerEventData eventData) [0x00000] in <00000000000000000000000000000000>:0
+05-26 01:41:49.247 13684 13706 E Unity   :   at UnityEngine.InputSystem.UI.InputSystemUIInputModule.ProcessPointer (UnityEngine.
+05-26 01:42:48.465 13684 13706 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 01:42:48.624 13684 13706 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 01:42:48.970 13684 13706 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 01:42:49.217 13684 13706 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 01:42:49.217 13684 13706 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 01:42:49.239 13684 13706 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 01:43:49.271 13684 13706 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 02:21:36.199 15614 15614 V Unity   : Context Type: GameActivity
+05-26 02:21:36.262 15614 15647 I Unity   : UnityApplication::CreateInstance
+05-26 02:21:36.262 15614 15647 I Unity   : GameActivity Package Version '4.4.0'
+05-26 02:21:36.265 15614 15647 I Unity   : Starting Game Loop
+05-26 02:21:36.277 15614 15647 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 02:21:36.289 15614 15647 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 02:21:36.311 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:21:36.325 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:21:36.325 15614 15647 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 02:21:36.325 15614 15647 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 02:21:36.394 15614 15647 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 02:21:36.748 15614 15647 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 02:21:36.751 15614 15647 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 02:21:36.751 15614 15647 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 02:21:36.751 15614 15647 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 02:21:36.753 15614 15647 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 02:21:37.396 15614 15647 I Unity   : Company Name: mikecook
+05-26 02:21:37.396 15614 15647 I Unity   : Product Name: spacegame
+05-26 02:21:38.752 15614 15647 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 02:21:38.753 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 02:21:38.753 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 02:21:38.753 15614 15647 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 02:21:38.753 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:21:41.948 15614 15647 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 02:21:41.948 15614 15647 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:21:41.948 15614 15647 I Unity   : DatabaseManager:Initialize()
+05-26 02:21:41.948 15614 15647 I Unity   :
+05-26 02:21:41.986 15614 15647 E Unity   : DllNotFoundException: Unable to load DLL 'sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "sqlite3" not found
+05-26 02:21:41.986 15614 15647 E Unity   :   at SQLite4Unity3d.SQLite3.Open (System.Byte[] filename, System.IntPtr& db, System.Int32 flags, System.IntPtr zvfs) [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:21:41.986 15614 15647 E Unity   :   at SQLite4Unity3d.SQLiteConnection..ctor (System.String databasePath, SQLite4Unity3d.SQLiteOpenFlags openFlags, System.Boolean storeDateTimeAsTicks) [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:21:41.986 15614 15647 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:21:41.986 15614 15647 E Unity   :
+05-26 02:22:45.538 15614 15647 W Unity   : Hiding input field is not supported when using Game Activity.
+05-26 02:22:45.538 15614 15647 W Unity   : TMPro.TMP_InputField:ActivateInputFieldInternal()
+05-26 02:22:45.538 15614 15647 W Unity   : TMPro.TMP_InputField:LateUpdate()
+05-26 02:22:45.538 15614 15647 W Unity   :
+05-26 02:22:45.538 15614 15647 W Unity   : [ line 1584395216]
+05-26 02:22:45.538 15614 15647 W Unity   :
+05-26 02:22:45.948 15614 15647 W Unity   : Timeout while waiting for keyboard to become visible
+05-26 02:22:46.049 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:22:46.164 15614 15647 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 02:22:46.164 15614 15647 I Unity   :     Keyboard Visible = True
+05-26 02:22:46.164 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:22:48.888 15614 15647 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 02:22:48.888 15614 15647 I Unity   :     Keyboard Visible = False
+05-26 02:22:48.900 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:22:48.934 15614 15647 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:22:49.008 15614 15647 E Unity   : [GameManager] PrepareNewGame called but DatabaseManager is not ready. Check DatabaseManager.Initialize() logs for the underlying cause.
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:49.008 15614 15647 E Unity   : MainMenuController:OnStartGameClicked()
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:49.008 15614 15647 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:49.008 15614 15647 E Unity   :
+05-26 02:22:50.176 15614 15647 W Unity   : [StoryTextResolver] Character target 'Pilot' is null — game data may not be ready.
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.176 15614 15647 W Unity   : StoryTextResolver:ResolveCharacter(String[])
+05-26 02:22:50.176 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.176 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.176 15614 15647 W Unity   :
+05-26 02:22:50.176 15614 15647 W Unity   : [StoryTextResolver] Unrecognised token: {Character.Pilot.FirstName}
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.176 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.176 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.176 15614 15647 W Unity   :
+05-26 02:22:50.176 15614 15647 W Unity   : [StoryTextResolver] Character target 'Engineer' is null — game data may not be ready.
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.176 15614 15647 W Unity   : StoryTextResolver:ResolveCharacter(String[])
+05-26 02:22:50.176 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.176 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.176 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.176 15614 15647 W Unity   :
+05-26 02:22:50.177 15614 15647 W Unity   : [StoryTextResolver] Unrecognised token: {Character.Engineer.FirstName}
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.177 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.177 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.177 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.177 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.177 15614 15647 W Unity   :
+05-26 02:22:50.178 15614 15647 W Unity   : [StoryTextResolver] PlayerShip is null — game data may not be ready.
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.178 15614 15647 W Unity   : StoryTextResolver:ResolveShip(String[])
+05-26 02:22:50.178 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.178 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.178 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.178 15614 15647 W Unity   :
+05-26 02:22:50.178 15614 15647 W Unity   : [StoryTextResolver] Unrecognised token: {Ship.ShipClass}
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.178 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.178 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.178 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.178 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.178 15614 15647 W Unity   :
+05-26 02:22:50.179 15614 15647 W Unity   : [StoryTextResolver] PlayerShip is null — game data may not be ready.
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.179 15614 15647 W Unity   : StoryTextResolver:ResolveShip(String[])
+05-26 02:22:50.179 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.179 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.179 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.179 15614 15647 W Unity   :
+05-26 02:22:50.179 15614 15647 W Unity   : [StoryTextResolver] Unrecognised token: {Ship.Name}
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:50.179 15614 15647 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:22:50.179 15614 15647 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:22:50.179 15614 15647 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:50.179 15614 15647 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:50.179 15614 15647 W Unity   :
+05-26 02:22:52.671 15614 15647 I Unity   : [GameManager] State → InGame
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:52.671 15614 15647 I Unity   : GameManager:SetState(GameState)
+05-26 02:22:52.671 15614 15647 I Unity   : GameManager:LoadGameScene()
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:22:52.671 15614 15647 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:22:52.671 15614 15647 I Unity   :
+05-26 02:22:53.289 15614 15647 W Unity   : [SystemViewController] No active save — showing placeholder.
+05-26 02:22:53.289 15614 15647 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:22:53.289 15614 15647 W Unity   : SystemViewController:PopulateFromGameManager(GameManager)
+05-26 02:22:53.289 15614 15647 W Unity   :
+05-26 02:29:58.684 15614 15647 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 02:29:58.859 15614 15647 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 02:29:59.256 15614 15647 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 02:29:59.698 15614 15647 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 02:29:59.707 15614 15647 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 02:29:59.709 15614 15647 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 02:30:58.447 16264 16264 V Unity   : Context Type: GameActivity
+05-26 02:30:58.497 16264 16288 I Unity   : UnityApplication::CreateInstance
+05-26 02:30:58.498 16264 16288 I Unity   : GameActivity Package Version '4.4.0'
+05-26 02:30:58.501 16264 16288 I Unity   : Starting Game Loop
+05-26 02:30:58.529 16264 16288 I Unity   : Handle cmd APP_CMD_START(11)
+05-26 02:30:58.544 16264 16288 I Unity   : Handle cmd APP_CMD_RESUME(12)
+05-26 02:30:58.577 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:30:58.591 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:30:58.592 16264 16288 I Unity   : Handle cmd APP_CMD_CONTENT_RECT_CHANGED(5)
+05-26 02:30:58.609 16264 16288 I Unity   : Handle cmd APP_CMD_INIT_WINDOW(1)
+05-26 02:30:58.661 16264 16288 I Unity   : MemoryManager: Using 'Dynamic Heap' Allocator.
+05-26 02:30:58.926 16264 16288 I Unity   : SystemInfo CPU = x86-64 SSE3 SSE4.1 AVX, Cores = 2, Memory = 1966mb
+05-26 02:30:58.928 16264 16288 I Unity   : SystemInfo ARM big.LITTLE configuration: 2 big (mask: 0x3), 0 little (mask: 0x0)
+05-26 02:30:58.929 16264 16288 I Unity   : ApplicationInfo 'com.mikecook.starcaptain', Version '1.0', Min API Level '25', Target API Level '36'
+05-26 02:30:58.929 16264 16288 I Unity   : Built from '6000.4/staging' branch, Version '6000.4.8f1 (f8b72d3d7343)', Build type 'Release', Scripting Backend 'il2cpp', CPU 'arm64-v8a', Stripping 'Enabled'
+05-26 02:30:58.930 16264 16288 I Unity   : Device Model 'Google sdk_gphone16k_x86_64', OS 'Android OS 17 (API 37)'
+05-26 02:30:59.720 16264 16288 I Unity   : Company Name: mikecook
+05-26 02:30:59.720 16264 16288 I Unity   : Product Name: spacegame
+05-26 02:31:01.042 16264 16288 I Unity   :     HasWindow = 1, HasFocus = 0
+05-26 02:31:01.043 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_RESIZED(3)
+05-26 02:31:01.043 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_REDRAW_NEEDED(4)
+05-26 02:31:01.043 16264 16288 I Unity   : Handle cmd APP_CMD_GAINED_FOCUS(7)
+05-26 02:31:01.043 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:31:04.267 16264 16288 I Unity   : [DatabaseManager] Opening database at: /storage/emulated/0/Android/data/com.mikecook.starcaptain/files/spacegame.db
+05-26 02:31:04.267 16264 16288 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:04.267 16264 16288 I Unity   : DatabaseManager:Initialize()
+05-26 02:31:04.267 16264 16288 I Unity   :
+05-26 02:31:04.307 16264 16288 E Unity   : DllNotFoundException: Unable to load DLL 'sqlite3'. Tried the load the following dynamic libraries: Unable to load dynamic library 'sqlite3' because of 'External/il2cpp/builds/external/baselib/Source/Posix/Baselib_DynamicLibrary_PosixApi.inl.h(33):Baselib_DynamicLibrary_OpenUtf8: Failed to open the requested dynamic library (0x06000000) dlerror() = dlopen failed: library "sqlite3" not found
+05-26 02:31:04.307 16264 16288 E Unity   :   at SQLite4Unity3d.SQLite3.Open (System.Byte[] filename, System.IntPtr& db, System.Int32 flags, System.IntPtr zvfs) [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:31:04.307 16264 16288 E Unity   :   at SQLite4Unity3d.SQLiteConnection..ctor (System.String databasePath, SQLite4Unity3d.SQLiteOpenFlags openFlags, System.Boolean storeDateTimeAsTicks) [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:31:04.307 16264 16288 E Unity   :   at DatabaseManager.Initialize () [0x00000] in <00000000000000000000000000000000>:0
+05-26 02:31:04.307 16264 16288 E Unity   :
+05-26 02:31:07.914 16264 16288 W Unity   : Hiding input field is not supported when using Game Activity.
+05-26 02:31:07.914 16264 16288 W Unity   : TMPro.TMP_InputField:ActivateInputFieldInternal()
+05-26 02:31:07.914 16264 16288 W Unity   : TMPro.TMP_InputField:LateUpdate()
+05-26 02:31:07.914 16264 16288 W Unity   :
+05-26 02:31:07.914 16264 16288 W Unity   : [ line 1584591824]
+05-26 02:31:07.914 16264 16288 W Unity   :
+05-26 02:31:08.197 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:31:08.290 16264 16288 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 02:31:08.290 16264 16288 I Unity   :     Keyboard Visible = True
+05-26 02:31:08.296 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:31:09.438 16264 16288 I Unity   : Handle cmd APP_CMD_SOFTWARE_KB_VIS_CHANGED(6)
+05-26 02:31:09.438 16264 16288 I Unity   :     Keyboard Visible = False
+05-26 02:31:09.448 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:31:09.484 16264 16288 I Unity   : Handle cmd APP_CMD_WINDOW_INSETS_CHANGED(17)
+05-26 02:31:09.556 16264 16288 E Unity   : [GameManager] PrepareNewGame: DatabaseManager is not ready.
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:09.556 16264 16288 E Unity   : MainMenuController:OnStartGameClicked()
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:09.556 16264 16288 E Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:09.556 16264 16288 E Unity   :
+05-26 02:31:10.707 16264 16288 W Unity   : [StoryTextResolver] Character target 'Pilot' is null — game data may not be ready.
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.707 16264 16288 W Unity   : StoryTextResolver:ResolveCharacter(String[])
+05-26 02:31:10.707 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.707 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.707 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.707 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.707 16264 16288 W Unity   :
+05-26 02:31:10.708 16264 16288 W Unity   : [StoryTextResolver] Unrecognised token: {Character.Pilot.FirstName}
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.708 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.708 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.708 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.708 16264 16288 W Unity   :
+05-26 02:31:10.708 16264 16288 W Unity   : [StoryTextResolver] Character target 'Engineer' is null — game data may not be ready.
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.708 16264 16288 W Unity   : StoryTextResolver:ResolveCharacter(String[])
+05-26 02:31:10.708 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.708 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.708 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.708 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.708 16264 16288 W Unity   :
+05-26 02:31:10.709 16264 16288 W Unity   : [StoryTextResolver] Unrecognised token: {Character.Engineer.FirstName}
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.709 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.709 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.709 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.709 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.709 16264 16288 W Unity   :
+05-26 02:31:10.710 16264 16288 W Unity   : [StoryTextResolver] PlayerShip is null — game data may not be ready.
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.710 16264 16288 W Unity   : StoryTextResolver:ResolveShip(String[])
+05-26 02:31:10.710 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.710 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.710 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.710 16264 16288 W Unity   :
+05-26 02:31:10.710 16264 16288 W Unity   : [StoryTextResolver] Unrecognised token: {Ship.ShipClass}
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.710 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.710 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.710 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.710 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.710 16264 16288 W Unity   :
+05-26 02:31:10.711 16264 16288 W Unity   : [StoryTextResolver] PlayerShip is null — game data may not be ready.
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.711 16264 16288 W Unity   : StoryTextResolver:ResolveShip(String[])
+05-26 02:31:10.711 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.711 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.711 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.711 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.711 16264 16288 W Unity   :
+05-26 02:31:10.712 16264 16288 W Unity   : [StoryTextResolver] Unrecognised token: {Ship.Name}
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:10.712 16264 16288 W Unity   : <>c:<Resolve>b__1_0(Match)
+05-26 02:31:10.712 16264 16288 W Unity   : System.Text.RegularExpressions.Regex:Replace(MatchEvaluator, Regex, String, Int32, Int32)
+05-26 02:31:10.712 16264 16288 W Unity   : StoryInterludeController:ShowScene(Int32)
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:10.712 16264 16288 W Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:10.712 16264 16288 W Unity   :
+05-26 02:31:13.688 16264 16288 I Unity   : [GameManager] State → InGame
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:13.688 16264 16288 I Unity   : GameManager:SetState(GameState)
+05-26 02:31:13.688 16264 16288 I Unity   : GameManager:LoadGameScene()
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.Events.UnityEvent:Invoke()
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.EventSystems.ExecuteEvents:Execute(GameObject, BaseEventData, EventFunction`1)
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointerButton(ButtonState&, PointerEventData)
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:ProcessPointer(PointerModel&)
+05-26 02:31:13.688 16264 16288 I Unity   : UnityEngine.InputSystem.UI.InputSystemUIInputModule:Process()
+05-26 02:31:13.688 16264 16288 I Unity   :
+05-26 02:31:14.317 16264 16288 E Unity   : [SystemViewController] CurrentSave is null — PrepareNewGame likely failed. Check GameManager logs.
+05-26 02:31:14.317 16264 16288 E Unity   : UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+05-26 02:31:14.317 16264 16288 E Unity   : SystemViewController:PopulateFromGameManager(GameManager)
+05-26 02:31:14.317 16264 16288 E Unity   :
+05-26 02:31:22.568 16264 16288 I Unity   : Handle cmd APP_CMD_PAUSE(14)
+05-26 02:31:22.806 16264 16288 I Unity   : Handle cmd APP_CMD_LOST_FOCUS(8)
+05-26 02:31:23.172 16264 16288 I Unity   : Handle cmd APP_CMD_TERM_WINDOW(2)
+05-26 02:31:23.583 16264 16288 I Unity   : Handle cmd APP_CMD_STOP(15)
+05-26 02:31:23.591 16264 16288 I Unity   : Handle cmd APP_CMD_SAVE_STATE(13)
+05-26 02:31:23.592 16264 16288 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)
+05-26 02:32:23.608 16264 16288 I Unity   : Handle cmd APP_CMD_LOW_MEMORY(10)

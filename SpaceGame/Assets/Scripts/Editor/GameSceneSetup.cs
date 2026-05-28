@@ -51,8 +51,7 @@ using TMPro;
 ///           POIDetailTypeText
 ///           Rule              (Image, horizontal divider)
 ///           POIDetailDescText
-///           POIDetailCloseButton
-///             CloseLabel
+///           POIDetailCloseButton  (Shift MainButton — "CLOSE")
 /// </summary>
 public static class GameSceneSetup
 {
@@ -130,8 +129,8 @@ public static class GameSceneSetup
 
         canvasGO.AddComponent<GraphicRaycaster>();
 
-        // ── Background ────────────────────────────────────────────────────
-        var bg = MakeImage(canvasGO.transform, "Background", BgColor);
+        // ── Background — RawImage so a Texture2D starfield can be set at runtime ──
+        var bg = MakeRawImage(canvasGO.transform, "Background", Color.white);
         Stretch(bg);
 
         // ── SystemViewController root ─────────────────────────────────────
@@ -155,7 +154,7 @@ public static class GameSceneSetup
         }
 
         // ── Wire serialised fields ────────────────────────────────────────
-        WireController(controller, header, body, navBar, poiDetail);
+        WireController(controller, bg, header, body, navBar, poiDetail);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
@@ -203,6 +202,7 @@ public static class GameSceneSetup
         PlaceRect(body, anchor(0f, 0f), anchor(1f, 1f), v2(0f, -5f), v2(0f, -170f));
 
         BuildSystemMap(body.transform);
+        BuildGalaxyView(body.transform);
 
         return body;
     }
@@ -211,13 +211,42 @@ public static class GameSceneSetup
 
     static void BuildSystemMap(Transform parent)
     {
-        var map = MakeImage(parent, "SystemMap", MapBg);
+        // No Image component — the full-screen Background RawImage (starfield) shows through.
+        var map = MakeUIGO("SystemMap", parent);
         PlaceRect(map, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
 
+        // Pinch-to-zoom + drag-pan controller
+        map.AddComponent<SystemMapZoomController>();
 
         // Star node — sprite set at runtime by SystemViewController from StarType
         var star = MakeImage(map.transform, "StarNode", Color.white);
         PlaceRect(star, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(130f, 130f));
+    }
+
+    // ── Galaxy view — full width, starts hidden ──────────────────────────────
+
+    static GameObject BuildGalaxyView(Transform parent)
+    {
+        // Root panel — toggled by nav button; starts inactive
+        var galaxyView = MakeUIGO("GalaxyView", parent);
+        PlaceRect(galaxyView, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
+        galaxyView.AddComponent<GalaxyViewController>();
+        galaxyView.SetActive(false);
+
+        // GalaxyMap — zoom/pan container (mirrors the role of SystemMap)
+        var galaxyMap = MakeUIGO("GalaxyMap", galaxyView.transform);
+        PlaceRect(galaxyMap, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
+        galaxyMap.AddComponent<SystemMapZoomController>();
+
+        // Background — galaxy texture applied at runtime
+        var bg = MakeRawImage(galaxyMap.transform, "GalaxyBackground", Color.white);
+        Stretch(bg);
+
+        // Nodes container — system dots anchored here
+        var nodesContainer = MakeUIGO("SystemNodesContainer", galaxyMap.transform);
+        PlaceRect(nodesContainer, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
+
+        return galaxyView;
     }
 
     // -----------------------------------------------------------------------
@@ -292,45 +321,66 @@ public static class GameSceneSetup
         Stretch(panel);
         panel.SetActive(false);
 
+        // Card: 700 × 480, centred in the panel
         var card = MakeImage(panel.transform, "Card", PanelBg);
         PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(700f, 480f));
 
+        // ── TopBar: 4 px cyan accent at the very top of the card (0–4 px) ─────
         var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
-        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -3f), v2(0f, 6f));
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
 
-        var poiName = MakeTMP(card.transform, "POIDetailNameText", "POI Name", 38, TextWhite);
-        PlaceRect(poiName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -62f), v2(-60f, 58f));
+        // ── Name: 16–84 px from card top (height 68, centre at -50) ──────────
+        var poiName = MakeTMP(card.transform, "POIDetailNameText", "POI Name", 52, TextWhite);
+        PlaceRect(poiName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -50f), v2(-60f, 68f));
         poiName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
         poiName.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        var poiType = MakeTMP(card.transform, "POIDetailTypeText", "Planet", 22, AccentCyan);
-        PlaceRect(poiType, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -108f), v2(-60f, 34f));
+        // ── Type: 94–138 px from card top (height 44, centre at -116) ────────
+        var poiType = MakeTMP(card.transform, "POIDetailTypeText", "Planet", 32, AccentCyan);
+        PlaceRect(poiType, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -116f), v2(-60f, 44f));
         poiType.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
         poiType.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
 
+        // ── Rule: 2 px bar at 150 px from card top ───────────────────────────
         var rule = MakeImage(card.transform, "Rule", DividerColor);
-        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -132f), v2(-40f, 2f));
+        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -150f), v2(-40f, 2f));
 
+        // ── Desc: 162 px from top → 72 px from bottom (no overlap with anything)
+        // offsetMax.y = −162  →  anchoredPosition.y = (−162 + 72) / 2 = −45
+        // sizeDelta.y = −162 − 72 = −234
         var desc = MakeTMP(card.transform, "POIDetailDescText",
-            "A rocky world with varied terrain.", 22, TextSubtle);
-        PlaceRect(desc, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 60f), v2(-60f, -200f));
+            "A rocky world with varied terrain.", 30, TextSubtle);
+        PlaceRect(desc, anchor(0f, 0f), anchor(1f, 1f), v2(0f, -45f), v2(-60f, -234f));
         var descTMP               = desc.GetComponent<TextMeshProUGUI>();
         descTMP.alignment         = TextAlignmentOptions.TopLeft;
         descTMP.enableWordWrapping = true;
         descTMP.overflowMode      = TextOverflowModes.ScrollRect;
 
-        var closeGO = MakeImage(card.transform, "POIDetailCloseButton", BtnNormal);
-        PlaceRect(closeGO, anchor(1f, 0f), anchor(1f, 0f), v2(-110f, 50f), v2(180f, 52f));
-
-        var closeBtn            = closeGO.AddComponent<Button>();
-        var closeBtnColors      = closeBtn.colors;
-        closeBtnColors.highlightedColor = new Color(0.12f, 0.38f, 0.60f, 1f);
-        closeBtnColors.pressedColor     = new Color(0.04f, 0.16f, 0.28f, 1f);
-        closeBtn.colors         = closeBtnColors;
-        closeBtn.targetGraphic  = closeGO.GetComponent<Image>();
-
-        var closeLabel = MakeTMP(closeGO.transform, "CloseLabel", "CLOSE", 22, TextWhite);
-        Stretch(closeLabel);
+        // ── Close button: bottom-right, 12 px from right edge, 12 px from bottom
+        // centre at (−102, 36) from anchor(1, 0)  →  top at 60 px from bottom (420 from top)
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject closeGO;
+        if (btnPrefab != null)
+        {
+            closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            closeGO.name = "POIDetailCloseButton";
+            var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CLOSE";
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] Shift MainButton prefab not found — using plain button for close.");
+            closeGO = MakeImage(card.transform, "POIDetailCloseButton", BtnNormal);
+            var closeBtn            = closeGO.AddComponent<Button>();
+            var closeBtnColors      = closeBtn.colors;
+            closeBtnColors.highlightedColor = new Color(0.12f, 0.38f, 0.60f, 1f);
+            closeBtnColors.pressedColor     = new Color(0.04f, 0.16f, 0.28f, 1f);
+            closeBtn.colors         = closeBtnColors;
+            closeBtn.targetGraphic  = closeGO.GetComponent<Image>();
+            var closeLabel = MakeTMP(closeGO.transform, "CloseLabel", "CLOSE", 22, TextWhite);
+            Stretch(closeLabel);
+        }
+        PlaceRect(closeGO, anchor(1f, 0f), anchor(1f, 0f), v2(-102f, 36f), v2(180f, 48f));
 
         return panel;
     }
@@ -340,10 +390,14 @@ public static class GameSceneSetup
     // -----------------------------------------------------------------------
 
     static void WireController(SystemViewController ctrl,
+                                GameObject background,
                                 GameObject header, GameObject body,
                                 GameObject navBar, GameObject poiDetail)
     {
         var so = new SerializedObject(ctrl);
+
+        // Starfield background
+        Set(so, "starfieldBackground", background.GetComponent<RawImage>());
 
         // Header
         Set(so, "systemNameText", Find<TMP_Text>(header, "SystemNameText"));
@@ -360,10 +414,69 @@ public static class GameSceneSetup
 
         // POI detail panel
         so.FindProperty("poiDetailPanel").objectReferenceValue = poiDetail;
-        Set(so, "poiDetailNameText",    Find<TMP_Text>(poiDetail, "Card/POIDetailNameText"));
-        Set(so, "poiDetailTypeText",    Find<TMP_Text>(poiDetail, "Card/POIDetailTypeText"));
-        Set(so, "poiDetailDescText",    Find<TMP_Text>(poiDetail, "Card/POIDetailDescText"));
-        Set(so, "poiDetailCloseButton", Find<Button>(poiDetail,   "Card/POIDetailCloseButton"));
+        Set(so, "poiDetailNameText", Find<TMP_Text>(poiDetail, "Card/POIDetailNameText"));
+        Set(so, "poiDetailTypeText", Find<TMP_Text>(poiDetail, "Card/POIDetailTypeText"));
+        Set(so, "poiDetailDescText", Find<TMP_Text>(poiDetail, "Card/POIDetailDescText"));
+        // Close button — use GetComponentInChildren so it resolves whether the
+        // root is a plain Button or a Shift prefab with a nested Button component.
+        var closeTf = poiDetail.transform.Find("Card/POIDetailCloseButton");
+        Set(so, "poiDetailCloseButton", closeTf?.GetComponentInChildren<Button>(true));
+
+        // ── Ship sprite ───────────────────────────────────────────────────
+        // Extract the sprite from the active (Blue) SpriteRenderer in the prefab.
+        const string ShipPrefabPath =
+            "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +
+            "2DScifiFighterExcaliburTopViewMasterPrefab.prefab";
+        var shipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ShipPrefabPath);
+        if (shipPrefab != null)
+        {
+            // GetComponentInChildren with includeInactive=false returns the first
+            // active SpriteRenderer, which is the Blue variant by default.
+            var sr = shipPrefab.GetComponentInChildren<SpriteRenderer>(false);
+            if (sr != null)
+                Set(so, "shipSprite", sr.sprite);
+            else
+                Debug.LogWarning("[GameSceneSetup] No active SpriteRenderer in ship prefab — shipSprite not wired.");
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] Ship prefab not found at: " + ShipPrefabPath);
+        }
+
+        // ── Galaxy view ───────────────────────────────────────────────────
+        // GalaxyView is a direct child of Body; GalaxyViewController lives on it.
+        var galaxyViewGO = body.transform.Find("GalaxyView")?.gameObject;
+        if (galaxyViewGO != null)
+        {
+            // Wire SystemViewController's two galaxy fields
+            Set(so, "galaxyViewPanel",      galaxyViewGO);
+
+            var gvc = galaxyViewGO.GetComponent<GalaxyViewController>();
+            Set(so, "galaxyViewController", gvc);
+
+            // Wire GalaxyViewController's own serialised fields
+            if (gvc != null)
+            {
+                var gvcSo = new SerializedObject(gvc);
+
+                var bgTf = galaxyViewGO.transform.Find("GalaxyMap/GalaxyBackground");
+                Set(gvcSo, "galaxyBackground",
+                    bgTf != null ? bgTf.GetComponent<RawImage>() : null);
+
+                Set(gvcSo, "systemNodesContainer",
+                    FindRT(galaxyViewGO, "GalaxyMap/SystemNodesContainer"));
+
+                gvcSo.ApplyModifiedProperties();
+            }
+            else
+            {
+                Debug.LogWarning("[GameSceneSetup] GalaxyViewController component not found on GalaxyView.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] GalaxyView not found under Body — galaxy fields not wired.");
+        }
 
         so.ApplyModifiedProperties();
     }
@@ -410,6 +523,14 @@ public static class GameSceneSetup
     {
         var go = MakeUIGO(name, parent);
         go.AddComponent<Image>().color = color;
+        return go;
+    }
+
+    static GameObject MakeRawImage(Transform parent, string name, Color color)
+    {
+        var go = MakeUIGO(name, parent);
+        var ri = go.AddComponent<RawImage>();
+        ri.color = color;
         return go;
     }
 

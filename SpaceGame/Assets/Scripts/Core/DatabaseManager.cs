@@ -1,7 +1,9 @@
 using UnityEngine;
-using SQLite;
+using SQLite4Unity3d;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
+using System;
 
 /// <summary>
 /// Manages the SQLite database connection and exposes typed repositories
@@ -39,6 +41,25 @@ public class DatabaseManager : MonoBehaviour
         {
             File.Delete(path);
             Debug.Log("[DatabaseManager] Editor mode: existing database deleted for schema refresh.");
+        }
+#endif
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // Android's linker namespace isolation prevents IL2CPP's dlopen("sqlite3") from
+        // finding the app-private libsqlite3.so.  Calling System.loadLibrary from the Java
+        // side resolves the app namespace correctly; once loaded the library is resident in
+        // the process and IL2CPP's subsequent DllImport finds it via the linker cache.
+        try
+        {
+            using (var preload = new AndroidJavaClass("com.mikecook.starcaptain.SQLitePreload"))
+            {
+                preload.CallStatic("load");
+                Debug.Log("[DatabaseManager] sqlite3 native library preloaded via Java.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[DatabaseManager] SQLite preload failed: {ex.Message}");
         }
 #endif
 
