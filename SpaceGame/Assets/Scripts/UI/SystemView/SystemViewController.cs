@@ -688,10 +688,7 @@ public class SystemViewController : MonoBehaviour
     private void ZoomToShip()
     {
         if (_systemMapZoomController == null || _shipRT == null) return;
-        // zoom=1 keeps the full system in view so no POI nodes are pushed outside
-        // body's RectMask2D boundary (which would make them unclickable).
-        // The user can pinch/scroll to zoom in once they've oriented themselves.
-        _systemMapZoomController.FocusOn(_shipRT.anchoredPosition, 1.0f);
+        _systemMapZoomController.FocusOn(_shipRT.anchoredPosition, 2.0f);
     }
 
     private void ShowGalaxyView()
