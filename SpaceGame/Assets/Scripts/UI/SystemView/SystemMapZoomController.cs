@@ -199,6 +199,36 @@ public class SystemMapZoomController : MonoBehaviour
         Commit();
     }
 
+    /// <summary>
+    /// Centres the map on a canvas-pixel local position at the given zoom level.
+    /// <paramref name="localPos"/> is an <c>anchoredPosition</c> offset from the
+    /// map centre — the same coordinate system POI/ship nodes use.
+    /// Safe to call immediately (no layout pass required).
+    /// </summary>
+    public void FocusOn(Vector2 localPos, float zoom)
+    {
+        _zoom   = Mathf.Clamp(zoom, minZoom, maxZoom);
+        _offset = -localPos * _zoom;
+        Commit();
+    }
+
+    /// <summary>
+    /// Programmatically sets zoom and centres the view on a galaxy-coordinate
+    /// focal point (normalised 0-1 fractions within the container).
+    /// Call after at least one frame so the RectTransform rect is populated.
+    /// </summary>
+    public void SetInitialView(float zoom, float focusGX, float focusGY)
+    {
+        Canvas.ForceUpdateCanvases();
+        _zoom   = Mathf.Clamp(zoom, minZoom, maxZoom);
+        float w = _rt.rect.width;
+        float h = _rt.rect.height;
+        _offset = new Vector2(
+            -(focusGX - 0.5f) * w * _zoom,
+            -(focusGY - 0.5f) * h * _zoom);
+        Commit();
+    }
+
     private void Commit()
     {
         _rt.anchoredPosition = _offset;

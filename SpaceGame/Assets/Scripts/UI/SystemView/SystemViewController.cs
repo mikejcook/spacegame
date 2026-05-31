@@ -70,6 +70,12 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private GameObject          galaxyViewPanel;
     [SerializeField] private GalaxyViewController galaxyViewController;
 
+    [Header("Ship View")]
+    [SerializeField] private GameObject shipViewPanel;
+
+    [Header("Crew View")]
+    [SerializeField] private GameObject crewViewPanel;
+
     [Header("POI Detail Panel")]
     [Tooltip("Root panel toggled by SetActive. The card + all detail fields live inside.")]
     [SerializeField] private GameObject poiDetailPanel;
@@ -95,7 +101,8 @@ public class SystemViewController : MonoBehaviour
     private bool            _shipFlying;
     private Coroutine       _flyCoroutine;
 
-    private PlanetLibrary _planetLibrary;
+    private PlanetLibrary            _planetLibrary;
+    private SystemMapZoomController  _systemMapZoomController;
 
     // ── Fallback colours (used when PlanetLibrary has no sprite for a type) ─
     private static readonly Color ColourPlanetSolid   = new Color(0.30f, 0.75f, 0.40f, 1f);
@@ -125,10 +132,18 @@ public class SystemViewController : MonoBehaviour
         // Wire listeners
         poiDetailCloseButton?.onClick.AddListener(HidePOIDetail);
 
+        // Zoom controller lives on the SystemMap GO
+        _systemMapZoomController = systemMapArea?.GetComponent<SystemMapZoomController>();
+
         // Nav buttons
         systemNavButton?.onClick.AddListener(ShowSystemView);
         galaxyNavButton?.onClick.AddListener(ShowGalaxyView);
-        // shipNavButton and crewNavButton wired when those screens are implemented
+        shipNavButton?.onClick.AddListener(ShowShipView);
+        crewNavButton?.onClick.AddListener(ShowCrewView);
+
+        // Galaxy view → arriving at a system switches the System View to it.
+        if (galaxyViewController != null)
+            galaxyViewController.OnSystemSelected = OnGalaxySystemSelected;
 
         // ── Neutralise the Shift MainButton Animator on the close button ──
         //
@@ -225,6 +240,7 @@ public class SystemViewController : MonoBehaviour
         RefreshHeader();
         RefreshStarVisual();
         SpawnPOINodes();
+        ZoomToShip();
     }
 
     // ── Header ───────────────────────────────────────────────────────────────
@@ -599,11 +615,22 @@ public class SystemViewController : MonoBehaviour
 
     private void ShowSystemView()
     {
-        // Reveal the system map
-        if (systemMapArea != null) systemMapArea.gameObject.SetActive(true);
-
-        // Hide the galaxy panel
+        HidePOIDetail();
+        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(true);
         if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+        if (shipViewPanel   != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        ZoomToShip();
+    }
+
+    /// <summary>
+    /// Centres the system map on the player's ship at a comfortable zoom level.
+    /// Safe to call even before the ship has spawned (no-op in that case).
+    /// </summary>
+    private void ZoomToShip()
+    {
+        if (_systemMapZoomController == null || _shipRT == null) return;
+        _systemMapZoomController.FocusOn(_shipRT.anchoredPosition, 2.0f);
     }
 
     private void ShowGalaxyView()
@@ -617,12 +644,65 @@ public class SystemViewController : MonoBehaviour
         if (galaxyViewPanel != null)
         {
             galaxyViewPanel.SetActive(true);
-
-            // Notify the galaxy controller which system the player is currently in
-            // so it can highlight the correct node.
             if (galaxyViewController != null && _currentSystem != null)
                 galaxyViewController.SetCurrentSystem(_currentSystem.Id);
         }
+        if (shipViewPanel != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel != null) crewViewPanel.SetActive(false);
+    }
+
+    /// <summary>
+    /// Invoked by GalaxyViewController when the player ship arrives at a star
+    /// system node. Repoints the System View at the new system — updating the
+    /// persisted CurrentSystemId, reloading its POIs, refreshing the header and
+    /// star, and switching back to the system map.
+    /// </summary>
+    private void OnGalaxySystemSelected(StarSystem system)
+    {
+        if (system == null) return;
+
+        // Same system the ship was already in — just return to the map.
+        if (_currentSystem != null && system.Id == _currentSystem.Id)
+        {
+            ShowSystemView();
+            return;
+        }
+
+        var gm = GameManager.Instance;
+        if (gm?.CurrentSave != null)
+        {
+            gm.CurrentSave.CurrentSystemId = system.Id;
+            gm.SaveGame();
+        }
+
+        _currentSystem = system;
+        _pois = gm?.Database.GetPOIsForSystem(system.Id);
+
+        RefreshHeader();
+        RefreshStarVisual();
+        SpawnPOINodes();
+
+        ShowSystemView();
+    }
+
+    private void ShowShipView()
+    {
+        HidePOIDetail();
+        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
+        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+        if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        if (systemNameText  != null) systemNameText.text = "Ship";
+        if (shipViewPanel   != null) shipViewPanel.SetActive(true);
+    }
+
+    private void ShowCrewView()
+    {
+        HidePOIDetail();
+        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
+        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+        if (shipViewPanel   != null) shipViewPanel.SetActive(false);
+        if (systemNameText  != null) systemNameText.text = "Crew";
+        if (crewViewPanel   != null) crewViewPanel.SetActive(true);
     }
 
     // -----------------------------------------------------------------------
@@ -713,7 +793,6 @@ public class SystemViewController : MonoBehaviour
     private static Color NonPlanetColor(string poiType) => poiType switch
     {
         Constants.POI.Types.SpaceStation    => ColourStation,
-        Constants.POI.Types.AsteroidField   => ColourAsteroid,
         Constants.POI.Types.DerelictShip    => ColourDerelict,
         Constants.POI.Types.DerelictStation => ColourDerelict,
         Constants.POI.Types.Anomaly         => ColourAnomaly,

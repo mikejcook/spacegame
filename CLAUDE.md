@@ -285,6 +285,83 @@ The only robust escape is to never let the Animator disable in the first place.
 
 ## UI architecture conventions
 
+### Safe-area insets — shift the content, one edge per panel
+
+`Assets/Scripts/UI/SafeAreaInset.cs` keeps panels clear of notches, punch-holes,
+and the iPhone home indicator. Attach it (in the editor builder, via
+`SerializedObject`) to **the specific panel that sits against a screen edge**,
+and enable only the edge(s) that panel touches. It captures the panel's designed
+offsets at `Start()` as a baseline, converts `Screen.safeArea` (pixels) to canvas
+units via `canvas.scaleFactor`, and re-applies on any safe-area or scale change.
+
+The guiding rule: **put the inset directly on the content that must move, one
+edge at a time** — don't try to solve a whole screen's safe area from a single
+parent. Reference examples in `GameSceneSetup.cs`:
+
+| Panel | Edge anchored to | Inset field | Mode |
+|---|---|---|---|
+| `LeftComponentColumn` / `RightComponentColumn` | left / right | `_left` / `_right` | shift |
+| `CrewListPanel` | left | `_left` | shift |
+| `ButtonContainer` (nav buttons) | bottom | `_bottom` | shift |
+| `Body` | bottom (flush with nav bar) | `_bottom` | `_shrinkTowardSafeArea` |
+| `NavBar` | bottom | `_bottom` | `_expandInsteadOfShift` |
+
+Because `Body` only insets its **bottom** edge, any child panel pinned to the
+left or right screen edge (like `CrewListPanel`) still needs its **own** `_left`
+/`_right` inset — Body does not handle left/right. This is exactly why the crew
+list was clipped by the notch until a `_left` inset was added to match the
+ShipView columns. When you add a new edge-pinned panel, ask which screen edges
+it actually touches and give it an inset for each.
+
+The three modes:
+
+- **shift** (default — neither bool set): moves both edges equally, sliding the
+  panel inward without resizing. Use for side columns, edge-pinned list panels,
+  and content containers like the nav `ButtonContainer`.
+- **`_expandInsteadOfShift`**: only the edge at the unsafe boundary moves
+  outward, growing the rect. Use for a bottom nav bar whose **background** must
+  stretch down to cover the home-indicator strip.
+- **`_shrinkTowardSafeArea`**: only the edge facing the unsafe boundary moves
+  inward, holding the opposite edge. Use for a panel (like `Body`) that must
+  stay flush with an expanded neighbour.
+
+`_expandInsteadOfShift` and `_shrinkTowardSafeArea` are mutually exclusive.
+
+#### Lift content with its own shift inset — don't rely on a parent's expand
+
+Early attempts lifted the nav buttons off the home indicator by *expanding the
+nav bar* and top-anchoring the buttons to the bar so they'd ride up with it.
+That couples the button clearance to the bar's base height (clearance worked out
+to `baseHeight - 72`, giving only ~8 px) and is fragile. The robust fix is the
+ShipView pattern: a plain **shift** inset directly on the `ButtonContainer`
+(bottom-anchored with a fixed base gap), so the buttons rise by the inset amount
+and keep a **constant clearance regardless of inset size**. The bar still
+expands (so its background covers the strip and it's tall enough to contain the
+lifted buttons), but it no longer has to *carry* the buttons.
+
+#### `_appliedSafeArea` must be recorded only after a successful apply
+
+`SafeAreaInset.Apply()` bails early if the canvas is missing or
+`canvas.scaleFactor <= 0` — which happens on the **first frame**, before the
+`CanvasScaler` has run, for a Screen-Space-Overlay canvas. The "last applied"
+state (`_appliedSafeArea`, `_appliedScale`, `_hasApplied`) is therefore written
+**at the end of `Apply()`, after the offsets are actually adjusted** — never at
+the top. If it were recorded up front, a first-frame early-out would mark the
+current safe area as "applied" without touching anything, and `Update()`'s
+change-detection would never retry, freezing the panel at its baked design
+offsets for the whole session (invisible in the editor, where `bottomPx == 0`).
+`Update()` re-applies until the first successful pass, then on any safe-area or
+scale-factor change.
+
+#### Editor + device behaviour
+
+In the editor `Screen.safeArea` is the full screen, so every inset is 0 and
+nothing moves — safe-area bugs only reproduce on device (or a 16k/notched
+simulator). And because the insets are applied at runtime in `Start()`, the
+saved `.unity` scene stores the **design** offsets; re-running the builder is
+still required to pick up any builder-side anchor/height changes (see the
+MainMenu/GameScene "keep builder and saved scene in sync" rules).
+
 ### Full-screen overlays live on their own Canvas
 
 Story interludes, modals, loading screens, and other full-screen overlays must
@@ -448,6 +525,28 @@ use them, expect that anything < ~6 canvas units may disappear at the lowest
 supported resolution. If a hairline divider matters visually, draw it with a
 sprite or accept that it'll be 1 device pixel.
 
+### Ship sprite faces left — `Atan2` rotation needs `+ 180f`
+
+The `2DScifiFighterExcaliburTopViewMasterPrefab` sprite's nose points **left
+(−X)** in the texture, even though the prefab has a −90° child rotation that
+makes it look like it faces up in the inspector. When rendered as a UI `Image`
+on the canvas that child rotation is lost, so the raw sprite faces left.
+
+Standard `Mathf.Atan2(dir.y, dir.x)` returns the angle from +X to the flight
+direction. Because the sprite's forward is −X (180° away from +X), the
+`localEulerAngles.z` rotation must add 180° to compensate:
+
+```csharp
+float targetAngleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
+```
+
+Without the `+ 180f` the ship flies tail-first. Without the swap of `x`/`y`
+arguments it spins 90° off-axis. Both mistakes look similar at runtime
+("pointing the wrong way") so the +180 correction is easy to miss.
+
+If a different ship sprite is ever swapped in, check which axis the nose faces
+in the raw texture (ignoring any prefab child rotations) and adjust accordingly.
+
 ## Android deployment gotchas
 
 ### 16KB page alignment required for all native libraries (Android 15+)
@@ -516,6 +615,19 @@ Notes:
   dependency under `Assets/Packages/Newtonsoft.Json.13.0.4/`).
 - Everything under `Resources/` is included in the build whether referenced or
   not — keep large unused assets out of it.
+- CSV files also load as `TextAsset` via `Resources.Load<TextAsset>` — same
+  path rules apply (no extension, relative to any `Resources/` folder).
+
+### Resources files must be in the Unity project, not just any folder named `Resources`
+
+The project has two mounted roots: `Space Game/` (art/asset source) and
+`code/spacegame/SpaceGame/` (the Unity project). Files intended for
+`Resources.Load` must land in
+`code/spacegame/SpaceGame/Assets/Resources/<subfolder>/`.
+
+Copying to `Space Game/Assets/Resources/` produces no error at runtime — Unity
+simply returns `null` from `Resources.Load` and the feature silently does
+nothing. Always verify the full path after copying any runtime-loaded asset.
 
 ## Gameplay sequencing gotchas
 
@@ -649,6 +761,19 @@ If you need to add attributes, open the existing manifest and add only what's ne
 Never replace it with a minimal file — Unity merges its own settings into your custom
 manifest, and a replacement strips those settings without any warning.
 
+### `TableQuery<T>.ToList()` requires `using System.Linq`
+
+`TableQuery<T>` (returned by `TableRepository<T>.Query()`) implements
+`IEnumerable<T>`. `.ToList()`, `.FirstOrDefault()`, and other LINQ terminal
+methods are extension methods from `System.Linq` — they are **not** built into
+the SQLite4Unity3d library itself.
+
+`DatabaseManager.cs` already has `using System.Linq`, so `.ToList()` works
+there. Any other file that calls these methods directly on a `TableQuery` must
+also add the import — the compiler error
+`'TableQuery<T>' does not contain a definition for 'ToList'` is always this
+missing `using`, never a missing method on the type itself.
+
 ## Database schema changes (development)
 
 `DatabaseManager.Initialize()` contains a `#if UNITY_EDITOR` block that **deletes
@@ -688,6 +813,54 @@ Key things to know:
   hand-edit. Re-run the builder instead.
 - `Assets/Scenes/GameScene.unity` — saved snapshot of the GameScene build; do
   not hand-edit. Re-run the builder instead.
+
+## Galaxy map conventions
+
+### Label clearance formula for galaxy system nodes
+
+Each system node on the galaxy map has a label centred below it. The minimum
+normalised separation between two nodes to prevent label overlap is:
+
+```
+minSep = labelWidthPx / referenceResolutionWidth
+       = 160 / 1920
+       ≈ 0.083
+```
+
+Current label settings: `sizeDelta = (160, 24)`, `fontSize = 14`.
+The avoid-list in `GenerateGalaxyPositions` uses `minSpacing = 0.09` to give a
+small margin above the minimum.
+
+If the label rect or font size changes, recalculate and update both the label
+code in `GalaxyViewController` and the `minSpacing` call in
+`GameManager.PrepareNewGame`.
+
+### Procedural placement must respect hand-crafted positions
+
+`GenerateGalaxyPositions` uses a golden-angle spiral, which distributes
+positions evenly *relative to each other* but has no knowledge of hand-crafted
+fixed positions (Sol, Alpha Centauri, Proxima Centauri). Without an avoid-list,
+random systems can land on top of the cluster labels.
+
+**Rule:** always pass fixed positions as `avoidPositions` when calling
+`GenerateGalaxyPositions`. The sol-cluster constants in `StarSystemGenerator`
+are `public const` for exactly this purpose:
+
+```csharp
+var solCluster = new (float gx, float gy)[]
+{
+    (StarSystemGenerator.SolGX,     StarSystemGenerator.SolGY),
+    (StarSystemGenerator.AlphaGX,   StarSystemGenerator.AlphaGY),
+    (StarSystemGenerator.ProximaGX, StarSystemGenerator.ProximaGY),
+};
+var positions = StarSystemGenerator.GenerateGalaxyPositions(
+    count, seed,
+    innerR: 0.12f, outerR: 0.27f,
+    avoidPositions: solCluster, minSpacing: 0.09f);
+```
+
+The method retries each candidate up to 40 times before accepting the
+closest valid fallback, so it degrades gracefully even in very dense layouts.
 
 ## When the user reports a UI bug
 

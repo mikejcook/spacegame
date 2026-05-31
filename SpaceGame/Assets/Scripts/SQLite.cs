@@ -2329,7 +2329,7 @@ namespace SQLite4Unity3d
 #else
 				} else if (clrType.GetTypeInfo().IsEnum) {
 #endif
-					return SQLite3.ColumnInt (stmt, index);
+					return Enum.ToObject (clrType, SQLite3.ColumnInt (stmt, index));
 				} else if (clrType == typeof(Int64)) {
 					return SQLite3.ColumnInt64 (stmt, index);
 				} else if (clrType == typeof(UInt32)) {

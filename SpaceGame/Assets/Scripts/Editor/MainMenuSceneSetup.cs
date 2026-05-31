@@ -255,8 +255,14 @@ public static class MainMenuSceneSetup
             tmp.fontStyle = FontStyles.Bold;
         }
 
-        // Captain name input
+        // Captain name input — capped at 16 chars so the display "Name (You)" fits
+        // comfortably alongside the level badge (max crew name from names.json is
+        // "Christopher Cunningham" = 22 chars; 16 + " (You)" = 22 chars, matching that).
         MakeLargeInputField(leftCol.transform, "CaptainNameInput", "Enter your name");
+        {
+            var field = leftCol.transform.Find("CaptainNameInput")?.GetComponent<TMP_InputField>();
+            if (field != null) field.characterLimit = 16;
+        }
 
         MakeSpacer(leftCol.transform, 10);
 
