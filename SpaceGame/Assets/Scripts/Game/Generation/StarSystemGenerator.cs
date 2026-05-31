@@ -190,7 +190,8 @@ public static class StarSystemGenerator
 
         for (int i = 0; i < count; i++)
         {
-            float bestGx = 0f, bestGy = 0f;
+            float bestGx      = 0f, bestGy = 0f;
+            float bestMinDist = -1f;   // tracks the "least bad" candidate when no attempt clears minSpacing
 
             for (int attempt = 0; attempt < 40; attempt++)
             {
@@ -224,8 +225,15 @@ public static class StarSystemGenerator
                     goto placed;
                 }
 
-                // Keep the first attempt as the last-resort fallback
-                if (attempt == 0) { bestGx = gx; bestGy = gy; }
+                // No valid spot found yet — keep whichever candidate is farthest
+                // from its nearest neighbour so the forced fallback is least bad.
+                float minDist = MinDistTo(gx, gy, avoidPositions, placed);
+                if (minDist > bestMinDist)
+                {
+                    bestMinDist = minDist;
+                    bestGx      = gx;
+                    bestGy      = gy;
+                }
             }
 
             placed:
@@ -249,6 +257,33 @@ public static class StarSystemGenerator
             if (dx * dx + dy * dy < d2) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Returns the distance to the nearest point in either list.
+    /// Used to pick the "least bad" fallback when no candidate clears minSpacing.
+    /// </summary>
+    private static float MinDistTo(
+        float gx, float gy,
+        IEnumerable<(float gx, float gy)> a,
+        IEnumerable<(float gx, float gy)> b)
+    {
+        float min = float.MaxValue;
+        if (a != null)
+            foreach (var o in a)
+            {
+                float dx = gx - o.gx, dy = gy - o.gy;
+                float d  = (float)Math.Sqrt(dx * dx + dy * dy);
+                if (d < min) min = d;
+            }
+        if (b != null)
+            foreach (var o in b)
+            {
+                float dx = gx - o.gx, dy = gy - o.gy;
+                float d  = (float)Math.Sqrt(dx * dx + dy * dy);
+                if (d < min) min = d;
+            }
+        return min == float.MaxValue ? 0f : min;
     }
 
     // ---------------------------------------------------------------------------

@@ -141,7 +141,7 @@ public class GameManager : MonoBehaviour
             InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id);
             InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id);
 
-            // ── 10 extra systems from the CSV catalogue ────────────────────
+            // ── 20 extra systems from the CSV catalogue ────────────────────
             var catalogueAsset = Resources.Load<TextAsset>("Data/systems");
             if (catalogueAsset != null)
             {
@@ -152,13 +152,17 @@ public class GameManager : MonoBehaviour
                     System.StringComparer.OrdinalIgnoreCase)
                     { "Sol", "Alpha Centauri", "Barnard's Star" };
 
-                // Shuffle with a save-specific seed and take 10
-                var rng        = new System.Random(CurrentSave.Id ^ 0x1337);
+                // Shuffle with a unique seed — mix save ID with current time so
+                // repeated new-game calls (which reset the DB and reuse ID=1 in the
+                // editor) still produce different galaxies each run.
+                int galaxySeed = CurrentSave.Id ^ (int)System.DateTime.UtcNow.Ticks ^ 0x1337;
+                CurrentSave.GalaxySeed = galaxySeed;
+                var rng        = new System.Random(galaxySeed);
                 var candidates = new System.Collections.Generic.List<(string name, StarType starType)>();
                 foreach (var entry in catalogue)
                     if (!excluded.Contains(entry.name)) candidates.Add(entry);
                 candidates.Sort((_, __) => rng.Next(-1, 2));   // Fisher-Yates-ish
-                int take = System.Math.Min(10, candidates.Count);
+                int take = System.Math.Min(20, candidates.Count);
 
                 // Get well-spread galaxy positions for the batch.
                 // Pass the three fixed cluster positions so no random system
@@ -170,11 +174,14 @@ public class GameManager : MonoBehaviour
                     (StarSystemGenerator.BarnardsGX,  StarSystemGenerator.BarnardsGY),
                 };
                 var positions = StarSystemGenerator.GenerateGalaxyPositions(
-                    take, CurrentSave.Id,
+                    take, galaxySeed,
                     innerR:          0.12f,
-                    outerR:          0.27f,
+                    outerR:          0.40f,   // widened from 0.27 to give 20 systems more room
                     avoidPositions:  solCluster,
-                    minSpacing:      0.09f);
+                    minSpacing:      0.13f);  // raised from 0.09: covers full node+label footprint
+                                              // (label 160px wide → 0.083 horiz; label bottom
+                                              // 52px below centre vs 22px half-hit-area → 0.069
+                                              // vert; 0.13 clears both axes with margin)
 
                 for (int i = 0; i < take; i++)
                 {
@@ -183,7 +190,7 @@ public class GameManager : MonoBehaviour
                         candidates[i].starType,
                         positions[i].gx,
                         positions[i].gy,
-                        seed:       CurrentSave.Id + 200 + i,
+                        seed:       galaxySeed + 200 + i,
                         saveGameId: CurrentSave.Id);
                     InsertSystemWithPOIs(sys, CurrentSave.Id);
                 }

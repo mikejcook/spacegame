@@ -20,6 +20,10 @@ public class SaveGame
     public int ShipId          { get; set; }
     public int CurrentSystemId { get; set; }
 
+    // Galaxy generation seed — stored so the same galaxy can be reproduced
+    // if needed (e.g. loading a save, debugging). Set during PrepareNewGame.
+    public int GalaxySeed { get; set; }
+
     // Progression
     public int   Credits    { get; set; } = Constants.Economy.StartingCredits;
     public int   DaysPassed { get; set; } = 0;

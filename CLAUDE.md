@@ -818,22 +818,27 @@ Key things to know:
 
 ### Label clearance formula for galaxy system nodes
 
-Each system node on the galaxy map has a label centred below it. The minimum
-normalised separation between two nodes to prevent label overlap is:
+Each system node on the galaxy map has a label centred below it. Two overlap
+axes must both be respected when setting `minSpacing`:
 
-```
-minSep = labelWidthPx / referenceResolutionWidth
-       = 160 / 1920
-       ≈ 0.083
-```
+- **Horizontal** (labels side by side): `160 / 1920 ≈ 0.083`
+- **Vertical** (label of upper node vs dot of lower node):
+  `(HitAreaSize/2 + LabelOffset + labelHeight) / 1080 = (22 + 6 + 24) / 1080 ≈ 0.048` —
+  but the hit-area top of the lower node is 22px above its centre, so the
+  full vertical clearance needed is `(22 + 6 + 24 + 22) / 1080 ≈ 0.069`.
 
-Current label settings: `sizeDelta = (160, 24)`, `fontSize = 14`.
-The avoid-list in `GenerateGalaxyPositions` uses `minSpacing = 0.09` to give a
-small margin above the minimum.
+Because `minSpacing` is a Euclidean check, it must cover the worst axis.
+The current value is `0.13` — above both the horizontal (`0.083`) and vertical
+(`0.069`) minimums with enough margin to handle diagonal neighbours.
 
-If the label rect or font size changes, recalculate and update both the label
-code in `GalaxyViewController` and the `minSpacing` call in
-`GameManager.PrepareNewGame`.
+Current label settings: `sizeDelta = (160, 24)`, `fontSize = 14`,
+`HitAreaSize = 44`, `LabelOffset = 6`.
+
+If any of those change, recalculate and update both the label code in
+`GalaxyViewController` and the `minSpacing` / `outerR` call in
+`GameManager.PrepareNewGame`. The ring area must comfortably hold
+`count × π × (minSpacing/2)²` — if you raise `count` or `minSpacing`,
+widen `outerR` accordingly.
 
 ### Procedural placement must respect hand-crafted positions
 
