@@ -74,6 +74,7 @@ public class GalaxyViewController : MonoBehaviour
 
     // ── Private state ─────────────────────────────────────────────────────
 
+    private PlanetLibrary            _planetLibrary;
     private bool _initialised     = false;
     private bool _zoomInitialised = false;
     private int  _currentSystemId = -1;
@@ -103,8 +104,8 @@ public class GalaxyViewController : MonoBehaviour
     private Coroutine     _flyCoroutine;
 
     // Node visual constants
-    private const float NodeSize        = 14f;
-    private const float CurrentNodeSize = 18f;
+    private const float NodeSize        = 22f;
+    private const float CurrentNodeSize = 30f;
     private const float RingSize        = 30f;
     private const float LabelOffset     = 6f;    // gap between hit-area edge and label top
     private const float HitAreaSize     = 44f;   // tap target (Apple HIG minimum), invisible
@@ -123,6 +124,11 @@ public class GalaxyViewController : MonoBehaviour
     {
         if (_initialised) return;
         _initialised = true;
+
+        _planetLibrary = Resources.Load<PlanetLibrary>("PlanetLibrary");
+        if (_planetLibrary == null || !_planetLibrary.IsValid)
+            Debug.LogWarning("[GalaxyViewController] PlanetLibrary not found or invalid — " +
+                             "star nodes will fall back to coloured dots.");
 
         // Keep the info panel active so Shift button animators stay bound.
         // Hide it via CanvasGroup rather than SetActive(false).
@@ -245,7 +251,12 @@ public class GalaxyViewController : MonoBehaviour
         var hitImg   = go.AddComponent<Image>();
         hitImg.color = Color.clear;
 
-        // ── Dot visual (child, visually sized) ───────────────────────────
+        // ── Star sprite visual (child, visually sized) ────────────────────
+        // Variant is derived from the system ID so each system consistently
+        // gets the same sprite across sessions, while still varying across systems.
+        int variant = (system.Id % 5) + 1;
+        Sprite starSprite = _planetLibrary?.GetStarSprite(system.StarType, variant);
+
         var dotGO = new GameObject("Dot", typeof(RectTransform));
         dotGO.transform.SetParent(go.transform, false);
         var dotRT           = dotGO.GetComponent<RectTransform>();
@@ -255,7 +266,18 @@ public class GalaxyViewController : MonoBehaviour
         dotRT.anchoredPosition = Vector2.zero;
         dotRT.sizeDelta     = new Vector2(size, size);
         var dotImg          = dotGO.AddComponent<Image>();
-        dotImg.color        = dotColor;
+        if (starSprite != null)
+        {
+            dotImg.sprite         = starSprite;
+            dotImg.preserveAspect = true;
+            dotImg.type           = Image.Type.Simple;
+            dotImg.color          = dotColor;   // tints unexplored systems darker
+        }
+        else
+        {
+            // Fallback: plain coloured dot if PlanetLibrary is unavailable
+            dotImg.color = dotColor;
+        }
 
         // ── Current-system ring ──────────────────────────────────────────
         if (isCurrent)

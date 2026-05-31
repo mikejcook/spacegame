@@ -428,6 +428,86 @@ public static class StarSystemGenerator
     }
 
     // ---------------------------------------------------------------------------
+    // Alpha Centauri POI generation — hand-crafted
+    // ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// Generates Alpha Centauri's planets and station.
+    /// A settled, "clean" system — no derelicts or anomalies.
+    /// Planets are placed at fixed angular slots so nothing overlaps the station.
+    /// </summary>
+    public static List<PointOfInterest> GenerateAlphaCentauriPOIs(StarSystem system, int saveGameId)
+    {
+        var rng  = new Random(system.Seed + 9999);
+        var pois = new List<PointOfInterest>();
+
+        // ── Planets ───────────────────────────────────────────────────────────
+        // Four planets at evenly-spaced angles (90° apart), seeded for
+        // reproducibility. The station sits at a fifth slot (45° offset from
+        // planet I) so it never shares an angular neighbourhood with any planet.
+
+        (string name, PlanetType type, float orbitalRadius, bool hasAtmo, bool habitable, string desc)[] planetDefs =
+        {
+            ("Alpha Centauri I",   PlanetType.Magma,       0.10f, false, false,
+             "A young, tectonically violent inner world. Lava plains and heavy-metal deposits make it valuable but dangerous."),
+            ("Alpha Centauri II",  PlanetType.Arid,        0.18f, true,  false,
+             "A dry, sun-baked world under the twin suns. Early terraforming efforts left scattered atmospheric processors across the surface."),
+            ("Alpha Centauri III", PlanetType.Terrestrial, 0.27f, true,  true,
+             "The system's primary colony world. Moderate climate and breathable air support a population of several million."),
+            ("Alpha Centauri IV",  PlanetType.Frozen,      0.38f, true,  false,
+             "A cold outer world beyond the habitable zone. Research stations monitor its unusual magnetic field anomalies."),
+        };
+
+        // Seed the base angle from the rng for variety, then space evenly at 90° increments.
+        float baseAngle = (float)(rng.NextDouble() * Math.PI * 2);
+        float slotWidth = (float)(Math.PI / 2);   // 90° between planets
+
+        for (int i = 0; i < planetDefs.Length; i++)
+        {
+            var   d     = planetDefs[i];
+            float angle = baseAngle + i * slotWidth;
+            float x     = Math.Clamp(0.5f + d.orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
+            float y     = Math.Clamp(0.5f + d.orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
+
+            pois.Add(new PointOfInterest
+            {
+                SaveGameId    = saveGameId,
+                StarSystemId  = system.Id,
+                Name          = d.name,
+                POIType       = Constants.POI.Types.Planet,
+                PlanetType    = d.type,
+                PlanetVariant = rng.Next(1, 6),
+                HasAtmosphere = d.hasAtmo,
+                IsHabitable   = d.habitable,
+                SystemX       = x,
+                SystemY       = y,
+                DangerLevel   = system.DangerLevel,
+                Description   = d.desc,
+                Resources     = GeneratePlanetResources(d.type, rng)
+            });
+        }
+
+        // ── Station ───────────────────────────────────────────────────────────
+        // Placed at 45° past the last planet slot — clear of all four planets.
+        float stationAngle  = baseAngle + planetDefs.Length * slotWidth + (float)(Math.PI / 4);
+        float stationRadius = 0.20f;
+        pois.Add(new PointOfInterest
+        {
+            SaveGameId   = saveGameId,
+            StarSystemId = system.Id,
+            Name         = "Alpha Centauri Station",
+            POIType      = Constants.POI.Types.SpaceStation,
+            SystemX      = Math.Clamp(0.5f + stationRadius * (float)Math.Cos(stationAngle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + stationRadius * (float)Math.Sin(stationAngle), 0.05f, 0.95f),
+            DangerLevel  = 0,
+            IsBoardable  = true,
+            Description  = "The oldest human outpost beyond Sol. A well-equipped port hub for the twin-sun colonies."
+        });
+
+        return pois;
+    }
+
+    // ---------------------------------------------------------------------------
     // General POI generation (non-Sol procedural systems)
     // ---------------------------------------------------------------------------
 
@@ -441,9 +521,12 @@ public static class StarSystemGenerator
         var pois = new List<PointOfInterest>();
 
         // Planets (1-6)
-        int planetCount = rng.Next(1, 7);
+        // Base angle randomises the whole system's orientation; individual planets are then
+        // distributed evenly (with small jitter) so no two land in the same angular slot.
+        int   planetCount = rng.Next(1, 7);
+        float baseAngle   = (float)(rng.NextDouble() * Math.PI * 2);
         for (int i = 0; i < planetCount; i++)
-            pois.Add(GeneratePlanet(system, saveGameId, i, planetCount, rng));
+            pois.Add(GeneratePlanet(system, saveGameId, i, planetCount, rng, baseAngle));
 
         // Asteroid field (50% chance)
         if (rng.Next(0, 10) < 5)
@@ -469,7 +552,8 @@ public static class StarSystemGenerator
     // ---------------------------------------------------------------------------
 
     private static PointOfInterest GeneratePlanet(
-        StarSystem system, int saveGameId, int index, int total, Random rng)
+        StarSystem system, int saveGameId, int index, int total, Random rng,
+        float baseAngle = 0f)
     {
         // Pick a random planet type from all available types
         var allTypes  = (PlanetType[])Enum.GetValues(typeof(PlanetType));
@@ -478,8 +562,12 @@ public static class StarSystemGenerator
         bool hasAtmo  = !IsAirlessType(type) && rng.Next(0, 10) < 7;
         bool habitable = hasAtmo && type == PlanetType.Terrestrial && rng.Next(0, 10) < 4;
 
-        float angle = (float)(rng.NextDouble() * Math.PI * 2);
-        float radius = 0.08f + (index / (float)Math.Max(total, 1)) * 0.35f;
+        // Distribute planets evenly around the system, with up to ±25% per-slot jitter,
+        // so no two planets land in the same angular neighbourhood regardless of count.
+        float slotWidth = (float)(2.0 * Math.PI / Math.Max(total, 1));
+        float jitter    = (float)(rng.NextDouble() - 0.5) * slotWidth * 0.5f;
+        float angle     = baseAngle + index * slotWidth + jitter;
+        float radius    = 0.08f + (index / (float)Math.Max(total, 1)) * 0.35f;
 
         return new PointOfInterest
         {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -138,7 +139,8 @@ public class GameManager : MonoBehaviour
             CurrentSave.CurrentSystemId = sol.Id;
 
             // ── Sol cluster — Alpha Centauri & Barnard's Star ─────────────
-            InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id);
+            InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id,
+                                  StarSystemGenerator.GenerateAlphaCentauriPOIs);
             InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id);
 
             // ── 20 extra systems from the CSV catalogue ────────────────────
@@ -216,11 +218,13 @@ public class GameManager : MonoBehaviour
     /// generates and inserts all of its POIs. Shared by PrepareNewGame for all
     /// non-Sol systems so the same flow isn't duplicated for each one.
     /// </summary>
-    private void InsertSystemWithPOIs(StarSystem system, int saveGameId)
+    private void InsertSystemWithPOIs(StarSystem system, int saveGameId,
+        System.Func<StarSystem, int, List<PointOfInterest>> poiGenerator = null)
     {
         system.SaveGameId = saveGameId;
         Database.StarSystems.Insert(system);
-        var pois = StarSystemGenerator.GeneratePOIsForSystem(system, saveGameId);
+        poiGenerator ??= StarSystemGenerator.GeneratePOIsForSystem;
+        var pois = poiGenerator(system, saveGameId);
         foreach (var poi in pois) Database.POIs.Insert(poi);
     }
 
