@@ -137,9 +137,9 @@ public class GameManager : MonoBehaviour
 
             CurrentSave.CurrentSystemId = sol.Id;
 
-            // ── Sol cluster — Alpha Centauri & Proxima Centauri ───────────
+            // ── Sol cluster — Alpha Centauri & Barnard's Star ─────────────
             InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id);
-            InsertSystemWithPOIs(StarSystemGenerator.GenerateProximaCentauri(), CurrentSave.Id);
+            InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id);
 
             // ── 10 extra systems from the CSV catalogue ────────────────────
             var catalogueAsset = Resources.Load<TextAsset>("Data/systems");
@@ -150,7 +150,7 @@ public class GameManager : MonoBehaviour
                 // Exclude the three hand-crafted systems
                 var excluded = new System.Collections.Generic.HashSet<string>(
                     System.StringComparer.OrdinalIgnoreCase)
-                    { "Sol", "Alpha Centauri", "Proxima Centauri" };
+                    { "Sol", "Alpha Centauri", "Barnard's Star" };
 
                 // Shuffle with a save-specific seed and take 10
                 var rng        = new System.Random(CurrentSave.Id ^ 0x1337);
@@ -162,12 +162,12 @@ public class GameManager : MonoBehaviour
 
                 // Get well-spread galaxy positions for the batch.
                 // Pass the three fixed cluster positions so no random system
-                // lands on top of Sol, Alpha Centauri, or Proxima Centauri.
+                // lands on top of Sol, Alpha Centauri, or Barnard's Star.
                 var solCluster = new (float gx, float gy)[]
                 {
-                    (StarSystemGenerator.SolGX,     StarSystemGenerator.SolGY),
-                    (StarSystemGenerator.AlphaGX,   StarSystemGenerator.AlphaGY),
-                    (StarSystemGenerator.ProximaGX, StarSystemGenerator.ProximaGY),
+                    (StarSystemGenerator.SolGX,      StarSystemGenerator.SolGY),
+                    (StarSystemGenerator.AlphaGX,    StarSystemGenerator.AlphaGY),
+                    (StarSystemGenerator.BarnardsGX,  StarSystemGenerator.BarnardsGY),
                 };
                 var positions = StarSystemGenerator.GenerateGalaxyPositions(
                     take, CurrentSave.Id,
@@ -192,7 +192,7 @@ public class GameManager : MonoBehaviour
             else
             {
                 Debug.LogWarning("[GameManager] Data/systems.csv not found in Resources — " +
-                                 "only Sol, Alpha Centauri, and Proxima Centauri were created.");
+                                 "only Sol, Alpha Centauri, and Barnard's Star were created.");
             }
 
             Database.SaveGames.Update(CurrentSave);

@@ -142,10 +142,11 @@ public class SystemMapZoomController : MonoBehaviour
         var mouse = Mouse.current;
         if (mouse == null) return;
 
-        // Scroll wheel zoom — use sign only so one tick = one fixed step,
-        // regardless of how large the raw delta value is on this OS/device.
+        // Scroll wheel zoom — only when not dragging; on trackpads a left-button drag
+        // also generates scroll events, and letting both run simultaneously causes
+        // "panning causes zoom" — the zoom overpowers the pan delta every frame.
         float scroll = mouse.scroll.ReadValue().y;
-        if (Mathf.Abs(scroll) > 0.01f)
+        if (!_dragging && Mathf.Abs(scroll) > 0.01f)
         {
             float newZoom = Mathf.Clamp(_zoom * (1f + Mathf.Sign(scroll) * scrollSensitivity),
                                         minZoom, maxZoom);

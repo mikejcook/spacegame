@@ -53,6 +53,9 @@ using TMPro;
 ///           Rule              (Image, horizontal divider)
 ///           POIDetailDescText
 ///           POIDetailCloseButton  (Shift MainButton — "CLOSE")
+///
+///   Notes: GalaxyView also contains SystemInfoPanel (CanvasGroup-toggled popup
+///   shown when a star system node is tapped, before the ship travels).
 /// </summary>
 public static class GameSceneSetup
 {
@@ -262,7 +265,137 @@ public static class GameSceneSetup
         var nodesContainer = MakeUIGO("SystemNodesContainer", galaxyMap.transform);
         PlaceRect(nodesContainer, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
 
+        // System info panel — shown when a node is tapped; hidden via CanvasGroup
+        BuildGalaxySystemInfoPanel(galaxyView.transform);
+
         return galaxyView;
+    }
+
+    // ── Galaxy system info panel — displayed on node tap ────────────────────
+    //
+    //   SystemInfoPanel  (CanvasGroup — alpha toggled for show/hide)
+    //   └─ Scrim         (full-screen dark overlay, catches taps outside card)
+    //   └─ Card          (centred card, 680×420)
+    //      ├─ TopBar
+    //      ├─ SystemInfoNameText
+    //      ├─ SystemInfoSubtitleText
+    //      ├─ DistanceRow
+    //      │  ├─ DistanceLabel
+    //      │  └─ SystemInfoDistanceText
+    //      ├─ Rule
+    //      ├─ SystemInfoPOIText
+    //      └─ ButtonRow
+    //         ├─ SystemInfoTravelButton  ("SET COURSE")
+    //         └─ SystemInfoCloseButton   ("CLOSE")
+
+    static GameObject BuildGalaxySystemInfoPanel(Transform parent)
+    {
+        // Root: CanvasGroup so Shift buttons stay active (no SetActive toggling)
+        var panel = MakeUIGO("SystemInfoPanel", parent);
+        Stretch(panel);
+        panel.AddComponent<CanvasGroup>();
+
+        // Semi-transparent scrim behind the card
+        var scrimImg = panel.AddComponent<Image>();
+        scrimImg.color = Scrim;
+
+        // Card — centred, fixed size
+        var card = MakeImage(panel.transform, "Card", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(680f, 420f));
+
+        // Cyan top bar
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        // System name — bold, large
+        var nameText = MakeTMP(card.transform, "SystemInfoNameText", "System Name", 52, TextWhite);
+        PlaceRect(nameText, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -60f), v2(-48f, 66f));
+        nameText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        nameText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+        nameText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+        nameText.GetComponent<TextMeshProUGUI>().overflowMode = TextOverflowModes.Ellipsis;
+
+        // Subtitle — star type + danger level
+        var subtitleText = MakeTMP(card.transform, "SystemInfoSubtitleText", "Yellow Dwarf  ·  Danger: Safe", 26, TextSubtle);
+        PlaceRect(subtitleText, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -122f), v2(-48f, 36f));
+        subtitleText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        subtitleText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
+
+        // Distance row — label + value side by side
+        var distLabel = MakeTMP(card.transform, "DistanceLabel", "DISTANCE", 22, TextSubtle);
+        PlaceRect(distLabel, anchor(0f, 1f), anchor(0f, 1f), v2(24f, -170f), v2(170f, 28f));
+        distLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        distLabel.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
+
+        var distValue = MakeTMP(card.transform, "SystemInfoDistanceText", "6,380 ly away", 32, AccentCyan);
+        PlaceRect(distValue, anchor(0f, 1f), anchor(1f, 1f), v2(200f, -162f), v2(-48f, 40f));
+        distValue.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        distValue.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+        distValue.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
+
+        // Horizontal rule
+        var rule = MakeImage(card.transform, "Rule", DividerColor);
+        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -214f), v2(-40f, 2f));
+
+        // POI summary text
+        var poiText = MakeTMP(card.transform, "SystemInfoPOIText", "8 planets  ·  1 station", 28, TextSubtle);
+        PlaceRect(poiText, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -250f), v2(-48f, 36f));
+        poiText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+
+        // Buttons — bottom-right of the card
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+
+        GameObject travelGO;
+        if (btnPrefab != null)
+        {
+            travelGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            travelGO.name = "SystemInfoTravelButton";
+            var mb = travelGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "SET COURSE";
+        }
+        else
+        {
+            travelGO = MakeImage(card.transform, "SystemInfoTravelButton", BtnNormal);
+            travelGO.AddComponent<Button>();
+            var lbl = MakeTMP(travelGO.transform, "Label", "SET COURSE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        // Pivot (1,0) = bottom-right corner of each button, so anchoredPosition is the
+        // inset from the card's bottom-right corner — no centre-offset math required.
+        {
+            var rt       = travelGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(200f, 52f);
+            rt.anchoredPosition = new Vector2(-204f, 16f);   // left of close button
+        }
+
+        GameObject closeGO;
+        if (btnPrefab != null)
+        {
+            closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            closeGO.name = "SystemInfoCloseButton";
+            var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CLOSE";
+        }
+        else
+        {
+            closeGO = MakeImage(card.transform, "SystemInfoCloseButton", BtnNormal);
+            closeGO.AddComponent<Button>();
+            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt       = closeGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(180f, 52f);
+            rt.anchoredPosition = new Vector2(-16f, 16f);    // 16 px from right/bottom edges
+        }
+
+        return panel;
     }
 
     // ── Ship view — full body area, starts hidden ────────────────────────────
@@ -747,10 +880,19 @@ public static class GameSceneSetup
         var closeTf = poiDetail.transform.Find("Card/POIDetailCloseButton");
         Set(so, "poiDetailCloseButton", closeTf?.GetComponentInChildren<Button>(true));
 
+        // Audio
+        var svcAudioSrc   = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();
+        Set(so, "sfxSource", svcAudioSrc);
+        var sublightClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/sublight_engine.wav");
+        if (sublightClip != null)
+            Set(so, "sublightEngineClip", sublightClip);
+        else
+            Debug.LogWarning("[GameSceneSetup] sublight_engine.wav not found at Assets/Audio/SFX/.");
+
         const string StationSpritePath = "Assets/Art/Sprites/SpaceStation.png";
         var stationSprite = AssetDatabase.LoadAssetAtPath<Sprite>(StationSpritePath);
         if (stationSprite != null) Set(so, "stationSprite", stationSprite);
-        else Debug.LogWarning("[GameSceneSetup] SpaceStation sprite not found.");
+        else Debug.LogWarning("[GameSceneSetup] SpaceStation.png not found at " + StationSpritePath);
 
         const string ShipPrefabPath =
             "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +
@@ -779,6 +921,33 @@ public static class GameSceneSetup
                 Set(gvcSo, "galaxyBackground", bgTf?.GetComponent<RawImage>());
                 Set(gvcSo, "systemNodesContainer", FindRT(galaxyViewGO, "GalaxyMap/SystemNodesContainer"));
                 if (shipSprite != null) Set(gvcSo, "shipSprite", shipSprite);
+
+                // System info panel
+                var infoPanel = galaxyViewGO.transform.Find("SystemInfoPanel")?.gameObject;
+                if (infoPanel != null)
+                {
+                    gvcSo.FindProperty("systemInfoPanel").objectReferenceValue = infoPanel;
+                    Set(gvcSo, "systemInfoNameText",     Find<TMP_Text>(infoPanel, "Card/SystemInfoNameText"));
+                    Set(gvcSo, "systemInfoSubtitleText", Find<TMP_Text>(infoPanel, "Card/SystemInfoSubtitleText"));
+                    Set(gvcSo, "systemInfoDistanceText", Find<TMP_Text>(infoPanel, "Card/SystemInfoDistanceText"));
+                    Set(gvcSo, "systemInfoPOIText",      Find<TMP_Text>(infoPanel, "Card/SystemInfoPOIText"));
+
+                    var travelTf      = infoPanel.transform.Find("Card/SystemInfoTravelButton");
+                    Set(gvcSo, "systemInfoTravelButton", travelTf?.GetComponentInChildren<Button>(true));
+                    var infoCloseTf   = infoPanel.transform.Find("Card/SystemInfoCloseButton");
+                    Set(gvcSo, "systemInfoCloseButton", infoCloseTf?.GetComponentInChildren<Button>(true));
+                }
+                else Debug.LogWarning("[GameSceneSetup] SystemInfoPanel not found under GalaxyView.");
+
+                // Audio — wire the shared UI AudioSource and the warp SFX clip
+                var uiAudioSrc = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();
+                Set(gvcSo, "sfxSource", uiAudioSrc);
+                var warpClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/warp_speed.mp3");
+                if (warpClip != null)
+                    Set(gvcSo, "warpSoundClip", warpClip);
+                else
+                    Debug.LogWarning("[GameSceneSetup] warp_speed.mp3 not found at Assets/Audio/SFX/.");
+
                 gvcSo.ApplyModifiedProperties();
             }
             else Debug.LogWarning("[GameSceneSetup] GalaxyViewController not found on GalaxyView.");
@@ -790,28 +959,10 @@ public static class GameSceneSetup
         if (shipViewGO != null)
         {
             so.FindProperty("shipViewPanel").objectReferenceValue = shipViewGO;
+            // Apply the ship sprite directly to the ShipImage component.
+            // shipViewImage / shipComponentButtons are not serialised on SystemViewController.
             var shipImgComp = shipViewGO.transform.Find("ShipImage")?.GetComponent<Image>();
-            Set(so, "shipViewImage", shipImgComp);
             if (shipImgComp != null && shipSprite != null) shipImgComp.sprite = shipSprite;
-
-            var componentButtons = new List<Button>();
-            foreach (var colName in new[] { "LeftComponentColumn", "RightComponentColumn" })
-            {
-                var col = shipViewGO.transform.Find(colName);
-                if (col == null) { Debug.LogWarning($"[GameSceneSetup] {colName} not found."); continue; }
-                foreach (Transform slot in col)
-                {
-                    var b = slot.GetComponent<Button>();
-                    if (b != null) componentButtons.Add(b);
-                }
-            }
-            var btnArrayProp = so.FindProperty("shipComponentButtons");
-            if (btnArrayProp != null)
-            {
-                btnArrayProp.arraySize = componentButtons.Count;
-                for (int i = 0; i < componentButtons.Count; i++)
-                    btnArrayProp.GetArrayElementAtIndex(i).objectReferenceValue = componentButtons[i];
-            }
         }
         else Debug.LogWarning("[GameSceneSetup] ShipView not found under Body.");
 

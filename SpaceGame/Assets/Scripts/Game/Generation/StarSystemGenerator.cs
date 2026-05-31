@@ -15,15 +15,25 @@ public static class StarSystemGenerator
 
     // ── Sol cluster galaxy positions ────────────────────────────────────────
     // Placed in a spiral-arm region (~0.14 units from galactic centre).
-    // The three systems form a small triangle with ~5–7 % horizontal separation
-    // so their labels don't overlap at the default zoom level.
+    // The three systems form a small triangle so their labels don't overlap
+    // at the default zoom level.
+    //
+    // Positions are chosen for visual clarity, not to-scale distances.
+    // Real-world distances from Sol are stored as constants below and are
+    // displayed verbatim in the galaxy info popup for these known systems;
+    // all other systems use the normalised-coordinate algorithm.
 
     public const float SolGX          = 0.595f;
     public const float SolGY          = 0.448f;
-    public const float AlphaGX        = 0.658f;   // ~6 % right, slightly up
-    public const float AlphaGY        = 0.458f;
-    public const float ProximaGX      = 0.628f;   // ~3 % right, below Sol
-    public const float ProximaGY      = 0.428f;
+    public const float AlphaGX        = 0.628f;   // closer cluster — Alpha Centauri (4.34 ly)
+    public const float AlphaGY        = 0.428f;
+    public const float BarnardsGX     = 0.658f;   // farther cluster — Barnard's Star (5.96 ly)
+    public const float BarnardsGY     = 0.458f;
+
+    // Display distances from Sol — shown verbatim in the galaxy info popup.
+    // Expressed in ly (not normalised units) and scaled to produce "k" formatting.
+    public const float AlphaDistanceLY    = 4_340f;   // → "4.34k ly away"
+    public const float BarnardsDistanceLY = 5_960f;   // → "5.96k ly away"
 
     public static StarSystem GenerateSolSystem()
     {
@@ -56,26 +66,26 @@ public static class StarSystemGenerator
             HasSpaceStation = true,
             DangerLevel     = 2,
             Seed            = 1,
-            Description     = "Nearest star system to Sol. A yellow dwarf hosts a handful of " +
-                              "colonised worlds and a busy trade station."
+            Description     = "A triple-star system and humanity's nearest stellar neighbour. " +
+                              "The two yellow dwarfs host a handful of colonised worlds and a busy trade station."
         };
     }
 
-    public static StarSystem GenerateProximaCentauri()
+    public static StarSystem GenerateBarnardsStar()
     {
         return new StarSystem
         {
-            Name            = "Proxima Centauri",
+            Name            = "Barnard's Star",
             StarType        = StarType.RedDwarf,
             IsKnown         = true,
-            GalaxyX         = ProximaGX,
-            GalaxyY         = ProximaGY,
+            GalaxyX         = BarnardsGX,
+            GalaxyY         = BarnardsGY,
             IsExplored      = false,
             HasSpaceStation = false,
             DangerLevel     = 3,
             Seed            = 2,
-            Description     = "A red dwarf with a tidally-locked habitable world. Rumours of " +
-                              "pre-human ruins on the surface draw explorers and treasure-hunters alike."
+            Description     = "A fast-moving red dwarf just six light years from Sol. " +
+                              "Its rocky planets sit deep in a tidal-lock zone — cold, dark, and largely unexplored."
         };
     }
 

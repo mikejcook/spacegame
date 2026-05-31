@@ -65,6 +65,10 @@ public class SystemViewController : MonoBehaviour
     [Tooltip("Sprite extracted from the ship prefab — wired by GameSceneSetup.")]
     [SerializeField] private Sprite shipSprite;
 
+    [Header("POI Sprites")]
+    [Tooltip("Sprite used for Space Station POI nodes — wired by GameSceneSetup.")]
+    [SerializeField] private Sprite stationSprite;
+
     [Header("Galaxy View")]
     [Tooltip("Root GalaxyView panel — toggled when the Galaxy nav button is pressed.")]
     [SerializeField] private GameObject          galaxyViewPanel;
@@ -75,6 +79,10 @@ public class SystemViewController : MonoBehaviour
 
     [Header("Crew View")]
     [SerializeField] private GameObject crewViewPanel;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip   sublightEngineClip;
 
     [Header("POI Detail Panel")]
     [Tooltip("Root panel toggled by SetActive. The card + all detail fields live inside.")]
@@ -445,6 +453,13 @@ public class SystemViewController : MonoBehaviour
                 img.color  = poi.PlanetType.IsGaseous() ? ColourPlanetGaseous : ColourPlanetSolid;
             }
         }
+        else if (poi.POIType == Constants.POI.Types.SpaceStation && stationSprite != null)
+        {
+            img.sprite         = stationSprite;
+            img.color          = Color.white;
+            img.preserveAspect = true;
+            img.type           = Image.Type.Simple;
+        }
         else
         {
             img.sprite = null;
@@ -528,8 +543,9 @@ public class SystemViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Flies the ship from <paramref name="fromPos"/> to <paramref name="toPos"/>
-    /// with smooth acceleration/deceleration, then shows the POI popup on arrival.
+    /// Flies the ship from <paramref name="fromPos"/> to <paramref name="toPos"/>.
+    /// Phase 1: engine sound plays while the ship turns and accelerates (ease-in).
+    /// Phase 2: constant cruise speed for the remainder of the journey.
     /// </summary>
     private System.Collections.IEnumerator FlyShipToCoroutine(
         PointOfInterest target, Vector2 fromPos, Vector2 toPos)
@@ -540,41 +556,83 @@ public class SystemViewController : MonoBehaviour
         float   distance = dir.magnitude;
         if (distance < 0.1f)
         {
-            // Already there (shouldn't normally happen but handle gracefully)
             _shipCurrentPoi = target;
             _shipFlying     = false;
             ShowPOIDetail(target);
             yield break;
         }
 
-        // Duration scales with distance; clamped so short hops feel snappy
-        // and long cross-system flights aren't a slog.
-        float duration = Mathf.Clamp(distance / 280f, 0.6f, 3.2f);
-
-        // The raw sprite points RIGHT (+X). Standard Atan2(y,x) gives the angle
-        // from +X to the flight direction, which is exactly the Z-rotation we need.
+        // The raw sprite points LEFT (−X) — add 180° to Atan2 result.
         float targetAngleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
         float startAngleDeg  = _shipRT.localEulerAngles.z;
-        // Normalise to shortest arc
-        float deltaAngle = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
+        float deltaAngle     = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
+
+        // ── Phase 1: engine spool-up ─────────────────────────────────────
+        // Sound plays while the ship turns and accelerates (ease-in quadratic),
+        // covering sublightFraction of the total distance.  Phase duration is
+        // the clip length, capped so it can't exceed the full flight time.
+        const float sublightFraction = 0.30f;
+        float totalDuration  = Mathf.Clamp(distance / 80f, 0.6f, 5.0f);
+        float clipLength     = (sfxSource != null && sublightEngineClip != null)
+                               ? sublightEngineClip.length : 0f;
+        float accelDuration  = Mathf.Min(clipLength, totalDuration * 0.6f);
+
+        if (sfxSource != null && sublightEngineClip != null)
+            sfxSource.PlayOneShot(sublightEngineClip);
 
         float elapsed = 0f;
-        while (elapsed < duration)
+        while (elapsed < accelDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
+            float t    = Mathf.Clamp01(elapsed / accelDuration);
+            float posT = t * t;   // ease-in quadratic: starts slow, builds speed
 
-            // Position: smooth-step (ease in + ease out) gives the feel of
-            // thrusting, cruising, then braking.
-            float posT = t * t * (3f - 2f * t);
-            _shipRT.anchoredPosition = Vector2.Lerp(fromPos, toPos, posT);
+            _shipRT.anchoredPosition = Vector2.Lerp(fromPos, toPos, posT * sublightFraction);
 
-            // Rotation: snap to heading quickly (first 25 % of flight), then hold.
-            float rotT = Mathf.Clamp01(t / 0.25f);
-            float rot  = startAngleDeg + rotT * deltaAngle;
-            _shipRT.localEulerAngles = new Vector3(0f, 0f, rot);
+            // Rotate to heading in the first 30 % of the accel phase
+            float rotT = Mathf.Clamp01(t / 0.3f);
+            _shipRT.localEulerAngles = new Vector3(0f, 0f, startAngleDeg + rotT * deltaAngle);
 
             yield return null;
+        }
+
+        // ── Phase 2: cruise ──────────────────────────────────────────────
+        // Speed at end of ease-in² = 2·sublightFraction/accelDuration (fraction/sec).
+        // Travel the remaining distance at that constant speed.
+        // If there was no clip, fall back to the original smooth-step for the whole journey.
+        if (accelDuration > 0f)
+        {
+            float fullSpeed      = 2f * sublightFraction / accelDuration;
+            float remainFraction = 1f - sublightFraction;
+            float cruiseDuration = remainFraction / fullSpeed;
+
+            elapsed = 0f;
+            while (elapsed < cruiseDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t        = Mathf.Clamp01(elapsed / cruiseDuration);
+                float fraction = sublightFraction + t * remainFraction;
+                _shipRT.anchoredPosition = Vector2.Lerp(fromPos, toPos, fraction);
+                yield return null;
+            }
+        }
+        else
+        {
+            // No sound clip — smooth-step fallback
+            elapsed = 0f;
+            while (elapsed < totalDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t    = Mathf.Clamp01(elapsed / totalDuration);
+                float posT = t * t * (3f - 2f * t);
+                _shipRT.anchoredPosition = Vector2.Lerp(fromPos, toPos, posT);
+
+                float rotT = Mathf.Clamp01(t / 0.25f);
+                _shipRT.localEulerAngles = new Vector3(0f, 0f,
+                    startAngleDeg + rotT * deltaAngle);
+
+                yield return null;
+            }
         }
 
         _shipRT.anchoredPosition = toPos;
@@ -630,7 +688,10 @@ public class SystemViewController : MonoBehaviour
     private void ZoomToShip()
     {
         if (_systemMapZoomController == null || _shipRT == null) return;
-        _systemMapZoomController.FocusOn(_shipRT.anchoredPosition, 2.0f);
+        // zoom=1 keeps the full system in view so no POI nodes are pushed outside
+        // body's RectMask2D boundary (which would make them unclickable).
+        // The user can pinch/scroll to zoom in once they've oriented themselves.
+        _systemMapZoomController.FocusOn(_shipRT.anchoredPosition, 1.0f);
     }
 
     private void ShowGalaxyView()

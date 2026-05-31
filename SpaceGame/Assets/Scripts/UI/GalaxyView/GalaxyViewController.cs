@@ -12,9 +12,17 @@ using TMPro;
 /// ── Scene hierarchy expected ──────────────────────────────────────────────
 ///
 ///   GalaxyView                       ← this MonoBehaviour (starts inactive)
-///   └─ GalaxyMap                     ← RectTransform; has SystemMapZoomController
-///      ├─ GalaxyBackground           ← RawImage; galaxy texture applied in Start()
-///      └─ SystemNodesContainer       ← RectTransform; system nodes + ship spawned here
+///   ├─ GalaxyMap                     ← RectTransform; has SystemMapZoomController
+///   │  ├─ GalaxyBackground           ← RawImage; galaxy texture applied in Start()
+///   │  └─ SystemNodesContainer       ← RectTransform; system nodes + ship spawned here
+///   └─ SystemInfoPanel               ← CanvasGroup; shown when a system node is tapped
+///      └─ Card
+///         ├─ SystemInfoNameText
+///         ├─ SystemInfoSubtitleText
+///         ├─ SystemInfoDistanceText
+///         ├─ SystemInfoPOIText
+///         ├─ SystemInfoTravelButton
+///         └─ SystemInfoCloseButton
 ///
 /// ── System node layout ───────────────────────────────────────────────────
 ///
@@ -24,6 +32,16 @@ using TMPro;
 ///   technique; its anchors are lerped during flight.
 ///
 ///   The current system is highlighted with a UIRingGraphic ring indicator.
+///
+/// ── Distance calculation ──────────────────────────────────────────────────
+///
+///   The galaxy map uses normalised coordinates (0–1). We treat the full
+///   1.0-unit span as 100,000 light years (the Milky Way diameter), so:
+///
+///       distanceLY = Euclidean distance in normalised units × 100,000
+///
+///   All systems use this algorithm. The y-axis is weighted at 0.15 so that
+///   left-right position dominates — systems on the left always read as farther.
 /// </summary>
 public class GalaxyViewController : MonoBehaviour
 {
@@ -32,6 +50,19 @@ public class GalaxyViewController : MonoBehaviour
     [SerializeField] private RawImage       galaxyBackground;
     [SerializeField] private RectTransform  systemNodesContainer;
     [SerializeField] private Sprite         shipSprite;
+
+    [Header("System Info Panel")]
+    [SerializeField] private GameObject systemInfoPanel;
+    [SerializeField] private TMP_Text   systemInfoNameText;
+    [SerializeField] private TMP_Text   systemInfoSubtitleText;
+    [SerializeField] private TMP_Text   systemInfoDistanceText;
+    [SerializeField] private TMP_Text   systemInfoPOIText;
+    [SerializeField] private Button     systemInfoTravelButton;
+    [SerializeField] private Button     systemInfoCloseButton;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip   warpSoundClip;
 
     // ── Callback wired by SystemViewController ────────────────────────────
 
@@ -48,9 +79,14 @@ public class GalaxyViewController : MonoBehaviour
     private int  _currentSystemId = -1;
 
     private SystemMapZoomController _zoomController;
+    private CanvasGroup             _infoPanelCG;
+    private StarSystem              _pendingTravelTarget;
 
-    // Initial view: centre on the Sol / Alpha / Proxima cluster at 1.5× zoom.
-    // Centroid of Sol (0.595, 0.448) + Alpha (0.658, 0.458) + Proxima (0.628, 0.428).
+    // Scale factor: 1 normalised unit = 100,000 light years (Milky Way diameter)
+    private const float LightYearsPerUnit = 100_000f;
+
+    // Initial view: centre on the Sol / Alpha / Barnard's cluster.
+    // Centroid of Sol (0.595, 0.448) + Alpha (0.628, 0.428) + Barnard's (0.658, 0.458).
     private const float InitialZoom    = 1.95f;
     private const float ClusterCentreX = 0.627f;
     private const float ClusterCentreY = 0.445f;
@@ -70,7 +106,8 @@ public class GalaxyViewController : MonoBehaviour
     private const float NodeSize        = 14f;
     private const float CurrentNodeSize = 18f;
     private const float RingSize        = 30f;
-    private const float LabelOffset     = 14f;
+    private const float LabelOffset     = 6f;    // gap between hit-area edge and label top
+    private const float HitAreaSize     = 44f;   // tap target (Apple HIG minimum), invisible
     private const float ShipSize        = 20f;
 
     // ── Unity lifecycle ───────────────────────────────────────────────────
@@ -86,6 +123,21 @@ public class GalaxyViewController : MonoBehaviour
     {
         if (_initialised) return;
         _initialised = true;
+
+        // Keep the info panel active so Shift button animators stay bound.
+        // Hide it via CanvasGroup rather than SetActive(false).
+        if (systemInfoPanel != null)
+        {
+            systemInfoPanel.SetActive(true);
+            _infoPanelCG = systemInfoPanel.GetComponent<CanvasGroup>()
+                           ?? systemInfoPanel.AddComponent<CanvasGroup>();
+        }
+        HideSystemInfo();
+
+        if (systemInfoTravelButton != null)
+            systemInfoTravelButton.onClick.AddListener(OnTravelButtonClicked);
+        if (systemInfoCloseButton != null)
+            systemInfoCloseButton.onClick.AddListener(HideSystemInfo);
 
         LoadGalaxyBackground();
         PopulateSystemNodes();
@@ -173,8 +225,12 @@ public class GalaxyViewController : MonoBehaviour
     {
         bool isCurrent = system.Id == _currentSystemId;
         float size     = isCurrent ? CurrentNodeSize : NodeSize;
+        Color dotColor = isCurrent ? Color.white : StarColour(system.StarType, system.IsExplored);
 
         // ── Anchor to galaxy-map fraction ────────────────────────────────
+        // The root GO uses a generous hit-area rect (HitAreaSize) so fingers
+        // reliably land on the right node even when two systems are close.
+        // The visible dot is a child sized to `size`, keeping the visual small.
         var go = new GameObject(system.Name, typeof(RectTransform));
         go.transform.SetParent(systemNodesContainer, false);
 
@@ -183,17 +239,29 @@ public class GalaxyViewController : MonoBehaviour
         rt.anchorMax    = new Vector2(system.GalaxyX, system.GalaxyY);
         rt.pivot        = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta    = new Vector2(size, size);
+        rt.sizeDelta    = new Vector2(HitAreaSize, HitAreaSize);
 
-        // ── Dot visual ───────────────────────────────────────────────────
-        var img   = go.AddComponent<Image>();
-        img.color = isCurrent ? Color.white : StarColour(system.StarType, system.IsExplored);
+        // Transparent image fills the hit area — invisible but catches raycasts
+        var hitImg   = go.AddComponent<Image>();
+        hitImg.color = Color.clear;
+
+        // ── Dot visual (child, visually sized) ───────────────────────────
+        var dotGO = new GameObject("Dot", typeof(RectTransform));
+        dotGO.transform.SetParent(go.transform, false);
+        var dotRT           = dotGO.GetComponent<RectTransform>();
+        dotRT.anchorMin     = new Vector2(0.5f, 0.5f);
+        dotRT.anchorMax     = new Vector2(0.5f, 0.5f);
+        dotRT.pivot         = new Vector2(0.5f, 0.5f);
+        dotRT.anchoredPosition = Vector2.zero;
+        dotRT.sizeDelta     = new Vector2(size, size);
+        var dotImg          = dotGO.AddComponent<Image>();
+        dotImg.color        = dotColor;
 
         // ── Current-system ring ──────────────────────────────────────────
         if (isCurrent)
         {
             var ringGO = new GameObject("CurrentRing", typeof(RectTransform));
-            ringGO.transform.SetParent(go.transform, false);
+            ringGO.transform.SetParent(dotGO.transform, false);
 
             var ringRT          = ringGO.GetComponent<RectTransform>();
             ringRT.anchorMin    = new Vector2(0.5f, 0.5f);
@@ -208,16 +276,16 @@ public class GalaxyViewController : MonoBehaviour
             ring.Segments  = 48;
         }
 
-        // ── Label ────────────────────────────────────────────────────────
+        // ── Label (child of root, positioned below dot) ───────────────────
         var labelGO = new GameObject("Label", typeof(RectTransform));
         labelGO.transform.SetParent(go.transform, false);
 
-        var labelRT             = labelGO.GetComponent<RectTransform>();
-        labelRT.anchorMin       = new Vector2(0.5f, 0f);
-        labelRT.anchorMax       = new Vector2(0.5f, 0f);
-        labelRT.pivot           = new Vector2(0.5f, 1f);
-        labelRT.anchoredPosition = new Vector2(0f, -LabelOffset);
-        labelRT.sizeDelta       = new Vector2(160f, 24f);
+        var labelRT              = labelGO.GetComponent<RectTransform>();
+        labelRT.anchorMin        = new Vector2(0.5f, 0f);
+        labelRT.anchorMax        = new Vector2(0.5f, 0f);
+        labelRT.pivot            = new Vector2(0.5f, 1f);
+        labelRT.anchoredPosition = new Vector2(0f, -(HitAreaSize * 0.5f + LabelOffset));
+        labelRT.sizeDelta        = new Vector2(160f, 24f);
 
         var tmp = labelGO.AddComponent<TextMeshProUGUI>();
         tmp.text          = system.Name;
@@ -227,15 +295,17 @@ public class GalaxyViewController : MonoBehaviour
                             ? new Color(0.85f, 1.0f, 1.0f, 1.0f)
                             : new Color(0.80f, 0.80f, 0.85f, 0.75f);
         tmp.overflowMode  = TextOverflowModes.Overflow;
+        // Prevent the label from blocking raycasts — only the root hit area should
+        tmp.raycastTarget = false;
 
-        // ── Button ───────────────────────────────────────────────────────
+        // ── Button on the root (transparent hit area) ─────────────────────
         var btn    = go.AddComponent<Button>();
         var colors = btn.colors;
-        colors.normalColor      = img.color;
-        colors.highlightedColor = Color.Lerp(img.color, Color.white, 0.4f);
-        colors.pressedColor     = Color.Lerp(img.color, Color.black, 0.3f);
+        colors.normalColor      = Color.white;
+        colors.highlightedColor = Color.white;
+        colors.pressedColor     = Color.white;
         btn.colors              = colors;
-        btn.targetGraphic       = img;
+        btn.targetGraphic       = hitImg;   // drives colour tint on the invisible area
 
         var captured = system;
         btn.onClick.AddListener(() => OnSystemNodeClicked(captured));
@@ -285,19 +355,180 @@ public class GalaxyViewController : MonoBehaviour
     {
         if (_shipFlying) return;
 
-        // Already at this system — open it immediately
+        // Already at this system — open it immediately (no info popup needed)
         if (_shipCurrentSystem != null && system.Id == _shipCurrentSystem.Id)
         {
             OnSystemSelected?.Invoke(system);
             return;
         }
 
-        float fromGX = _shipCurrentSystem?.GalaxyX ?? system.GalaxyX;
-        float fromGY = _shipCurrentSystem?.GalaxyY ?? system.GalaxyY;
+        ShowSystemInfo(system);
+    }
+
+    private void OnTravelButtonClicked()
+    {
+        if (_pendingTravelTarget == null || _shipFlying) return;
+
+        HideSystemInfo();
+
+        var target = _pendingTravelTarget;
+        _pendingTravelTarget = null;
+
+        float fromGX = _shipCurrentSystem?.GalaxyX ?? target.GalaxyX;
+        float fromGY = _shipCurrentSystem?.GalaxyY ?? target.GalaxyY;
 
         if (_flyCoroutine != null) StopCoroutine(_flyCoroutine);
         _flyCoroutine = StartCoroutine(
-            FlyShipToCoroutine(system, fromGX, fromGY, system.GalaxyX, system.GalaxyY));
+            FlyShipToCoroutine(target, fromGX, fromGY, target.GalaxyX, target.GalaxyY));
+    }
+
+    // ── System info popup ─────────────────────────────────────────────────
+
+    private void ShowSystemInfo(StarSystem system)
+    {
+        _pendingTravelTarget = system;
+
+        if (systemInfoNameText != null)
+            systemInfoNameText.text = system.Name;
+
+        // Subtitle: star type + danger level
+        if (systemInfoSubtitleText != null)
+        {
+            string starTypeName = system.StarType switch
+            {
+                StarType.YellowDwarf => "Yellow Dwarf",
+                StarType.RedDwarf    => "Red Dwarf",
+                StarType.BlueGiant   => "Blue Giant",
+                _                    => "Unknown Star"
+            };
+            string dangerStr = system.DangerLevel switch
+            {
+                1 => "Safe",
+                2 => "Low Risk",
+                3 => "Moderate",
+                4 => "Dangerous",
+                _ => "Perilous"
+            };
+            systemInfoSubtitleText.text = $"{starTypeName}  ·  Danger: {dangerStr}";
+        }
+
+        // Distance in light years
+        if (systemInfoDistanceText != null && _shipCurrentSystem != null)
+        {
+            float distanceLY = CalculateDistanceLY(_shipCurrentSystem, system);
+            systemInfoDistanceText.text = FormatLightYears(distanceLY);
+        }
+        else if (systemInfoDistanceText != null)
+        {
+            systemInfoDistanceText.text = "Distance unknown";
+        }
+
+        // POI summary from database
+        if (systemInfoPOIText != null)
+            systemInfoPOIText.text = BuildPOISummary(system);
+
+        // Show via CanvasGroup (Shift buttons stay active, animators stay bound)
+        if (_infoPanelCG != null)
+        {
+            _infoPanelCG.alpha          = 1f;
+            _infoPanelCG.blocksRaycasts = true;
+            _infoPanelCG.interactable   = true;
+        }
+
+        // Snap travel button's Shift animator to rest state now that the panel
+        // has been active since Start() — playables are already bound.
+        if (systemInfoTravelButton != null)
+        {
+            var anim = systemInfoTravelButton.GetComponent<Animator>();
+            if (anim != null && anim.runtimeAnimatorController != null)
+            {
+                anim.Play("Normal", 0, 1.0f);
+                anim.Update(0f);
+            }
+        }
+        if (systemInfoCloseButton != null)
+        {
+            var anim = systemInfoCloseButton.GetComponent<Animator>();
+            if (anim != null && anim.runtimeAnimatorController != null)
+            {
+                anim.Play("Normal", 0, 1.0f);
+                anim.Update(0f);
+            }
+        }
+    }
+
+    private void HideSystemInfo()
+    {
+        if (_infoPanelCG != null)
+        {
+            _infoPanelCG.alpha          = 0f;
+            _infoPanelCG.blocksRaycasts = false;
+            _infoPanelCG.interactable   = false;
+        }
+    }
+
+    // ── Distance helpers ──────────────────────────────────────────────────
+
+    // Known distances from Sol displayed verbatim (scaled to produce "k" formatting).
+    private static readonly System.Collections.Generic.Dictionary<string, float> KnownSolDistancesLY
+        = new System.Collections.Generic.Dictionary<string, float>
+    {
+        { "Alpha Centauri", StarSystemGenerator.AlphaDistanceLY },
+        { "Barnard's Star",  StarSystemGenerator.BarnardsDistanceLY },
+    };
+
+    private static float CalculateDistanceLY(StarSystem from, StarSystem to)
+    {
+        if (from.Name == "Sol" && KnownSolDistancesLY.TryGetValue(to.Name,   out float d)) return d;
+        if (to.Name   == "Sol" && KnownSolDistancesLY.TryGetValue(from.Name, out float d2)) return d2;
+
+        float dx = to.GalaxyX - from.GalaxyX;
+        float dy = to.GalaxyY - from.GalaxyY;
+
+        // The galaxy is landscape — left/right is the dominant distance axis.
+        // Weighting y by 0.15 prevents vertical displacement from making a
+        // right-side system appear farther than a left-side one.
+        return Mathf.Sqrt(dx * dx + dy * dy * 0.15f) * LightYearsPerUnit;
+    }
+
+    private static string FormatLightYears(float ly)
+    {
+        if (ly < 10f)
+            return $"{ly:F1} ly away";
+        if (ly < 1_000f)
+            return $"{Mathf.RoundToInt(ly)} ly away";
+        if (ly < 10_000f)
+            return $"{ly / 1_000f:F2}k ly away";
+        return $"{Mathf.RoundToInt(ly / 1_000f)}k ly away";
+    }
+
+    private static string BuildPOISummary(StarSystem system)
+    {
+        var gm = GameManager.Instance;
+        if (gm?.Database == null) return "No data available";
+
+        var pois = gm.Database.POIs.Query()
+                     .Where(p => p.StarSystemId == system.Id)
+                     .ToList();
+
+        if (pois.Count == 0) return "Unexplored — no data available";
+
+        int planets   = pois.Count(p => p.POIType == Constants.POI.Types.Planet);
+        int stations  = pois.Count(p => p.POIType == Constants.POI.Types.SpaceStation);
+        int derelicts = pois.Count(p =>
+            p.POIType == Constants.POI.Types.DerelictShip ||
+            p.POIType == Constants.POI.Types.DerelictStation);
+        int asteroids = pois.Count(p => p.POIType == Constants.POI.Types.AsteroidField);
+        int anomalies = pois.Count(p => p.POIType == Constants.POI.Types.Anomaly);
+
+        var parts = new System.Collections.Generic.List<string>();
+        if (planets   > 0) parts.Add($"{planets} planet{(planets   == 1 ? "" : "s")}");
+        if (stations  > 0) parts.Add($"{stations} station{(stations  == 1 ? "" : "s")}");
+        if (asteroids > 0) parts.Add($"{asteroids} asteroid field{(asteroids == 1 ? "" : "s")}");
+        if (derelicts > 0) parts.Add($"{derelicts} derelict{(derelicts == 1 ? "" : "s")}");
+        if (anomalies > 0) parts.Add($"{anomalies} anomal{(anomalies  == 1 ? "y" : "ies")}");
+
+        return parts.Count > 0 ? string.Join("  ·  ", parts) : "Unexplored";
     }
 
     private IEnumerator FlyShipToCoroutine(
@@ -307,9 +538,9 @@ public class GalaxyViewController : MonoBehaviour
     {
         _shipFlying = true;
 
-        // Convert normalised galaxy coords to canvas pixels for angle + duration
+        // Calculate angle so the ship can rotate before/during warp-up
         Canvas.ForceUpdateCanvases();
-        var cRect    = systemNodesContainer.rect;
+        var cRect      = systemNodesContainer.rect;
         float screenDX = (toGX - fromGX) * cRect.width;
         float screenDY = (toGY - fromGY) * cRect.height;
         float distance = Mathf.Sqrt(screenDX * screenDX + screenDY * screenDY);
@@ -322,34 +553,95 @@ public class GalaxyViewController : MonoBehaviour
             yield break;
         }
 
-        float duration = Mathf.Clamp(distance / 280f, 0.5f, 4f);
-
         // Sprite nose faces left (−X) → add 180° to standard Atan2 result
         float targetAngleDeg = Mathf.Atan2(screenDY, screenDX) * Mathf.Rad2Deg + 180f;
         float startAngleDeg  = _shipRT != null ? _shipRT.localEulerAngles.z : 0f;
         float deltaAngle     = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
 
+        // ── Phase 1: warp-up ─────────────────────────────────────────────
+        // Play sound; ship turns and accelerates (ease-in²) over the clip's
+        // duration, covering warpFraction of the total journey.  By the time
+        // the sound ends the ship is at full cruise speed.
+        const float warpFraction = 0.25f;   // fraction of distance covered during warp-up
+        float warpDuration = (sfxSource != null && warpSoundClip != null)
+                             ? warpSoundClip.length : 0f;
+
+        if (sfxSource != null && warpSoundClip != null)
+            sfxSource.PlayOneShot(warpSoundClip);
+
         float elapsed = 0f;
-        while (elapsed < duration)
+        while (elapsed < warpDuration)
         {
             elapsed += Time.deltaTime;
-            float t    = Mathf.Clamp01(elapsed / duration);
-            float posT = t * t * (3f - 2f * t);   // smooth-step ease in/out
-
-            float curGX = Mathf.Lerp(fromGX, toGX, posT);
-            float curGY = Mathf.Lerp(fromGY, toGY, posT);
+            float t    = Mathf.Clamp01(elapsed / warpDuration);
+            float posT = t * t;                     // ease-in quadratic → starts slow, builds speed
 
             if (_shipRT != null)
             {
-                _shipRT.anchorMin        = new Vector2(curGX, curGY);
-                _shipRT.anchorMax        = new Vector2(curGX, curGY);
+                float curGX = Mathf.Lerp(fromGX, toGX, posT * warpFraction);
+                float curGY = Mathf.Lerp(fromGY, toGY, posT * warpFraction);
+                _shipRT.anchorMin = new Vector2(curGX, curGY);
+                _shipRT.anchorMax = new Vector2(curGX, curGY);
 
-                float rotT               = Mathf.Clamp01(t / 0.25f);
-                _shipRT.localEulerAngles = new Vector3(0f, 0f,
-                    startAngleDeg + rotT * deltaAngle);
+                // Rotate to face destination in the first 30% of the warp phase
+                float rotT = Mathf.Clamp01(t / 0.3f);
+                _shipRT.localEulerAngles = new Vector3(0f, 0f, startAngleDeg + rotT * deltaAngle);
             }
 
             yield return null;
+        }
+
+        // ── Phase 2: cruise ──────────────────────────────────────────────
+        // Speed at end of ease-in² is 2·warpFraction/warpDuration (fraction/sec).
+        // Cruise the remaining distance at that constant speed.
+        // If there was no sound, fall back to the original smooth-step flight.
+        float remainingFraction = 1f - warpFraction;
+
+        if (warpDuration > 0f)
+        {
+            float fullSpeed     = 2f * warpFraction / warpDuration;  // fraction per second
+            float cruiseDuration = remainingFraction / fullSpeed;
+
+            elapsed = 0f;
+            while (elapsed < cruiseDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t       = Mathf.Clamp01(elapsed / cruiseDuration);
+                float fraction = warpFraction + t * remainingFraction;
+
+                if (_shipRT != null)
+                {
+                    float curGX = Mathf.Lerp(fromGX, toGX, fraction);
+                    float curGY = Mathf.Lerp(fromGY, toGY, fraction);
+                    _shipRT.anchorMin = new Vector2(curGX, curGY);
+                    _shipRT.anchorMax = new Vector2(curGX, curGY);
+                }
+
+                yield return null;
+            }
+        }
+        else
+        {
+            // No sound clip — original smooth-step behaviour
+            float duration = Mathf.Clamp(distance / 280f, 0.5f, 4f);
+            elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t    = Mathf.Clamp01(elapsed / duration);
+                float posT = t * t * (3f - 2f * t);
+
+                if (_shipRT != null)
+                {
+                    _shipRT.anchorMin        = new Vector2(Mathf.Lerp(fromGX, toGX, posT),
+                                                           Mathf.Lerp(fromGY, toGY, posT));
+                    _shipRT.anchorMax        = _shipRT.anchorMin;
+                    float rotT               = Mathf.Clamp01(t / 0.25f);
+                    _shipRT.localEulerAngles = new Vector3(0f, 0f, startAngleDeg + rotT * deltaAngle);
+                }
+
+                yield return null;
+            }
         }
 
         // Snap to destination
