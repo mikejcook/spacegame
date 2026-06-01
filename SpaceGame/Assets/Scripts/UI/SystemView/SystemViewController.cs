@@ -751,6 +751,63 @@ public class SystemViewController : MonoBehaviour
         if (crewViewPanel   != null) crewViewPanel.SetActive(false);
         if (systemNameText  != null) systemNameText.text = "Ship";
         if (shipViewPanel   != null) shipViewPanel.SetActive(true);
+        RefreshShipView();
+    }
+
+    /// <summary>
+    /// Updates every equipment slot in the ShipView to reflect the current
+    /// installed items.  Called each time the Ship tab is opened so the display
+    /// stays in sync with any equipment changes since the last visit.
+    /// </summary>
+    private void RefreshShipView()
+    {
+        if (shipViewPanel == null) return;
+
+        var gm   = GameManager.Instance;
+        var ship = gm?.PlayerShip;
+
+        // Build a slot-name → EquipmentItem lookup by reading the ship's slot
+        // dictionary and fetching each non-empty item from the database once.
+        Dictionary<string, EquipmentItem> installedBySlot = null;
+        if (ship != null && gm.Database != null)
+        {
+            installedBySlot = new Dictionary<string, EquipmentItem>();
+            foreach (var kvp in ship.EquipmentSlots)
+            {
+                if (kvp.Value <= 0) continue;   // 0 = empty
+                try
+                {
+                    var item = gm.Database.Equipment.Get(kvp.Value);
+                    if (item != null)
+                        installedBySlot[kvp.Key] = item;
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[SystemViewController] Could not load equipment id {kvp.Value}: {e.Message}");
+                }
+            }
+        }
+
+        // Walk every EquipmentSlotUI in the ShipView and refresh it.
+        // The slot GameObject name is "Slot_<DisplayNameNoSpaces>"; match it
+        // back to a slot display-name key via the IconNames dictionary.
+        var slots = shipViewPanel.GetComponentsInChildren<EquipmentSlotUI>(includeInactive: true);
+        foreach (var slot in slots)
+        {
+            EquipmentItem item = null;
+            if (installedBySlot != null)
+            {
+                foreach (var kvp in Constants.Ship.EquipmentSlots.IconNames)
+                {
+                    if (slot.gameObject.name == "Slot_" + kvp.Key.Replace(" ", ""))
+                    {
+                        installedBySlot.TryGetValue(kvp.Key, out item);
+                        break;
+                    }
+                }
+            }
+            slot.Refresh(item);
+        }
     }
 
     private void ShowCrewView()

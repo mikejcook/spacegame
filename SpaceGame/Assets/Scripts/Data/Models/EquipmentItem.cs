@@ -27,11 +27,12 @@ public enum WeaponType
 
 public enum EquipmentTier
 {
-    Basic    = 1,
-    Standard = 2,
-    Advanced = 3,
-    Military = 4,
-    Prototype = 5
+    MkI   = 1,
+    MkII  = 2,
+    MkIII = 3,
+    MkIV  = 4,
+    MkV   = 5,
+    MkVI  = 6
 }
 
 // ---------------------------------------------------------------------------

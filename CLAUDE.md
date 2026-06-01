@@ -790,6 +790,25 @@ Key things to know:
 - On-device builds are unaffected — the `#if UNITY_EDITOR` guard means players
   never lose their saves.
 
+## Ship equipment types
+
+The ten canonical equipment slots are defined in `Constants.Ship.EquipmentSlots`. Each slot's string value matches the display name used in the ShipView UI.
+
+| Constant | Display name | Column |
+|---|---|---|
+| `Reactor` | Reactor | Left |
+| `FtlDrive` | FTL Drive | Left |
+| `Engines` | Engines | Left |
+| `Shields` | Shields | Left |
+| `Armor` | Armor | Left |
+| `BeamWeapons` | Beam Weapons | Right |
+| `Torpedoes` | Torpedoes | Right |
+| `Scanner` | Scanner | Right |
+| `CargoHold` | Cargo Hold | Right |
+| `CrewQuarters` | Crew Quarters | Right |
+
+The ShipView places five slots in each column (left = power/defense, right = offense/utility). The `BuildComponentSlot` name in `GameSceneSetup` is derived by stripping spaces from the display name (e.g. `Slot_BeamWeapons`).
+
 ## Files to know
 
 - `Assets/Scripts/Editor/MainMenuSceneSetup.cs` — generates the entire MainMenu

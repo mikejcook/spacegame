@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using UnityEngine;
+
 /// <summary>
 /// Central repository for all game-wide constants.
 /// Avoids magic strings and numbers scattered throughout the codebase.
@@ -69,16 +72,52 @@ public static class Constants
     {
         public static class EquipmentSlots
         {
-            public const string Engine      = "Engine";
-            public const string Shield      = "Shield";
-            public const string Reactor     = "Reactor";
-            public const string Sensors     = "Sensors";
-            public const string WeaponPort1 = "WeaponPort1";
-            public const string WeaponPort2 = "WeaponPort2";
-            public const string WeaponPort3 = "WeaponPort3";
-            public const string WeaponPort4 = "WeaponPort4";
-            public const string CargoHold   = "CargoHold";
+            public const string Reactor      = "Reactor";
+            public const string FtlDrive     = "FTL Drive";
+            public const string Engines      = "Engines";
+            public const string Shields      = "Shields";
+            public const string Armor        = "Armor";
+            public const string BeamWeapons  = "Beam Weapons";
+            public const string Torpedoes    = "Torpedoes";
+            public const string Scanner      = "Scanner";
+            public const string CargoHold    = "Cargo Hold";
+            public const string CrewQuarters = "Crew Quarters";
+
+            /// <summary>
+            /// Maps each slot display name to the corresponding icon filename
+            /// (without extension) under Assets/Art/UI/EquipmentIcons/.
+            /// </summary>
+            public static readonly Dictionary<string, string> IconNames =
+                new Dictionary<string, string>
+                {
+                    [Reactor]      = "Reactor",
+                    [FtlDrive]     = "FtlDrive",
+                    [Engines]      = "Engines",
+                    [Shields]      = "Shields",
+                    [Armor]        = "Armor",
+                    [BeamWeapons]  = "BeamWeapons",
+                    [Torpedoes]    = "Torpedoes",
+                    [Scanner]      = "Scanner",
+                    [CargoHold]    = "CargoHold",
+                    [CrewQuarters] = "CrewQuarters",
+                };
         }
+
+        // ── Tier colours (Warcraft-style quality tiers) ──────────────────────
+
+        public static readonly Color EmptySlotBorderColor =
+            new Color(0.45f, 0.45f, 0.45f, 1.00f);
+
+        public static Color TierColor(EquipmentTier tier) => tier switch
+        {
+            EquipmentTier.MkI   => new Color(0.60f, 0.60f, 0.60f), // Grey
+            EquipmentTier.MkII  => new Color(1.00f, 1.00f, 1.00f), // White
+            EquipmentTier.MkIII => new Color(0.12f, 0.74f, 0.12f), // Green
+            EquipmentTier.MkIV  => new Color(0.00f, 0.44f, 0.87f), // Blue
+            EquipmentTier.MkV   => new Color(0.64f, 0.21f, 0.93f), // Purple
+            EquipmentTier.MkVI  => new Color(1.00f, 0.50f, 0.00f), // Orange
+            _                   => Color.grey
+        };
     }
 
     public static class Dice

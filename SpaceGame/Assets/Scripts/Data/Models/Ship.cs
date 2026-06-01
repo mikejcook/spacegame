@@ -149,13 +149,16 @@ public class Ship
         // Pre-populate slot keys so the UI can render all slots even if empty
         ship.EquipmentSlots = new Dictionary<string, int>
         {
-            [Constants.Ship.EquipmentSlots.Engine]      = 0,
-            [Constants.Ship.EquipmentSlots.Shield]      = 0,
-            [Constants.Ship.EquipmentSlots.Reactor]     = 0,
-            [Constants.Ship.EquipmentSlots.Sensors]     = 0,
-            [Constants.Ship.EquipmentSlots.WeaponPort1] = 0,
-            [Constants.Ship.EquipmentSlots.WeaponPort2] = 0,
-            [Constants.Ship.EquipmentSlots.CargoHold]   = 0,
+            [Constants.Ship.EquipmentSlots.Reactor]      = 0,
+            [Constants.Ship.EquipmentSlots.FtlDrive]     = 0,
+            [Constants.Ship.EquipmentSlots.Engines]      = 0,
+            [Constants.Ship.EquipmentSlots.Shields]      = 0,
+            [Constants.Ship.EquipmentSlots.Armor]        = 0,
+            [Constants.Ship.EquipmentSlots.BeamWeapons]  = 0,
+            [Constants.Ship.EquipmentSlots.Torpedoes]    = 0,
+            [Constants.Ship.EquipmentSlots.Scanner]      = 0,
+            [Constants.Ship.EquipmentSlots.CargoHold]    = 0,
+            [Constants.Ship.EquipmentSlots.CrewQuarters] = 0,
         };
 
         return ship;

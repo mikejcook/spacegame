@@ -413,7 +413,7 @@ public static class GameSceneSetup
         // ── Layer 2: component columns — left (power/defense) and right (offense/utility)
         // Each column is 150 canvas-units wide, full height of the view.
         BuildComponentColumn(shipView.transform, "LeftComponentColumn", isLeft: true,
-            "Reactor", "FTL Drive", "Engines", "Shields", "Armor", "Point Defense");
+            "Reactor", "FTL Drive", "Engines", "Shields", "Armor");
         BuildComponentColumn(shipView.transform, "RightComponentColumn", isLeft: false,
             "Beam Weapons", "Torpedoes", "Scanner", "Cargo Hold", "Crew Quarters");
 
@@ -462,57 +462,92 @@ public static class GameSceneSetup
             BuildComponentSlot(col.transform, componentName);
     }
 
-    // ── Single component slot — dark panel button with icon and label ────────
+    // ── Single component slot — icon fills the slot with a thin tier border ──
+    //
+    // Hierarchy:
+    //   Slot_<Name>   dark bg + Button
+    //     TierBorder  Image — filled with tier color (the visible border ring)
+    //       SlotInner Image — dark bg, inset 3 px → makes the 3 px border visible
+    //         ComponentIcon Image — icon sprite, centered, aspect-preserved
+    //
+    // AspectRatioFitter on ComponentIcon keeps the art undistorted regardless of
+    // the slot's height (which varies because the column VLG force-expands height).
 
     static void BuildComponentSlot(Transform parent, string componentName)
     {
         var slotName = "Slot_" + componentName.Replace(" ", "");
 
-        // Slot background — a dark panel that the Button tints on hover/press.
+        // Slot root — dark background, acts as the Button target.
         var slotGO = MakeImage(parent, slotName, new Color(0.06f, 0.10f, 0.18f, 0.90f));
         var btn    = slotGO.AddComponent<Button>();
         var colors = btn.colors;
         colors.normalColor      = Color.white;
-        colors.highlightedColor = new Color(0.55f, 0.90f, 1.00f, 1f);   // cyan highlight
+        colors.highlightedColor = new Color(0.55f, 0.90f, 1.00f, 1f);
         colors.pressedColor     = new Color(0.30f, 0.55f, 0.70f, 1f);
         btn.colors        = colors;
         btn.targetGraphic = slotGO.GetComponent<Image>();
 
-        // Inner VLG stacks icon + label.
-        // childControlHeight = true so the VLG uses LayoutElement.preferredHeight —
-        // without it the VLG falls back to each child's RectTransform sizeDelta
-        // (Unity default 100×100), which overflows the slot and hides the label.
-        // childForceExpandHeight = false keeps children at their preferred sizes
-        // rather than stretching them to fill leftover slot space.
-        var inner    = MakeUIGO("SlotContent", slotGO.transform);
-        Stretch(inner);
-        var innerVLG = inner.AddComponent<VerticalLayoutGroup>();
-        innerVLG.padding                = new RectOffset(4, 4, 8, 8);
-        innerVLG.spacing                = 4f;
-        innerVLG.childControlWidth      = true;
-        innerVLG.childControlHeight     = true;
-        innerVLG.childForceExpandWidth  = true;
-        innerVLG.childForceExpandHeight = false;
-        innerVLG.childAlignment         = TextAnchor.MiddleCenter;
+        var slotUI   = slotGO.AddComponent<EquipmentSlotUI>();
+        var slotUISo = new SerializedObject(slotUI);
 
-        // Icon — cyan placeholder square; swap for a real sprite at runtime.
-        var iconGO = MakeImage(inner.transform, "ComponentIcon", AccentCyan);
-        var iconLE = iconGO.AddComponent<LayoutElement>();
-        iconLE.preferredHeight = 40f;
-        iconLE.flexibleHeight  = 0f;
-        // AspectRatioFitter keeps it square regardless of column width.
-        var arf        = iconGO.AddComponent<AspectRatioFitter>();
-        arf.aspectMode  = AspectRatioFitter.AspectMode.HeightControlsWidth;
-        arf.aspectRatio = 1f;
+        // TierBorder — fills the slot; its color becomes the visible border ring.
+        var borderGO = MakeImage(slotGO.transform, "TierBorder",
+                                 Constants.Ship.EmptySlotBorderColor);
+        var borderRT = borderGO.GetComponent<RectTransform>();
+        borderRT.anchorMin = Vector2.zero;
+        borderRT.anchorMax = Vector2.one;
+        borderRT.offsetMin = Vector2.zero;
+        borderRT.offsetMax = Vector2.zero;
 
-        // Label — tall enough for two-word names to wrap onto a second line.
-        var labelGO  = MakeTMP(inner.transform, "ComponentLabel", componentName, 20, TextWhite);
-        var labelLE  = labelGO.AddComponent<LayoutElement>();
-        labelLE.preferredHeight = 36f;
-        labelLE.flexibleHeight  = 0f;
-        var labelTMP = labelGO.GetComponent<TextMeshProUGUI>();
-        labelTMP.alignment         = TextAlignmentOptions.Center;
-        labelTMP.enableWordWrapping = true;
+        // SlotInner — dark bg inset 3 px; the 3 px gap around it IS the border.
+        var innerGO = MakeImage(borderGO.transform, "SlotInner",
+                                new Color(0.06f, 0.10f, 0.18f, 1f));
+        var innerRT = innerGO.GetComponent<RectTransform>();
+        innerRT.anchorMin = Vector2.zero;
+        innerRT.anchorMax = Vector2.one;
+        innerRT.offsetMin = new Vector2(3f, 3f);
+        innerRT.offsetMax = new Vector2(-3f, -3f);
+
+        // ComponentIcon — centered inside SlotInner; AspectRatioFitter prevents
+        // distortion when the slot is taller than it is wide.
+        //
+        // IMPORTANT: ARF only works correctly when anchorMin == anchorMax (a point
+        // anchor, not a stretch anchor).  With stretch anchors the effective rect
+        // size = parent size + sizeDelta, so ARF's sizeDelta writes are overridden
+        // by the layout system and the image distorts.  Use a centred point anchor
+        // and let ARF set sizeDelta to whatever fits the parent.
+        var iconGO  = MakeImage(innerGO.transform, "ComponentIcon", Color.white);
+        var iconRT  = iconGO.GetComponent<RectTransform>();
+        iconRT.anchorMin        = new Vector2(0.5f, 0.5f);
+        iconRT.anchorMax        = new Vector2(0.5f, 0.5f);
+        iconRT.pivot            = new Vector2(0.5f, 0.5f);
+        iconRT.anchoredPosition = Vector2.zero;
+        iconRT.sizeDelta        = Vector2.zero;
+        var iconImg = iconGO.GetComponent<Image>();
+        var iconArf = iconGO.AddComponent<AspectRatioFitter>();
+        iconArf.aspectMode  = AspectRatioFitter.AspectMode.FitInParent;
+        iconArf.aspectRatio = 1f;   // overwritten below when actual sprite is loaded
+
+        // Load the icon sprite from the EquipmentIcons art folder.
+        Sprite iconSprite = null;
+        if (Constants.Ship.EquipmentSlots.IconNames.TryGetValue(componentName, out var iconFile))
+        {
+            var iconPath = $"Assets/Art/UI/EquipmentIcons/{iconFile}.png";
+            iconSprite   = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
+            if (iconSprite == null)
+                Debug.LogWarning($"[GameSceneSetup] Icon not found at {iconPath}");
+        }
+
+        iconImg.sprite = iconSprite;
+        iconImg.color  = Color.white;
+        if (iconSprite != null)
+            iconArf.aspectRatio = iconSprite.rect.width / iconSprite.rect.height;
+
+        // Wire EquipmentSlotUI references.
+        slotUISo.FindProperty("iconImage").objectReferenceValue   = iconImg;
+        slotUISo.FindProperty("borderImage").objectReferenceValue = borderGO.GetComponent<Image>();
+        slotUISo.FindProperty("defaultIcon").objectReferenceValue = iconSprite;
+        slotUISo.ApplyModifiedProperties();
     }
 
     // ── Crew view — full body area, starts hidden ────────────────────────────
