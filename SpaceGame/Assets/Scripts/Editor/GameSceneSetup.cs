@@ -361,14 +361,13 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
-        // Pivot (1,0) = bottom-right corner of each button, so anchoredPosition is the
-        // inset from the card's bottom-right corner — no centre-offset math required.
+        // SET COURSE — anchored bottom-left
         {
             var rt       = travelGO.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot     = new Vector2(1f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
             rt.sizeDelta = new Vector2(200f, 52f);
-            rt.anchoredPosition = new Vector2(-204f, 16f);   // left of close button
+            rt.anchoredPosition = new Vector2(16f, 16f);
         }
 
         GameObject closeGO;
@@ -387,12 +386,13 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
+        // CLOSE — anchored bottom-right
         {
             var rt       = closeGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
             rt.pivot     = new Vector2(1f, 0f);
             rt.sizeDelta = new Vector2(180f, 52f);
-            rt.anchoredPosition = new Vector2(-16f, 16f);    // 16 px from right/bottom edges
+            rt.anchoredPosition = new Vector2(-16f, 16f);
         }
 
         return panel;
@@ -405,6 +405,9 @@ public static class GameSceneSetup
         var shipView = MakeUIGO("ShipView", parent);
         PlaceRect(shipView, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(0f, 0f));
         shipView.SetActive(false);
+
+        // ShipViewController drives slot refresh and the equipment detail popup.
+        shipView.AddComponent<ShipViewController>();
 
         // ── Layer 1: solid dark blue background ───────────────────────────
         var bgGO = MakeImage(shipView.transform, "ShipViewBackground", new Color(0.03f, 0.05f, 0.12f, 1f));
@@ -426,8 +429,273 @@ public static class GameSceneSetup
         var img = shipImg.GetComponent<Image>();
         img.preserveAspect = true;
         img.type           = Image.Type.Simple;
+        // Decorative only — must not intercept taps. The sprite's rect (0.09–0.91)
+        // is drawn on top of the component columns, and once a column shifts inward
+        // (safe-area insets on device) the sprite's rect covers the inner half of
+        // each slot. With raycastTarget=true that swallowed taps on the inner edge,
+        // so only the outer side of each slot opened the popup. preserveAspect
+        // letterboxing does NOT shrink the raycast rect — the full rect still hits.
+        img.raycastTarget  = false;
+
+        // ── Layer 4: equipment detail overlay (CanvasGroup-controlled popup) ─
+        BuildEquipmentDetailOverlay(shipView.transform);
 
         return shipView;
+    }
+
+    // ── Equipment detail popup ────────────────────────────────────────────────
+    //
+    // Hierarchy:
+    //   EquipmentDetailOverlay   (CanvasGroup scrim — shown/hidden via alpha)
+    //     DetailCard             (dark panel, 680 × 480, centred)
+    //       TopBar               (4 px cyan accent)
+    //       IconArea             (96 × 96 icon, top-left of card body)
+    //       DetailName           (bold TMP, right of icon)
+    //       Rule                 (2 px divider)
+    //       DetailDesc           (multi-line TMP)
+    //       CostLabel            ("UPGRADE COST")
+    //       CostValue            (placeholder resource text)
+    //       UpgradeButton        (Shift MainButton)
+    //       CloseButton          (Shift MainButton)
+    //
+    // Per CLAUDE.md: uses CanvasGroup not SetActive because Shift MainButtons are
+    // inside and their Animators must remain continuously bound.
+
+    static GameObject BuildEquipmentDetailOverlay(Transform parent)
+    {
+        // Scrim — fills entire ShipView, blocks clicks when popup is open.
+        var overlay = MakeImage(parent, "EquipmentDetailOverlay", Scrim);
+        Stretch(overlay);
+        var cg = overlay.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+
+        // ── Card ──────────────────────────────────────────────────────────
+        const float CardW = 680f;
+        const float CardH = 480f;
+        var card = MakeImage(overlay.transform, "DetailCard", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f),
+                  v2(0f, 0f), v2(CardW, CardH));
+
+        // Cyan accent bar at top of card
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -4f), v2(0f, 4f));
+
+        // ── Icon (96 × 96), anchored top-left ─────────────────────────────
+        const float IconSize = 96f;
+        const float Pad      = 20f;
+        var iconGO  = MakeImage(card.transform, "DetailIcon", Color.white);
+        PlaceRect(iconGO, anchor(0f, 1f), anchor(0f, 1f),
+                  v2(Pad + IconSize * 0.5f, -(Pad + IconSize * 0.5f + 4f)),
+                  v2(IconSize, IconSize));
+        var iconImg = iconGO.GetComponent<Image>();
+        iconImg.type           = Image.Type.Simple;
+        iconImg.preserveAspect = true;
+
+        // ── Equipment name, right of icon ─────────────────────────────────
+        var nameGO  = MakeTMP(card.transform, "DetailName", "—", 32, TextWhite);
+        PlaceRect(nameGO, anchor(0f, 1f), anchor(1f, 1f),
+                  v2((Pad + IconSize + 12f + (CardW - Pad - IconSize - 12f) * 0.5f), -(Pad + IconSize * 0.5f + 4f)),
+                  v2(CardW - Pad - IconSize - 12f - Pad, IconSize));
+        var nameTMP = nameGO.GetComponent<TextMeshProUGUI>();
+        nameTMP.alignment = TextAlignmentOptions.Left;
+        nameTMP.fontStyle = FontStyles.Bold;
+        nameTMP.enableWordWrapping = false;
+
+        // ── Current tier label, right-aligned on the name row ─────────────
+        var tierGO = MakeTMP(card.transform, "DetailTier", "Mk I", 24, AccentCyan);
+        PlaceRect(tierGO, anchor(0f, 1f), anchor(1f, 1f),
+                  v2(0f, -(Pad + IconSize * 0.5f + 4f)),
+                  v2(-Pad * 2f, 36f));
+        var tierTMP = tierGO.GetComponent<TextMeshProUGUI>();
+        tierTMP.alignment = TextAlignmentOptions.Right;
+        tierTMP.fontStyle = FontStyles.Bold;
+        tierTMP.enableWordWrapping = false;
+
+        // ── Horizontal rule ───────────────────────────────────────────────
+        float ruleY = -(Pad + IconSize + 4f + 12f);
+        var rule = MakeImage(card.transform, "Rule", DividerColor);
+        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f),
+                  v2(0f, ruleY), v2(-Pad * 2f, 2f));
+
+        // ── Description text ──────────────────────────────────────────────
+        float descTop = ruleY - 14f;
+        const float DescH = 120f;
+        var descGO  = MakeTMP(card.transform, "DetailDesc",
+                              "No description available.", 22, TextSubtle);
+        PlaceRect(descGO, anchor(0f, 1f), anchor(1f, 1f),
+                  v2(0f, descTop - DescH * 0.5f), v2(-Pad * 2f, DescH));
+        var descTMP = descGO.GetComponent<TextMeshProUGUI>();
+        descTMP.alignment          = TextAlignmentOptions.TopLeft;
+        descTMP.enableWordWrapping = true;
+
+        // ── Upgrade cost ──────────────────────────────────────────────────
+        float costY = descTop - DescH - 18f;
+        var costLabel = MakeTMP(card.transform, "CostLabel", "UPGRADE COST", 20, TextSubtle);
+        PlaceRect(costLabel, anchor(0f, 1f), anchor(0f, 1f),
+                  v2(Pad + 120f, costY - 14f), v2(240f, 28f));
+        costLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Right;
+
+        var costValue = MakeTMP(card.transform, "CostValue", "[RESOURCES TBD]", 20, AccentCyan);
+        PlaceRect(costValue, anchor(0f, 1f), anchor(1f, 1f),
+                  v2(0f, costY - 14f), v2(-Pad * 2f - 260f, 28f));
+        var costTMP = costValue.GetComponent<TextMeshProUGUI>();
+        costTMP.alignment = TextAlignmentOptions.Right;
+
+        // ── Buttons — bottom of card ──────────────────────────────────────
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+
+        // UPGRADE — anchored bottom-left
+        GameObject upgradeGO;
+        if (btnPrefab != null)
+        {
+            upgradeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            upgradeGO.name = "UpgradeButton";
+            var mb = upgradeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "UPGRADE";
+        }
+        else
+        {
+            upgradeGO = MakeImage(card.transform, "UpgradeButton", BtnNormal);
+            upgradeGO.AddComponent<Button>();
+            var lbl = MakeTMP(upgradeGO.transform, "Label", "UPGRADE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = upgradeGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(200f, 52f);
+            rt.anchoredPosition = new Vector2(Pad, Pad);
+        }
+
+        // CLOSE — anchored bottom-right
+        GameObject closeGO;
+        if (btnPrefab != null)
+        {
+            closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            closeGO.name = "DetailCloseButton";
+            var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CLOSE";
+        }
+        else
+        {
+            closeGO = MakeImage(card.transform, "DetailCloseButton", BtnNormal);
+            closeGO.AddComponent<Button>();
+            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = closeGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(180f, 52f);
+            rt.anchoredPosition = new Vector2(-Pad, Pad);
+        }
+
+        // ── Upgrade confirmation dialog (sits above the detail card) ──────
+        BuildUpgradeConfirmOverlay(overlay.transform);
+
+        return overlay;
+    }
+
+    // ── Upgrade confirmation dialog ───────────────────────────────────────────
+    //
+    // Hierarchy:
+    //   ConfirmOverlay        (CanvasGroup scrim — shown/hidden via alpha)
+    //     ConfirmCard         (dark panel, centred)
+    //       TopBar            (cyan accent)
+    //       ConfirmText       (multi-line prompt)
+    //       ConfirmYesButton  (Shift MainButton — "YES")
+    //       ConfirmNoButton   (Shift MainButton — "NO")
+    //
+    // CanvasGroup (not SetActive) because it contains Shift MainButtons whose
+    // Animators must stay continuously bound (see CLAUDE.md).
+
+    static GameObject BuildUpgradeConfirmOverlay(Transform parent)
+    {
+        var confirm = MakeImage(parent, "ConfirmOverlay", Scrim);
+        Stretch(confirm);
+        var cg = confirm.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+
+        const float CardW = 620f;
+        const float CardH = 300f;
+        const float Pad   = 24f;
+        var card = MakeImage(confirm.transform, "ConfirmCard", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f),
+                  v2(0f, 0f), v2(CardW, CardH));
+
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -4f), v2(0f, 4f));
+
+        // Prompt text — fills the top portion of the card.
+        var textGO = MakeTMP(card.transform, "ConfirmText",
+                             "Do you wish to upgrade this component?", 26, TextWhite);
+        PlaceRect(textGO, anchor(0f, 1f), anchor(1f, 1f),
+                  v2(0f, -(Pad + 80f)), v2(-Pad * 2f, 140f));
+        var textTMP = textGO.GetComponent<TextMeshProUGUI>();
+        textTMP.alignment          = TextAlignmentOptions.Center;
+        textTMP.enableWordWrapping = true;
+
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+
+        // YES — bottom-left
+        GameObject yesGO;
+        if (btnPrefab != null)
+        {
+            yesGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            yesGO.name = "ConfirmYesButton";
+            var mb = yesGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "YES";
+        }
+        else
+        {
+            yesGO = MakeImage(card.transform, "ConfirmYesButton", BtnNormal);
+            yesGO.AddComponent<Button>();
+            var lbl = MakeTMP(yesGO.transform, "Label", "YES", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = yesGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(200f, 52f);
+            rt.anchoredPosition = new Vector2(Pad, Pad);
+        }
+
+        // NO — bottom-right
+        GameObject noGO;
+        if (btnPrefab != null)
+        {
+            noGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            noGO.name = "ConfirmNoButton";
+            var mb = noGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "NO";
+        }
+        else
+        {
+            noGO = MakeImage(card.transform, "ConfirmNoButton", BtnNormal);
+            noGO.AddComponent<Button>();
+            var lbl = MakeTMP(noGO.transform, "Label", "NO", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = noGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(200f, 52f);
+            rt.anchoredPosition = new Vector2(-Pad, Pad);
+        }
+
+        return confirm;
     }
 
     // ── Component column — stacks icon+label buttons vertically ─────────────
@@ -493,8 +761,12 @@ public static class GameSceneSetup
         var slotUISo = new SerializedObject(slotUI);
 
         // TierBorder — fills the slot; its color becomes the visible border ring.
+        // raycastTarget=false: the Button on slotGO handles the full rect hit,
+        // so child images must not intercept raycasts (they cause the "only the
+        // icon sprite area responds" problem with preserveAspect letterboxing).
         var borderGO = MakeImage(slotGO.transform, "TierBorder",
                                  Constants.Ship.EmptySlotBorderColor);
+        borderGO.GetComponent<Image>().raycastTarget = false;
         var borderRT = borderGO.GetComponent<RectTransform>();
         borderRT.anchorMin = Vector2.zero;
         borderRT.anchorMax = Vector2.one;
@@ -504,6 +776,7 @@ public static class GameSceneSetup
         // SlotInner — dark bg inset 3 px; the 3 px gap around it IS the border.
         var innerGO = MakeImage(borderGO.transform, "SlotInner",
                                 new Color(0.06f, 0.10f, 0.18f, 1f));
+        innerGO.GetComponent<Image>().raycastTarget = false;
         var innerRT = innerGO.GetComponent<RectTransform>();
         innerRT.anchorMin = Vector2.zero;
         innerRT.anchorMax = Vector2.one;
@@ -523,6 +796,7 @@ public static class GameSceneSetup
         var iconImg = iconGO.GetComponent<Image>();
         iconImg.type           = Image.Type.Simple;
         iconImg.preserveAspect = true;
+        iconImg.raycastTarget  = false;  // slotGO's Image handles the full-rect hit
 
         // Load the icon sprite from the EquipmentIcons art folder.
         Sprite iconSprite = null;
@@ -556,6 +830,21 @@ public static class GameSceneSetup
         slotUISo.FindProperty("borderImage").objectReferenceValue = borderGO.GetComponent<Image>();
         slotUISo.FindProperty("defaultIcon").objectReferenceValue = iconSprite;
         slotUISo.ApplyModifiedProperties();
+
+        // ClickBlocker — transparent Image on top of everything, fills the full
+        // slot rect, raycastTarget=true.  SlotClickForwarder is added directly
+        // here with a wired reference to slotUI, so there is no parent-traversal
+        // at all — the click goes: ClickBlocker Image hit → SlotClickForwarder.
+        // OnPointerClick → ShipViewController.OnSlotClicked.  Direct, no ambiguity.
+        var blocker    = MakeImage(slotGO.transform, "ClickBlocker", new Color(0f, 0f, 0f, 0.004f));
+        var blockerImg = blocker.GetComponent<Image>();
+        blockerImg.raycastTarget = true;
+        Stretch(blocker);
+
+        var forwarder   = blocker.AddComponent<SlotClickForwarder>();
+        var forwarderSo = new SerializedObject(forwarder);
+        forwarderSo.FindProperty("target").objectReferenceValue = slotUI;
+        forwarderSo.ApplyModifiedProperties();
     }
 
     // ── Crew view — full body area, starts hidden ────────────────────────────
@@ -1002,10 +1291,67 @@ public static class GameSceneSetup
         if (shipViewGO != null)
         {
             so.FindProperty("shipViewPanel").objectReferenceValue = shipViewGO;
+
             // Apply the ship sprite directly to the ShipImage component.
-            // shipViewImage / shipComponentButtons are not serialised on SystemViewController.
             var shipImgComp = shipViewGO.transform.Find("ShipImage")?.GetComponent<Image>();
             if (shipImgComp != null && shipSprite != null) shipImgComp.sprite = shipSprite;
+
+            // Wire ShipViewController — lives on the ShipView root.
+            var svc    = shipViewGO.GetComponent<ShipViewController>();
+            var svcObj = svc != null ? new SerializedObject(svc) : null;
+            if (svcObj != null)
+            {
+                so.FindProperty("shipViewController").objectReferenceValue = svc;
+
+                var overlay   = shipViewGO.transform.Find("EquipmentDetailOverlay");
+                var card      = overlay?.Find("DetailCard");
+                if (overlay != null)
+                    svcObj.FindProperty("detailOverlayGroup").objectReferenceValue =
+                        overlay.GetComponent<CanvasGroup>();
+                if (card != null)
+                {
+                    svcObj.FindProperty("detailIconImage").objectReferenceValue =
+                        Find<Image>(card.gameObject, "DetailIcon");
+                    svcObj.FindProperty("detailNameText").objectReferenceValue =
+                        Find<TMP_Text>(card.gameObject, "DetailName");
+                    svcObj.FindProperty("detailTierText").objectReferenceValue =
+                        Find<TMP_Text>(card.gameObject, "DetailTier");
+                    svcObj.FindProperty("detailDescText").objectReferenceValue =
+                        Find<TMP_Text>(card.gameObject, "DetailDesc");
+                    svcObj.FindProperty("detailCostText").objectReferenceValue =
+                        Find<TMP_Text>(card.gameObject, "CostValue");
+
+                    var upgradeTf      = card.Find("UpgradeButton");
+                    svcObj.FindProperty("upgradeButton").objectReferenceValue =
+                        upgradeTf?.GetComponentInChildren<Button>(true);
+                    var detailCloseTf  = card.Find("DetailCloseButton");
+                    svcObj.FindProperty("closeButton").objectReferenceValue =
+                        detailCloseTf?.GetComponentInChildren<Button>(true);
+                }
+                else Debug.LogWarning("[GameSceneSetup] DetailCard not found under EquipmentDetailOverlay.");
+
+                // ── Upgrade confirmation dialog ──────────────────────────
+                var confirmOverlay = overlay?.Find("ConfirmOverlay");
+                var confirmCard    = confirmOverlay?.Find("ConfirmCard");
+                if (confirmOverlay != null)
+                    svcObj.FindProperty("confirmOverlayGroup").objectReferenceValue =
+                        confirmOverlay.GetComponent<CanvasGroup>();
+                if (confirmCard != null)
+                {
+                    svcObj.FindProperty("confirmText").objectReferenceValue =
+                        Find<TMP_Text>(confirmCard.gameObject, "ConfirmText");
+                    var yesTf = confirmCard.Find("ConfirmYesButton");
+                    svcObj.FindProperty("confirmYesButton").objectReferenceValue =
+                        yesTf?.GetComponentInChildren<Button>(true);
+                    var noTf = confirmCard.Find("ConfirmNoButton");
+                    svcObj.FindProperty("confirmNoButton").objectReferenceValue =
+                        noTf?.GetComponentInChildren<Button>(true);
+                }
+                else Debug.LogWarning("[GameSceneSetup] ConfirmCard not found under EquipmentDetailOverlay.");
+
+                svcObj.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning("[GameSceneSetup] ShipViewController not found on ShipView.");
         }
         else Debug.LogWarning("[GameSceneSetup] ShipView not found under Body.");
 

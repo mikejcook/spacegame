@@ -126,6 +126,27 @@ public class GameManager : MonoBehaviour
             Database.Ships.Insert(PlayerShip);
             CurrentSave.ShipId    = PlayerShip.Id;
 
+            // Equip every slot with a starting Mk I component so the ship begins
+            // fully outfitted (rather than showing "Not installed" slots).
+            foreach (var slotName in new List<string>(PlayerShip.EquipmentSlots.Keys))
+            {
+                var startingItem = new EquipmentItem
+                {
+                    SaveGameId        = CurrentSave.Id,
+                    Name              = $"{slotName} {Constants.Ship.TierLabel(EquipmentTier.MkI)}",
+                    Description       = Constants.Ship.EquipmentSlots.Descriptions.TryGetValue(slotName, out var d) ? d : "",
+                    EquipmentType     = Constants.Ship.SlotEquipmentType(slotName),
+                    Tier              = EquipmentTier.MkI,
+                    IsInstalled       = true,
+                    InstalledOnShipId = PlayerShip.Id,
+                    InstalledInSlot   = slotName,
+                    Condition         = 100,
+                };
+                Database.Equipment.Insert(startingItem);          // assigns Id
+                PlayerShip.InstallEquipment(slotName, startingItem.Id);
+            }
+            Database.Ships.Update(PlayerShip);
+
             // ── Sol — starting system ─────────────────────────────────────
             var sol        = StarSystemGenerator.GenerateSolSystem();
             sol.SaveGameId = CurrentSave.Id;

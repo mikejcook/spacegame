@@ -84,6 +84,25 @@ public static class Constants
             public const string CrewQuarters = "Crew Quarters";
 
             /// <summary>
+            /// Placeholder descriptions shown in the equipment detail popup.
+            /// Keyed by slot display name.  Replace with authored content later.
+            /// </summary>
+            public static readonly Dictionary<string, string> Descriptions =
+                new Dictionary<string, string>
+                {
+                    [Reactor]      = "Generates power for all ship systems. Higher-rated reactors unlock more advanced equipment and improve overall energy efficiency.",
+                    [FtlDrive]     = "Enables faster-than-light travel between star systems. Upgraded drives reduce jump charge time and extend maximum jump range.",
+                    [Engines]      = "Sublight propulsion system. Better engines improve combat maneuverability, evasion rating, and in-system transit speed.",
+                    [Shields]      = "Energy-based defense layer that absorbs incoming damage before the hull is hit. Regenerates automatically between encounters.",
+                    [Armor]        = "Reinforced hull plating that provides passive damage reduction on every hit and increases the ship's maximum hull points.",
+                    [BeamWeapons]  = "Directed-energy weapons that deal sustained damage. Highly effective against shields. Efficiency scales with reactor output.",
+                    [Torpedoes]    = "Guided projectile weapons with high burst damage. Effective against armored targets. Limited magazine requires resupply at stations.",
+                    [Scanner]      = "Long-range sensor array for threat detection and resource mapping. Improves combat awareness and anomaly discovery range.",
+                    [CargoHold]    = "Expanded storage modules for trade goods, salvage, and raw materials. Each upgrade tier increases maximum cargo capacity.",
+                    [CrewQuarters] = "Improved crew accommodations that increase maximum crew capacity and provide morale bonuses that boost all crew skill checks.",
+                };
+
+            /// <summary>
             /// Maps each slot display name to the corresponding icon filename
             /// (without extension) under Assets/Art/UI/EquipmentIcons/.
             /// </summary>
@@ -118,6 +137,48 @@ public static class Constants
             EquipmentTier.MkVI  => new Color(1.00f, 0.50f, 0.00f), // Orange
             _                   => Color.grey
         };
+
+        // ── Upgrade economy / tier helpers ───────────────────────────────────
+
+        /// <summary>Highest tier a component can be upgraded to.</summary>
+        public const EquipmentTier MaxTier = EquipmentTier.MkVI;
+
+        /// <summary>
+        /// Maps each equipment slot display name to the EquipmentType used when a
+        /// fresh component is created for that slot (first upgrade of an empty slot).
+        /// </summary>
+        public static EquipmentType SlotEquipmentType(string slotDisplayName) => slotDisplayName switch
+        {
+            EquipmentSlots.Reactor      => EquipmentType.Reactor,
+            EquipmentSlots.FtlDrive     => EquipmentType.Engine,
+            EquipmentSlots.Engines      => EquipmentType.Engine,
+            EquipmentSlots.Shields      => EquipmentType.Shield,
+            EquipmentSlots.Armor        => EquipmentType.Shield,
+            EquipmentSlots.BeamWeapons  => EquipmentType.Weapon,
+            EquipmentSlots.Torpedoes    => EquipmentType.Weapon,
+            EquipmentSlots.Scanner      => EquipmentType.Sensor,
+            EquipmentSlots.CargoHold    => EquipmentType.CargoExpansion,
+            EquipmentSlots.CrewQuarters => EquipmentType.Special,
+            _                           => EquipmentType.Special
+        };
+
+        /// <summary>Human-readable tier label, e.g. EquipmentTier.MkII -> "Mk II".</summary>
+        public static string TierLabel(EquipmentTier tier) => tier switch
+        {
+            EquipmentTier.MkI   => "Mk I",
+            EquipmentTier.MkII  => "Mk II",
+            EquipmentTier.MkIII => "Mk III",
+            EquipmentTier.MkIV  => "Mk IV",
+            EquipmentTier.MkV   => "Mk V",
+            EquipmentTier.MkVI  => "Mk VI",
+            _                   => tier.ToString()
+        };
+
+        /// <summary>
+        /// Placeholder resource cost to upgrade a component up to <paramref name="targetTier"/>.
+        /// Resource depletion is not yet implemented — this only drives the prompt text.
+        /// </summary>
+        public static int UpgradeCost(EquipmentTier targetTier) => (int)targetTier * 100;
     }
 
     public static class Dice
