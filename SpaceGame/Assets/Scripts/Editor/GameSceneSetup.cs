@@ -468,10 +468,12 @@ public static class GameSceneSetup
     //   Slot_<Name>   dark bg + Button
     //     TierBorder  Image — filled with tier color (the visible border ring)
     //       SlotInner Image — dark bg, inset 3 px → makes the 3 px border visible
-    //         ComponentIcon Image — icon sprite, centered, aspect-preserved
+    //         ComponentIcon Image — icon sprite, stretch-fill, preserveAspect=true
     //
-    // AspectRatioFitter on ComponentIcon keeps the art undistorted regardless of
-    // the slot's height (which varies because the column VLG force-expands height).
+    // preserveAspect on a Simple Image is the reliable way to avoid distortion in
+    // a non-square rect. AspectRatioFitter was tried but fails here: FitInParent
+    // with a point anchor queries the parent rect before layout resolves, producing
+    // a zero or wrong size. preserveAspect has no such timing dependency.
 
     static void BuildComponentSlot(Transform parent, string componentName)
     {
@@ -508,40 +510,46 @@ public static class GameSceneSetup
         innerRT.offsetMin = new Vector2(3f, 3f);
         innerRT.offsetMax = new Vector2(-3f, -3f);
 
-        // ComponentIcon — centered inside SlotInner; AspectRatioFitter prevents
-        // distortion when the slot is taller than it is wide.
-        //
-        // IMPORTANT: ARF only works correctly when anchorMin == anchorMax (a point
-        // anchor, not a stretch anchor).  With stretch anchors the effective rect
-        // size = parent size + sizeDelta, so ARF's sizeDelta writes are overridden
-        // by the layout system and the image distorts.  Use a centred point anchor
-        // and let ARF set sizeDelta to whatever fits the parent.
+        // ComponentIcon — stretch-fills SlotInner.  preserveAspect=true on a
+        // Simple Image is the most reliable way to prevent distortion: Unity
+        // scales the sprite uniformly to fit the rect and centres it, with no
+        // dependency on layout timing (unlike AspectRatioFitter).
         var iconGO  = MakeImage(innerGO.transform, "ComponentIcon", Color.white);
         var iconRT  = iconGO.GetComponent<RectTransform>();
-        iconRT.anchorMin        = new Vector2(0.5f, 0.5f);
-        iconRT.anchorMax        = new Vector2(0.5f, 0.5f);
-        iconRT.pivot            = new Vector2(0.5f, 0.5f);
-        iconRT.anchoredPosition = Vector2.zero;
-        iconRT.sizeDelta        = Vector2.zero;
+        iconRT.anchorMin = Vector2.zero;
+        iconRT.anchorMax = Vector2.one;
+        iconRT.offsetMin = Vector2.zero;
+        iconRT.offsetMax = Vector2.zero;
         var iconImg = iconGO.GetComponent<Image>();
-        var iconArf = iconGO.AddComponent<AspectRatioFitter>();
-        iconArf.aspectMode  = AspectRatioFitter.AspectMode.FitInParent;
-        iconArf.aspectRatio = 1f;   // overwritten below when actual sprite is loaded
+        iconImg.type           = Image.Type.Simple;
+        iconImg.preserveAspect = true;
 
         // Load the icon sprite from the EquipmentIcons art folder.
         Sprite iconSprite = null;
         if (Constants.Ship.EquipmentSlots.IconNames.TryGetValue(componentName, out var iconFile))
         {
             var iconPath = $"Assets/Art/UI/EquipmentIcons/{iconFile}.png";
-            iconSprite   = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
+
+            // Ensure the texture is imported as a Single sprite.
+            // The icons ship with spriteMode=Multiple (sliced), so LoadAssetAtPath
+            // returns only the first sub-sprite (a quarter of the image).
+            // Reimporting as Single gives us one sprite covering the full texture.
+            var importer = AssetImporter.GetAtPath(iconPath) as TextureImporter;
+            if (importer != null && importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(iconPath, ImportAssetOptions.ForceUpdate);
+                Debug.Log($"[GameSceneSetup] Re-imported {iconFile}.png as Single sprite.");
+            }
+
+            iconSprite = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
             if (iconSprite == null)
                 Debug.LogWarning($"[GameSceneSetup] Icon not found at {iconPath}");
         }
 
         iconImg.sprite = iconSprite;
         iconImg.color  = Color.white;
-        if (iconSprite != null)
-            iconArf.aspectRatio = iconSprite.rect.width / iconSprite.rect.height;
 
         // Wire EquipmentSlotUI references.
         slotUISo.FindProperty("iconImage").objectReferenceValue   = iconImg;

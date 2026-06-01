@@ -432,6 +432,12 @@ showing placeholder text rather than throwing a NullReferenceException.
 
 ## Unity UI gotchas that bit us (none are Unity 6 specific)
 
+### `AspectRatioFitter` with `FitInParent` fails before layout resolves
+
+`AspectRatioFitter` in `FitInParent` mode queries the parent's rect to compute the child's `sizeDelta`. When the parent's rect is not yet resolved (e.g. at scene build time, or on the first frame before the layout system runs), it reads zero or a stale size and produces a wrong or zero-sized child.
+
+**Rule:** for images inside layout-driven rects (VLG/HLG slots, panels whose size is computed at runtime), use `Image.preserveAspect = true` with `Image.Type.Simple` instead of `AspectRatioFitter`. `preserveAspect` is evaluated per-frame during rendering with no dependency on layout timing, and reliably keeps the art undistorted regardless of rect size. `AspectRatioFitter` is only reliable when used on top-level rects whose size is known at Awake (e.g. a full-screen overlay canvas).
+
 ### `ChildForceExpandHeight` overrides explicit `LayoutElement.flexibleHeight = 0`
 
 `UnityEngine.UI.LayoutGroup.GetChildSizes` does
