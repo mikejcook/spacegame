@@ -1223,7 +1223,7 @@ public static class GameSceneSetup
         var scannerHint = MakeTMP(card.transform, "POIDetailScannerText",
                                   "Upgrade Scanner to reveal more information", 22,
                                   new Color(1.00f, 0.80f, 0.20f, 1f)); // amber
-        PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 70f), v2(-60f, 32f));
+        PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 100f), v2(-60f, 32f));
         var scannerHintTMP = scannerHint.GetComponent<TextMeshProUGUI>();
         scannerHintTMP.alignment          = TextAlignmentOptions.Center;
         scannerHintTMP.enableWordWrapping = false;

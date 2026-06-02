@@ -988,16 +988,16 @@ public class SystemViewController : MonoBehaviour
         if (poiDetailNameText != null)
             poiDetailNameText.text = poi.Name;
 
-        // ── Type line (always visible) ────────────────────────────────────
-        if (poiDetailTypeText != null)
-            poiDetailTypeText.text = POITypeLabel(poi);
-
         // ── Description body — gated by scanner level ─────────────────────
         //   Level 0/1 : limited detail
         //   Level 2+  : description, atmosphere/habitability, danger
         //   Level 3+  : resources
         if (poiDetailDescText != null)
         {
+            poiDetailTypeText.text = sensorLevel >= 2 ? POITypeLabel(poi) : "";
+            poiDetailTypeText.enabled = sensorLevel >= 2;
+            poiDetailDescText.text = string.Empty;
+
             if (sensorLevel >= 2)
             {
                 var sb = new System.Text.StringBuilder();
@@ -1006,6 +1006,10 @@ public class SystemViewController : MonoBehaviour
                     sb.AppendLine(poi.Description);
 
                 poiDetailDescText.text = sb.ToString().TrimEnd();
+            }
+            else
+            {
+
             }
         }
 
