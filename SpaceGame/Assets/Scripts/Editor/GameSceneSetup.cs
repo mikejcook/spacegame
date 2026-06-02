@@ -316,8 +316,8 @@ public static class GameSceneSetup
         nameText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         nameText.GetComponent<TextMeshProUGUI>().overflowMode = TextOverflowModes.Ellipsis;
 
-        // Subtitle — star type + danger level
-        var subtitleText = MakeTMP(card.transform, "SystemInfoSubtitleText", "Yellow Dwarf  ·  Danger: Safe", 26, TextSubtle);
+        // Subtitle — star type
+        var subtitleText = MakeTMP(card.transform, "SystemInfoSubtitleText", "Yellow Dwarf", 26, TextSubtle);
         PlaceRect(subtitleText, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -122f), v2(-48f, 36f));
         subtitleText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
         subtitleText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
@@ -1255,6 +1255,18 @@ public static class GameSceneSetup
         var stationSprite = AssetDatabase.LoadAssetAtPath<Sprite>(StationSpritePath);
         if (stationSprite != null) Set(so, "stationSprite", stationSprite);
         else Debug.LogWarning("[GameSceneSetup] SpaceStation.png not found at " + StationSpritePath);
+
+        const string DerelictPrefabPath =
+            "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +
+            "2DScifiFrigateCorsairTopViewMasterPrefab.prefab";
+        var derelictPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DerelictPrefabPath);
+        if (derelictPrefab != null)
+        {
+            var dsr = derelictPrefab.GetComponentInChildren<SpriteRenderer>(false);
+            if (dsr != null) Set(so, "derelictSprite", dsr.sprite);
+            else Debug.LogWarning("[GameSceneSetup] No active SpriteRenderer in FrigateCorsair prefab.");
+        }
+        else Debug.LogWarning("[GameSceneSetup] FrigateCorsair prefab not found at " + DerelictPrefabPath);
 
         const string ShipPrefabPath =
             "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +

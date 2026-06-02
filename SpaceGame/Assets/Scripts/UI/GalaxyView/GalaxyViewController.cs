@@ -420,7 +420,7 @@ public class GalaxyViewController : MonoBehaviour
         if (systemInfoNameText != null)
             systemInfoNameText.text = system.Name;
 
-        // Subtitle: star type + danger level
+        // Subtitle: star type (always shown)
         if (systemInfoSubtitleText != null)
         {
             string starTypeName = system.StarType switch
@@ -430,15 +430,7 @@ public class GalaxyViewController : MonoBehaviour
                 StarType.BlueGiant   => "Blue Giant",
                 _                    => "Unknown Star"
             };
-            string dangerStr = system.DangerLevel switch
-            {
-                1 => "Safe",
-                2 => "Low Risk",
-                3 => "Moderate",
-                4 => "Dangerous",
-                _ => "Perilous"
-            };
-            systemInfoSubtitleText.text = $"{starTypeName}  ·  Danger: {dangerStr}";
+            systemInfoSubtitleText.text = starTypeName;
         }
 
         // FTL gate — check before showing distance or enabling travel
@@ -467,9 +459,9 @@ public class GalaxyViewController : MonoBehaviour
             }
         }
 
-        // POI summary from database
+        // POI summary from database (gated by scanner level)
         if (systemInfoPOIText != null)
-            systemInfoPOIText.text = BuildPOISummary(system);
+            systemInfoPOIText.text = BuildPOISummary(system, GetPlayerScannerTier());
 
         // Show via CanvasGroup (Shift buttons stay active, animators stay bound)
         if (_infoPanelCG != null)
@@ -547,8 +539,33 @@ public class GalaxyViewController : MonoBehaviour
         return $"{Mathf.RoundToInt(ly / 1_000f)}k ly away";
     }
 
-    private static string BuildPOISummary(StarSystem system)
+    /// Returns the tier (1–6) of the Scanner currently installed, or 0 if none.
+    private static int GetPlayerScannerTier()
     {
+        var gm = GameManager.Instance;
+        if (gm?.PlayerShip == null || gm.Database == null) return 0;
+
+        var slots = gm.PlayerShip.EquipmentSlots;
+        if (!slots.TryGetValue(Constants.Ship.EquipmentSlots.Scanner, out int itemId) || itemId <= 0)
+            return 0;
+
+        var item = gm.Database.Equipment.Query()
+                              .Where(e => e.Id == itemId)
+                              .FirstOrDefault();
+        return item != null ? (int)item.Tier : 0;
+    }
+
+    /// <summary>
+    /// Builds the POI summary line gated by scanner level:
+    ///   Level 1 → star type only (no POI line)
+    ///   Level 2 → planets
+    ///   Level 3+ → planets + stations, asteroids, derelicts, anomalies
+    /// </summary>
+    private static string BuildPOISummary(StarSystem system, int scannerTier)
+    {
+        // Level 1 (or no scanner): can't resolve individual bodies
+        if (scannerTier <= 1) return "Scanner range insufficient for body detection";
+
         var gm = GameManager.Instance;
         if (gm?.Database == null) return "No data available";
 
@@ -556,24 +573,31 @@ public class GalaxyViewController : MonoBehaviour
                      .Where(p => p.StarSystemId == system.Id)
                      .ToList();
 
-        if (pois.Count == 0) return "Unexplored — no data available";
-
-        int planets   = pois.Count(p => p.POIType == Constants.POI.Types.Planet);
-        int stations  = pois.Count(p => p.POIType == Constants.POI.Types.SpaceStation);
-        int derelicts = pois.Count(p =>
-            p.POIType == Constants.POI.Types.DerelictShip ||
-            p.POIType == Constants.POI.Types.DerelictStation);
-        int asteroids = pois.Count(p => p.POIType == Constants.POI.Types.AsteroidField);
-        int anomalies = pois.Count(p => p.POIType == Constants.POI.Types.Anomaly);
+        if (pois.Count == 0) return "No bodies detected";
 
         var parts = new System.Collections.Generic.List<string>();
-        if (planets   > 0) parts.Add($"{planets} planet{(planets   == 1 ? "" : "s")}");
-        if (stations  > 0) parts.Add($"{stations} station{(stations  == 1 ? "" : "s")}");
-        if (asteroids > 0) parts.Add($"{asteroids} asteroid field{(asteroids == 1 ? "" : "s")}");
-        if (derelicts > 0) parts.Add($"{derelicts} derelict{(derelicts == 1 ? "" : "s")}");
-        if (anomalies > 0) parts.Add($"{anomalies} anomal{(anomalies  == 1 ? "y" : "ies")}");
 
-        return parts.Count > 0 ? string.Join("  ·  ", parts) : "Unexplored";
+        // Level 2+: planets
+        int planets = pois.Count(p => p.POIType == Constants.POI.Types.Planet);
+        if (planets > 0) parts.Add($"{planets} planet{(planets == 1 ? "" : "s")}");
+
+        // Level 3+: other POIs
+        if (scannerTier >= 3)
+        {
+            int stations  = pois.Count(p => p.POIType == Constants.POI.Types.SpaceStation);
+            int derelicts = pois.Count(p =>
+                p.POIType == Constants.POI.Types.DerelictShip ||
+                p.POIType == Constants.POI.Types.DerelictStation);
+            int asteroids = pois.Count(p => p.POIType == Constants.POI.Types.AsteroidField);
+            int anomalies = pois.Count(p => p.POIType == Constants.POI.Types.Anomaly);
+
+            if (stations  > 0) parts.Add($"{stations} station{(stations  == 1 ? "" : "s")}");
+            if (asteroids > 0) parts.Add($"{asteroids} asteroid field{(asteroids == 1 ? "" : "s")}");
+            if (derelicts > 0) parts.Add($"{derelicts} derelict{(derelicts == 1 ? "" : "s")}");
+            if (anomalies > 0) parts.Add($"{anomalies} anomal{(anomalies  == 1 ? "y" : "ies")}");
+        }
+
+        return parts.Count > 0 ? string.Join("  ·  ", parts) : "No bodies detected";
     }
 
     private IEnumerator FlyShipToCoroutine(

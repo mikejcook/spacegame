@@ -68,6 +68,8 @@ public class SystemViewController : MonoBehaviour
     [Header("POI Sprites")]
     [Tooltip("Sprite used for Space Station POI nodes — wired by GameSceneSetup.")]
     [SerializeField] private Sprite stationSprite;
+    [Tooltip("Sprite used for Derelict Ship POI nodes — extracted from FrigateCorsair prefab by GameSceneSetup.")]
+    [SerializeField] private Sprite derelictSprite;
 
     [Header("Galaxy View")]
     [Tooltip("Root GalaxyView panel — toggled when the Galaxy nav button is pressed.")]
@@ -526,6 +528,17 @@ public class SystemViewController : MonoBehaviour
             img.color          = Color.white;
             img.preserveAspect = true;
             img.type           = Image.Type.Simple;
+        }
+        else if (poi.POIType == Constants.POI.Types.DerelictShip && derelictSprite != null)
+        {
+            img.sprite         = derelictSprite;
+            img.color          = new Color(0.82f, 0.82f, 0.90f, 1f); // light grey-blue: dead, no power
+            img.preserveAspect = true;
+            img.type           = Image.Type.Simple;
+
+            // Stable random tumble angle seeded from the POI's id so it's the same every visit
+            float tumbleAngle = ((poi.Id * 137.508f) % 360f);
+            rt.localEulerAngles = new Vector3(0f, 0f, tumbleAngle);
         }
         else
         {
