@@ -23,6 +23,12 @@ public class SystemMapZoomController : MonoBehaviour
     [Tooltip("How much each scroll-wheel tick zooms. Smaller = gentler.")]
     [SerializeField] private float scrollSensitivity = 0.12f;
 
+    [Tooltip("Multiplier on the horizontal pan clamp. 1 = edge of viewport; 2 = one full viewport width beyond centre.")]
+    [SerializeField] private float panBoundsX = 1.0f;
+
+    [Tooltip("Multiplier on the vertical pan clamp. Increase this to allow more up/down panning for large systems.")]
+    [SerializeField] private float panBoundsY = 2.0f;
+
     // ── Private state ─────────────────────────────────────────────────────────
 
     private RectTransform _rt;
@@ -237,8 +243,8 @@ public class SystemMapZoomController : MonoBehaviour
         // travel before the edge leaves the viewport is half that size.
         if (_rt.parent is RectTransform parentRT)
         {
-            float hw = parentRT.rect.width  * _zoom * 0.5f;
-            float hh = parentRT.rect.height * _zoom * 0.5f;
+            float hw = parentRT.rect.width  * _zoom * 0.5f * panBoundsX;
+            float hh = parentRT.rect.height * _zoom * 0.5f * panBoundsY;
             _offset.x = Mathf.Clamp(_offset.x, -hw, hw);
             _offset.y = Mathf.Clamp(_offset.y, -hh, hh);
         }
