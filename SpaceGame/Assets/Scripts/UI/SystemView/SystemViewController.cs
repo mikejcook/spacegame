@@ -417,6 +417,12 @@ public class SystemViewController : MonoBehaviour
                     Vector2 dir      = destPos.magnitude > 0.01f ? destPos.normalized : Vector2.up;
                     float   edgeDist = Mathf.Min(mapRect.width, mapRect.height) * 0.5f + 60f;
                     SpawnShip(-dir * edgeDist, null);
+
+                    // Point the ship toward the star (center of the map).
+                    // dir already points inward; the sprite faces left so +180° compensates.
+                    float angleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
+                    if (_shipRT != null)
+                        _shipRT.localEulerAngles = new Vector3(0f, 0f, angleDeg);
                 }
                 else
                 {
