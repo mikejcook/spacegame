@@ -52,7 +52,8 @@ using TMPro;
 ///           POIDetailTypeText
 ///           Rule              (Image, horizontal divider)
 ///           POIDetailDescText
-///           POIDetailCloseButton  (Shift MainButton — "CLOSE")
+///           POIDetailNavigateButton (Shift MainButton — "NAVIGATE")
+///           POIDetailCloseButton   (Shift MainButton — "CLOSE")
 ///
 ///   Notes: GalaxyView also contains SystemInfoPanel (CanvasGroup-toggled popup
 ///   shown when a star system node is tapped, before the ship travels).
@@ -1157,6 +1158,33 @@ public static class GameSceneSetup
         descTMP.overflowMode      = TextOverflowModes.ScrollRect;
 
         var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+
+        // NAVIGATE button — bottom-left
+        GameObject navigateGO;
+        if (btnPrefab != null)
+        {
+            navigateGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            navigateGO.name = "POIDetailNavigateButton";
+            var mb = navigateGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "NAVIGATE";
+        }
+        else
+        {
+            navigateGO = MakeImage(card.transform, "POIDetailNavigateButton", BtnNormal);
+            navigateGO.AddComponent<Button>();
+            var lbl = MakeTMP(navigateGO.transform, "Label", "NAVIGATE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = navigateGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(200f, 48f);
+            rt.anchoredPosition = new Vector2(20f, 12f);
+        }
+
+        // CLOSE button — bottom-right
         GameObject closeGO;
         if (btnPrefab != null)
         {
@@ -1209,8 +1237,10 @@ public static class GameSceneSetup
         Set(so, "poiDetailNameText", Find<TMP_Text>(poiDetail, "Card/POIDetailNameText"));
         Set(so, "poiDetailTypeText", Find<TMP_Text>(poiDetail, "Card/POIDetailTypeText"));
         Set(so, "poiDetailDescText", Find<TMP_Text>(poiDetail, "Card/POIDetailDescText"));
-        var closeTf = poiDetail.transform.Find("Card/POIDetailCloseButton");
-        Set(so, "poiDetailCloseButton", closeTf?.GetComponentInChildren<Button>(true));
+        var closeTf    = poiDetail.transform.Find("Card/POIDetailCloseButton");
+        Set(so, "poiDetailCloseButton",    closeTf?.GetComponentInChildren<Button>(true));
+        var navigateTf = poiDetail.transform.Find("Card/POIDetailNavigateButton");
+        Set(so, "poiDetailNavigateButton", navigateTf?.GetComponentInChildren<Button>(true));
 
         // Audio
         var svcAudioSrc   = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();

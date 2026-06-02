@@ -92,6 +92,7 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text   poiDetailTypeText;
     [SerializeField] private TMP_Text   poiDetailDescText;
     [SerializeField] private Button     poiDetailCloseButton;
+    [SerializeField] private Button     poiDetailNavigateButton;
 
     // -----------------------------------------------------------------------
     // Private state
@@ -102,6 +103,9 @@ public class SystemViewController : MonoBehaviour
     private readonly List<PointOfInterest> _sortedPois = new List<PointOfInterest>();
     private readonly List<GameObject>      _poiNodes   = new List<GameObject>();
     private readonly List<GameObject>      _orbitRings = new List<GameObject>();
+
+    // ── POI detail state ──────────────────────────────────────────────────────
+    private PointOfInterest _detailPoi; // POI currently shown in the detail panel
 
     // ── Ship state ────────────────────────────────────────────────────────────
     private GameObject      _shipNodeGO;
@@ -188,6 +192,16 @@ public class SystemViewController : MonoBehaviour
 
             if (poiDetailCloseButton.GetComponent<ShiftMainButtonPointerVisuals>() == null)
                 poiDetailCloseButton.gameObject.AddComponent<ShiftMainButtonPointerVisuals>();
+        }
+
+        if (poiDetailNavigateButton != null)
+        {
+            var anim = poiDetailNavigateButton.GetComponent<Animator>();
+            if (anim != null) anim.enabled = false;
+            poiDetailNavigateButton.transition = Selectable.Transition.None;
+            if (poiDetailNavigateButton.GetComponent<ShiftMainButtonPointerVisuals>() == null)
+                poiDetailNavigateButton.gameObject.AddComponent<ShiftMainButtonPointerVisuals>();
+            poiDetailNavigateButton.onClick.AddListener(OnNavigateClicked);
         }
 
         HidePOIDetail();
@@ -531,12 +545,14 @@ public class SystemViewController : MonoBehaviour
     private void OnPOIClicked(PointOfInterest poi)
     {
         if (_shipFlying) return;
+        ShowPOIDetail(poi);
+    }
 
-        if (poi == _shipCurrentPoi)
-        {
-            ShowPOIDetail(poi);
-            return;
-        }
+    private void OnNavigateClicked()
+    {
+        var poi = _detailPoi;
+        HidePOIDetail();
+        if (poi == null || _shipFlying || poi == _shipCurrentPoi) return;
 
         int targetIdx = _sortedPois.IndexOf(poi);
         if (targetIdx < 0 || _shipRT == null) return;
@@ -566,6 +582,7 @@ public class SystemViewController : MonoBehaviour
             _shipCurrentPoi = target;
             _shipFlying     = false;
             SetNavButtonsInteractable(true);
+            MarkVisited(target);
             ShowPOIDetail(target);
             yield break;
         }
@@ -649,6 +666,7 @@ public class SystemViewController : MonoBehaviour
         _flyCoroutine            = null;
 
         SetNavButtonsInteractable(true);
+        MarkVisited(target);
         ShowPOIDetail(target);
     }
 
@@ -794,15 +812,76 @@ public class SystemViewController : MonoBehaviour
     // change, so SetActive(false) → SetActive(true) leaves the visual
     // identical to before.
 
+    /// <summary>
+    /// Marks a POI as explored in the database the first time the ship arrives.
+    /// </summary>
+    private void MarkVisited(PointOfInterest poi)
+    {
+        if (poi == null || poi.IsExplored) return;
+        poi.IsExplored = true;
+        try { GameManager.Instance?.Database?.POIs.Update(poi); }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[SystemViewController] Failed to persist IsExplored for {poi.Name}: {e.Message}");
+        }
+    }
+
     private void ShowPOIDetail(PointOfInterest poi)
     {
         if (poiDetailPanel == null) return;
 
+        _detailPoi = poi;
+
+        // Previously visited POIs always show full info regardless of scanner level.
+        bool fullAccess = poi.IsExplored;
+        int  sensorLevel = fullAccess ? int.MaxValue : GetSensorLevel();
+
         if (poiDetailNameText) poiDetailNameText.text = poi.Name;
-        if (poiDetailTypeText) poiDetailTypeText.text = POITypeLabel(poi);
-        if (poiDetailDescText) poiDetailDescText.text = poi.Description ?? "";
+
+        // Type line — visible at sensor level 2+
+        if (poiDetailTypeText)
+        {
+            poiDetailTypeText.text    = sensorLevel >= 2 ? POITypeLabel(poi) : "";
+            poiDetailTypeText.enabled = sensorLevel >= 2;
+        }
+
+        // Description — visible at sensor level 3+
+        if (poiDetailDescText)
+        {
+            poiDetailDescText.text    = sensorLevel >= 3 ? (poi.Description ?? "") : "";
+            poiDetailDescText.enabled = sensorLevel >= 3;
+        }
+
+        // Navigate button hidden when ship is already at this POI
+        if (poiDetailNavigateButton != null)
+            poiDetailNavigateButton.gameObject.SetActive(poi != _shipCurrentPoi);
 
         poiDetailPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Returns the player's effective sensor level based on the installed Scanner.
+    ///   No scanner (or no ship data) → 1
+    ///   Mk I  → 1 (name only)
+    ///   Mk II → 2 (name + planet type)
+    /// </summary>
+    private int GetSensorLevel()
+    {
+        var gm   = GameManager.Instance;
+        var ship = gm?.PlayerShip;
+        if (ship == null) return 1;
+
+        if (ship.EquipmentSlots.TryGetValue(Constants.Ship.EquipmentSlots.Scanner, out int itemId) && itemId > 0)
+        {
+            try
+            {
+                var item = gm.Database?.Equipment.Get(itemId);
+                if (item != null) return (int)item.Tier; // MkI=1, MkII=2, etc.
+            }
+            catch { /* DB not ready */ }
+        }
+
+        return 1;
     }
 
     private void HidePOIDetail()

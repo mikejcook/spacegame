@@ -154,15 +154,17 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[GameManager] Sol inserted (Id={sol.Id}).");
 
             var solPOIs = StarSystemGenerator.GenerateSolPOIs(sol, CurrentSave.Id);
-            foreach (var poi in solPOIs) Database.POIs.Insert(poi);
-            Debug.Log($"[GameManager] {solPOIs.Count} Sol POIs inserted.");
+            foreach (var poi in solPOIs) { poi.IsExplored = true; Database.POIs.Insert(poi); }
+            Debug.Log($"[GameManager] {solPOIs.Count} Sol POIs inserted (all pre-explored).");
 
             CurrentSave.CurrentSystemId = sol.Id;
 
             // ── Sol cluster — Alpha Centauri & Barnard's Star ─────────────
+            // These are settled, well-known systems — mark all POIs explored at game start.
             InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id,
-                                  StarSystemGenerator.GenerateAlphaCentauriPOIs);
-            InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id);
+                                  StarSystemGenerator.GenerateAlphaCentauriPOIs, preExplored: true);
+            InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id,
+                                  preExplored: true);
 
             // ── Procedural systems: 6 FTL-tier clusters from CSV catalogue ──
             //
@@ -301,13 +303,18 @@ public class GameManager : MonoBehaviour
     }
 
     private void InsertSystemWithPOIs(StarSystem system, int saveGameId,
-        System.Func<StarSystem, int, List<PointOfInterest>> poiGenerator = null)
+        System.Func<StarSystem, int, List<PointOfInterest>> poiGenerator = null,
+        bool preExplored = false)
     {
         system.SaveGameId = saveGameId;
         Database.StarSystems.Insert(system);
         poiGenerator ??= StarSystemGenerator.GeneratePOIsForSystem;
         var pois = poiGenerator(system, saveGameId);
-        foreach (var poi in pois) Database.POIs.Insert(poi);
+        foreach (var poi in pois)
+        {
+            if (preExplored) poi.IsExplored = true;
+            Database.POIs.Insert(poi);
+        }
     }
 
     /// <summary>
