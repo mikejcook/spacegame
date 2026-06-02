@@ -303,7 +303,7 @@ public class SystemViewController : MonoBehaviour
 
     // ── POI nodes ────────────────────────────────────────────────────────────
 
-    private void SpawnPOINodes()
+    private void SpawnPOINodes(bool enteringNewSystem = false)
     {
         if (systemMapArea == null) return;
 
@@ -408,8 +408,20 @@ public class SystemViewController : MonoBehaviour
             int startIdx = _sortedPois.IndexOf(startPoi);
             if (startIdx >= 0)
             {
-                var startPos = _poiNodes[startIdx].GetComponent<RectTransform>().anchoredPosition;
-                SpawnShip(startPos, startPoi);
+                var destPos = _poiNodes[startIdx].GetComponent<RectTransform>().anchoredPosition;
+
+                if (enteringNewSystem)
+                {
+                    // Spawn just outside the visible map edge, opposite the first
+                    // destination POI, as if the ship just dropped out of warp.
+                    Vector2 dir      = destPos.magnitude > 0.01f ? destPos.normalized : Vector2.up;
+                    float   edgeDist = Mathf.Min(mapRect.width, mapRect.height) * 0.5f + 60f;
+                    SpawnShip(-dir * edgeDist, null);
+                }
+                else
+                {
+                    SpawnShip(destPos, startPoi);
+                }
             }
         }
     }
@@ -765,7 +777,7 @@ public class SystemViewController : MonoBehaviour
 
         RefreshHeader();
         RefreshStarVisual();
-        SpawnPOINodes();
+        SpawnPOINodes(enteringNewSystem: true);
 
         ShowSystemView();
     }
