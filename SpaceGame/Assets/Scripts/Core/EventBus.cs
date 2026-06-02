@@ -75,3 +75,9 @@ public class CreditsChangedEvent
     public int NewTotal { get; }
     public CreditsChangedEvent(int total) => NewTotal = total;
 }
+
+public class SalvageChangedEvent
+{
+    public int NewTotal { get; }
+    public SalvageChangedEvent(int total) => NewTotal = total;
+}

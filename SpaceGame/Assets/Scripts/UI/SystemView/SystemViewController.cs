@@ -47,6 +47,7 @@ public class SystemViewController : MonoBehaviour
 
     [Header("Header")]
     [SerializeField] private TMP_Text systemNameText;
+    [SerializeField] private TMP_Text salvageText;
 
     [Header("System Map")]
     [Tooltip("RectTransform of the map area. POI nodes are spawned as children here.")]
@@ -281,6 +282,14 @@ public class SystemViewController : MonoBehaviour
     {
         if (systemNameText)
             systemNameText.text = ToTitleCase(_currentSystem.Name);
+        RefreshSalvage();
+    }
+
+    public void RefreshSalvage()
+    {
+        if (salvageText == null) return;
+        var save = GameManager.Instance?.CurrentSave;
+        salvageText.text = save != null ? save.Salvage.ToString("N0") : "0";
     }
 
     // ── Star visual ──────────────────────────────────────────────────────────

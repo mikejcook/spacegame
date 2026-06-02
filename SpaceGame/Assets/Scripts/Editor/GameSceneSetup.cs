@@ -191,6 +191,67 @@ public static class GameSceneSetup
         sysName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         sysName.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
+        // Salvage widget — icon + count, right-aligned in the header
+        //   SalvageWidget  (HorizontalLayoutGroup, right-anchored)
+        //     SalvageIcon  (Image, 36×36)
+        //     SalvageText  (TMP_Text, "0")
+        var salvageWidget = MakeUIGO("SalvageWidget", header.transform);
+        {
+            var rt       = salvageWidget.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot     = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(220f, 50f);
+            rt.anchoredPosition = new Vector2(-16f, 0f);
+        }
+        var hlg = salvageWidget.AddComponent<HorizontalLayoutGroup>();
+        hlg.padding                = new RectOffset(0, 0, 0, 0);
+        hlg.spacing                = 8f;
+        hlg.childControlWidth      = false;
+        hlg.childControlHeight     = false;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+        hlg.childAlignment         = TextAnchor.MiddleRight;
+
+        // Icon
+        const string SalvageIconPath = "Assets/Art/UI/Other/Salvage.png";
+        var salvageIconGO = MakeImage(salvageWidget.transform, "SalvageIcon", Color.white);
+        {
+            var rt       = salvageIconGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(36f, 36f);
+        }
+        var salvageIconImg = salvageIconGO.GetComponent<Image>();
+        salvageIconImg.preserveAspect = true;
+
+        // Import Salvage.png as a Single sprite if needed
+        {
+            var importer = AssetImporter.GetAtPath(SalvageIconPath) as TextureImporter;
+            if (importer != null && importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(SalvageIconPath, ImportAssetOptions.ForceUpdate);
+                Debug.Log("[GameSceneSetup] Re-imported Salvage.png as Single sprite.");
+            }
+            var salvageSprite = AssetDatabase.LoadAssetAtPath<Sprite>(SalvageIconPath);
+            if (salvageSprite != null)
+                salvageIconImg.sprite = salvageSprite;
+            else
+                Debug.LogWarning("[GameSceneSetup] Salvage.png not found at " + SalvageIconPath);
+        }
+
+        // Count label
+        var salvageText = MakeTMP(salvageWidget.transform, "SalvageText", "0", 32, TextWhite);
+        {
+            var rt       = salvageText.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(170f, 40f);
+        }
+        var salvageTMP = salvageText.GetComponent<TextMeshProUGUI>();
+        salvageTMP.alignment          = TextAlignmentOptions.Left;
+        salvageTMP.fontStyle          = FontStyles.Bold;
+        salvageTMP.enableWordWrapping = false;
+
         return header;
     }
 
@@ -1225,6 +1286,7 @@ public static class GameSceneSetup
 
         Set(so, "starfieldBackground", background.GetComponent<RawImage>());
         Set(so, "systemNameText",      Find<TMP_Text>(header, "SystemNameText"));
+        Set(so, "salvageText",         Find<TMP_Text>(header, "SalvageWidget/SalvageText"));
         Set(so, "systemMapArea",       FindRT(body, "SystemMap"));
         Set(so, "starNode",            Find<Image>(body, "SystemMap/StarNode"));
 

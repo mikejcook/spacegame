@@ -26,6 +26,7 @@ public class SaveGame
 
     // Progression
     public int   Credits    { get; set; } = Constants.Economy.StartingCredits;
+    public int   Salvage    { get; set; } = 0;
     public int   DaysPassed { get; set; } = 0;
     public float PlayTime   { get; set; } = 0f; // seconds
 
