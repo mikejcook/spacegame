@@ -553,7 +553,18 @@ public class SystemViewController : MonoBehaviour
             img.color  = new Color(0.2f, 0.9f, 1.0f, 1f);
         }
 
+        // Tapping the ship while it's at a planet opens that planet's POI popup.
+        var shipBtn = _shipNodeGO.AddComponent<Button>();
+        shipBtn.transition = Selectable.Transition.None;
+        shipBtn.onClick.AddListener(OnShipClicked);
+
         _shipCurrentPoi = startPoi;
+    }
+
+    private void OnShipClicked()
+    {
+        if (_shipFlying || _shipCurrentPoi == null) return;
+        ShowPOIDetail(_shipCurrentPoi);
     }
 
     /// <summary>
