@@ -96,6 +96,7 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text   poiDetailDescText;
     [SerializeField] private Button     poiDetailCloseButton;
     [SerializeField] private Button     poiDetailNavigateButton;
+    [SerializeField] private TMP_Text   poiDetailScannerText;
 
     // -----------------------------------------------------------------------
     // Private state
@@ -980,23 +981,43 @@ public class SystemViewController : MonoBehaviour
         _detailPoi = poi;
 
         // Previously visited POIs always show full info regardless of scanner level.
-        bool fullAccess = poi.IsExplored;
+        bool fullAccess  = poi.IsExplored;
         int  sensorLevel = fullAccess ? int.MaxValue : GetSensorLevel();
 
-        if (poiDetailNameText) poiDetailNameText.text = poi.Name;
+        // ── Name (always visible) ─────────────────────────────────────────
+        if (poiDetailNameText != null)
+            poiDetailNameText.text = poi.Name;
 
-        // Type line — visible at sensor level 2+
-        if (poiDetailTypeText)
+        // ── Type line (always visible) ────────────────────────────────────
+        if (poiDetailTypeText != null)
+            poiDetailTypeText.text = POITypeLabel(poi);
+
+        // ── Description body — gated by scanner level ─────────────────────
+        //   Level 0/1 : limited detail
+        //   Level 2+  : description, atmosphere/habitability, danger
+        //   Level 3+  : resources
+        if (poiDetailDescText != null)
         {
-            poiDetailTypeText.text    = sensorLevel >= 2 ? POITypeLabel(poi) : "";
-            poiDetailTypeText.enabled = sensorLevel >= 2;
+            if (sensorLevel >= 2)
+            {
+                var sb = new System.Text.StringBuilder();
+
+                if (!string.IsNullOrEmpty(poi.Description))
+                    sb.AppendLine(poi.Description);
+
+                poiDetailDescText.text = sb.ToString().TrimEnd();
+            }
         }
 
-        // Description — visible at sensor level 3+
-        if (poiDetailDescText)
+        // ── Scanner upgrade hint ──────────────────────────────────────────
+        if (poiDetailScannerText != null)
         {
-            poiDetailDescText.text    = sensorLevel >= 3 ? (poi.Description ?? "") : "";
-            poiDetailDescText.enabled = sensorLevel >= 3;
+            bool showHint = !fullAccess && sensorLevel < 3;
+            poiDetailScannerText.gameObject.SetActive(showHint);
+            if (showHint)
+            {
+                poiDetailScannerText.text = "Upgrade Scanner to reveal surface details and resources";
+            }
         }
 
         // Navigate button hidden when ship is already at this POI

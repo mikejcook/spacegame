@@ -102,16 +102,4 @@ public class PointOfInterest
     public int DangerLevel { get; set; } = 1;
 
     public string Description { get; set; }
-
-    // Resources available (JSON: resource name -> amount remaining)
-    [Column("ResourcesJson")]
-    public string ResourcesJson { get; set; } = "{}";
-
-    [Ignore]
-    public Dictionary<string, int> Resources
-    {
-        get => Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, int>>(ResourcesJson)
-               ?? new Dictionary<string, int>();
-        set => ResourcesJson = Newtonsoft.Json.JsonConvert.SerializeObject(value);
-    }
 }

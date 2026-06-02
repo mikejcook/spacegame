@@ -521,8 +521,7 @@ public static class StarSystemGenerator
             SystemX       = x,
             SystemY       = y,
             DangerLevel   = 1,
-            Description   = desc,
-            Resources     = GeneratePlanetResources(type, rng)
+            Description   = desc
         };
     }
 
@@ -548,8 +547,7 @@ public static class StarSystemGenerator
             SystemX       = x,
             SystemY       = y,
             DangerLevel   = 1,
-            Description   = desc,
-            Resources     = GeneratePlanetResources(type, rng)
+            Description   = desc
         };
     }
 
@@ -608,8 +606,7 @@ public static class StarSystemGenerator
                 SystemX       = x,
                 SystemY       = y,
                 DangerLevel   = system.DangerLevel,
-                Description   = d.desc,
-                Resources     = GeneratePlanetResources(d.type, rng)
+                Description   = d.desc
             });
         }
 
@@ -710,8 +707,7 @@ public static class StarSystemGenerator
             SystemX       = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
             SystemY       = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel   = Math.Clamp(system.DangerLevel + rng.Next(-1, 2), 1, 5),
-            Description   = BuildPlanetDescription(type, habitable),
-            Resources     = GeneratePlanetResources(type, rng)
+            Description   = BuildPlanetDescription(type, habitable)
         };
     }
 
@@ -729,13 +725,7 @@ public static class StarSystemGenerator
             SystemX      = Math.Clamp(0.5f + radius * (float)Math.Cos(angle), 0.05f, 0.95f),
             SystemY      = Math.Clamp(0.5f + radius * (float)Math.Sin(angle), 0.05f, 0.95f),
             DangerLevel  = system.DangerLevel,
-            Description  = "A dense field of rocky debris — rich in minerals but hazardous to navigate.",
-            Resources    = new Dictionary<string, int>
-            {
-                ["Iron"]     = rng.Next(50, 200),
-                ["Titanium"] = rng.Next(10, 80),
-                ["Crystals"] = rng.Next(0,  30)
-            }
+            Description  = "A dense field of rocky debris — rich in minerals but hazardous to navigate."
         };
     }
 
@@ -797,40 +787,6 @@ public static class StarSystemGenerator
             DangerLevel  = 0,
             IsBoardable  = true,
             Description  = "A bustling waystation offering trade, repairs, crew recruitment, and a bar with surprisingly decent food."
-        };
-    }
-
-    // ---------------------------------------------------------------------------
-    // Resource tables
-    // ---------------------------------------------------------------------------
-
-    private static Dictionary<string, int> GeneratePlanetResources(PlanetType type, Random rng)
-    {
-        if (type.IsGaseous())
-            return new Dictionary<string, int>
-            {
-                ["Hydrogen"] = rng.Next(100, 500),
-                ["Helium3"]  = rng.Next(50, 200)
-            };
-
-        return type switch
-        {
-            PlanetType.Terrestrial or PlanetType.Lush or PlanetType.Tropical or PlanetType.Oasis
-                => new Dictionary<string, int> { ["Organics"] = rng.Next(20, 100), ["Iron"] = rng.Next(10, 50) },
-
-            PlanetType.Ocean or PlanetType.Aquamarine
-                => new Dictionary<string, int> { ["Water"] = rng.Next(200, 600), ["Organics"] = rng.Next(50, 200) },
-
-            PlanetType.Frozen or PlanetType.Glacial or PlanetType.Icy or PlanetType.Snowy
-                => new Dictionary<string, int> { ["Water"] = rng.Next(100, 300), ["Hydrogen"] = rng.Next(20, 80) },
-
-            PlanetType.Magma
-                => new Dictionary<string, int> { ["Iron"] = rng.Next(100, 300), ["Titanium"] = rng.Next(30, 100) },
-
-            PlanetType.Arid or PlanetType.Dry or PlanetType.Muddy
-                => new Dictionary<string, int> { ["Silicon"] = rng.Next(50, 150), ["Iron"] = rng.Next(30, 100) },
-
-            _ => new Dictionary<string, int>()  // Airless, Barren, Cratered, Lunar, Rocky
         };
     }
 

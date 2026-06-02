@@ -52,6 +52,7 @@ using TMPro;
 ///           POIDetailTypeText
 ///           Rule              (Image, horizontal divider)
 ///           POIDetailDescText
+///           POIDetailScannerText   (amber hint, hidden when scanner is sufficient)
 ///           POIDetailNavigateButton (Shift MainButton — "NAVIGATE")
 ///           POIDetailCloseButton   (Shift MainButton — "CLOSE")
 ///
@@ -1218,6 +1219,17 @@ public static class GameSceneSetup
         descTMP.enableWordWrapping = true;
         descTMP.overflowMode      = TextOverflowModes.ScrollRect;
 
+        // Scanner upgrade hint — shown when scanner level is too low to display all info
+        var scannerHint = MakeTMP(card.transform, "POIDetailScannerText",
+                                  "Upgrade Scanner to reveal more information", 22,
+                                  new Color(1.00f, 0.80f, 0.20f, 1f)); // amber
+        PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 70f), v2(-60f, 32f));
+        var scannerHintTMP = scannerHint.GetComponent<TextMeshProUGUI>();
+        scannerHintTMP.alignment          = TextAlignmentOptions.Center;
+        scannerHintTMP.enableWordWrapping = false;
+        scannerHintTMP.fontStyle          = FontStyles.Italic;
+        scannerHint.SetActive(false); // hidden by default; shown at runtime when needed
+
         var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
 
         // NAVIGATE button — bottom-left
@@ -1298,7 +1310,8 @@ public static class GameSceneSetup
         so.FindProperty("poiDetailPanel").objectReferenceValue = poiDetail;
         Set(so, "poiDetailNameText", Find<TMP_Text>(poiDetail, "Card/POIDetailNameText"));
         Set(so, "poiDetailTypeText", Find<TMP_Text>(poiDetail, "Card/POIDetailTypeText"));
-        Set(so, "poiDetailDescText", Find<TMP_Text>(poiDetail, "Card/POIDetailDescText"));
+        Set(so, "poiDetailDescText",    Find<TMP_Text>(poiDetail, "Card/POIDetailDescText"));
+        Set(so, "poiDetailScannerText", Find<TMP_Text>(poiDetail, "Card/POIDetailScannerText"));
         var closeTf    = poiDetail.transform.Find("Card/POIDetailCloseButton");
         Set(so, "poiDetailCloseButton",    closeTf?.GetComponentInChildren<Button>(true));
         var navigateTf = poiDetail.transform.Find("Card/POIDetailNavigateButton");
