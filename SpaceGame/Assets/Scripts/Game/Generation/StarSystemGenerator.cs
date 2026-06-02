@@ -448,8 +448,10 @@ public static class StarSystemGenerator
             hasAtmosphere: true, isHabitable: false,
             desc: "A hellish world shrouded in thick, toxic clouds. Surface pressure crushes unshielded hulls."));
 
-        pois.Add(MakeSolPlanet(sol, saveGameId, rng,
+        float earthAngle = (float)(rng.NextDouble() * Math.PI * 2);
+        pois.Add(MakeSolPlanetAtAngle(sol, saveGameId, rng,
             name: "Earth", type: PlanetType.Terrestrial, variant: 1, orbitalRadius: 0.17f,
+            angle: earthAngle,
             hasAtmosphere: true, isHabitable: true,
             desc: "Humanity's birthplace. Still the most populated world in known space, and the seat of the Colonial Authority."));
 
@@ -479,16 +481,16 @@ public static class StarSystemGenerator
             desc: "The outermost major planet. Deep, swirling cobalt storms rage across its surface. Few ships venture this far without good reason."));
 
         // ── Earth Station ──────────────────────────────────────────────────
-        // Placed near Earth's orbital radius at a fixed angle offset
-        float earthAngle = (float)(rng.NextDouble() * Math.PI * 2) + 0.6f;
+        // Placed just ahead of Earth on the same orbit (small angular offset).
+        float stationAngle = earthAngle + 0.15f;   // ~8.6° ahead of Earth
         pois.Add(new PointOfInterest
         {
             SaveGameId   = saveGameId,
             StarSystemId = sol.Id,
             Name         = "Earth Station",
             POIType      = Constants.POI.Types.SpaceStation,
-            SystemX      = Math.Clamp(0.5f + 0.17f * (float)Math.Cos(earthAngle), 0.05f, 0.95f),
-            SystemY      = Math.Clamp(0.5f + 0.17f * (float)Math.Sin(earthAngle), 0.05f, 0.95f),
+            SystemX      = Math.Clamp(0.5f + 0.17f * (float)Math.Cos(stationAngle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + 0.17f * (float)Math.Sin(stationAngle), 0.05f, 0.95f),
             DangerLevel  = 0,
             IsBoardable  = true,
             Description  = "Humanity's oldest space station — still the busiest port in known space. " +
@@ -496,6 +498,31 @@ public static class StarSystemGenerator
         });
 
         return pois;
+    }
+
+    private static PointOfInterest MakeSolPlanetAtAngle(
+        StarSystem sol, int saveGameId, Random rng,
+        string name, PlanetType type, int variant, float orbitalRadius, float angle,
+        bool hasAtmosphere, bool isHabitable, string desc)
+    {
+        float x = Math.Clamp(0.5f + orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
+        float y = Math.Clamp(0.5f + orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
+        return new PointOfInterest
+        {
+            SaveGameId    = saveGameId,
+            StarSystemId  = sol.Id,
+            Name          = name,
+            POIType       = Constants.POI.Types.Planet,
+            PlanetType    = type,
+            PlanetVariant = variant,
+            HasAtmosphere = hasAtmosphere,
+            IsHabitable   = isHabitable,
+            SystemX       = x,
+            SystemY       = y,
+            DangerLevel   = 1,
+            Description   = desc,
+            Resources     = GeneratePlanetResources(type, rng)
+        };
     }
 
     private static PointOfInterest MakeSolPlanet(
