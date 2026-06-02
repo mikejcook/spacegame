@@ -110,6 +110,8 @@ public class SystemViewController : MonoBehaviour
     // ── Ship state ────────────────────────────────────────────────────────────
     private GameObject      _shipNodeGO;
     private RectTransform   _shipRT;
+    private Image           _shipBackdropImg;
+    private RectTransform   _shipBackdropRT;
     private PointOfInterest _shipCurrentPoi;
     private bool            _shipFlying;
     private Coroutine       _flyCoroutine;
@@ -315,10 +317,12 @@ public class SystemViewController : MonoBehaviour
         _poiNodes.Clear();
         _orbitRings.Clear();
         _sortedPois.Clear();
-        _shipNodeGO     = null;
-        _shipRT         = null;
-        _shipCurrentPoi = null;
-        _shipFlying     = false;
+        _shipNodeGO      = null;
+        _shipRT          = null;
+        _shipBackdropImg = null;
+        _shipBackdropRT  = null;
+        _shipCurrentPoi  = null;
+        _shipFlying      = false;
 
         if (_pois == null) return;
 
@@ -550,20 +554,54 @@ public class SystemViewController : MonoBehaviour
 
     /// <summary>
     /// Creates the ship UI node as the last child of systemMapArea (renders on top).
+    ///
+    /// Hierarchy:
+    ///   PlayerShip          RectTransform + Button (positioning root)
+    ///     ShipBackdrop      Image — dark semi-transparent circle for contrast
+    ///     ShipImage         Image — the actual ship sprite
+    ///
+    /// Separating the backdrop and sprite into children ensures the ship is
+    /// always readable regardless of what POI or orbit ring lies underneath it.
     /// </summary>
     private void SpawnShip(Vector2 startPos, PointOfInterest startPoi)
     {
+        // ── Container (positioning root + button) ────────────────────────────
         _shipNodeGO = new GameObject("PlayerShip", typeof(RectTransform));
         _shipNodeGO.transform.SetParent(systemMapArea, false);
 
-        _shipRT             = _shipNodeGO.GetComponent<RectTransform>();
-        _shipRT.anchorMin   = new Vector2(0.5f, 0.5f);
-        _shipRT.anchorMax   = new Vector2(0.5f, 0.5f);
-        _shipRT.pivot       = new Vector2(0.5f, 0.5f);
-        _shipRT.sizeDelta   = new Vector2(50f, 50f);
+        _shipRT                  = _shipNodeGO.GetComponent<RectTransform>();
+        _shipRT.anchorMin        = new Vector2(0.5f, 0.5f);
+        _shipRT.anchorMax        = new Vector2(0.5f, 0.5f);
+        _shipRT.pivot            = new Vector2(0.5f, 0.5f);
+        _shipRT.sizeDelta        = new Vector2(50f, 50f);
         _shipRT.anchoredPosition = startPos;
 
-        var img = _shipNodeGO.AddComponent<Image>();
+        // ── Backdrop: dark circle slightly larger than the ship sprite ───────
+        var backdropGO = new GameObject("ShipBackdrop", typeof(RectTransform));
+        backdropGO.transform.SetParent(_shipNodeGO.transform, false);
+        var backdropRT             = backdropGO.GetComponent<RectTransform>();
+        backdropRT.anchorMin       = new Vector2(0.5f, 0.5f);
+        backdropRT.anchorMax       = new Vector2(0.5f, 0.5f);
+        backdropRT.pivot           = new Vector2(0.5f, 0.5f);
+        backdropRT.anchoredPosition = Vector2.zero;
+        backdropRT.sizeDelta       = new Vector2(62f, 62f);   // 12 px larger than sprite on each axis
+
+        _shipBackdropRT  = backdropRT;
+        _shipBackdropImg        = backdropGO.AddComponent<Image>();
+        _shipBackdropImg.sprite = null;                        // solid circle via default Unity sprite
+        _shipBackdropImg.color  = new Color(0f, 0f, 0f, 0.55f);
+
+        // ── Ship sprite ───────────────────────────────────────────────────────
+        var spriteGO = new GameObject("ShipImage", typeof(RectTransform));
+        spriteGO.transform.SetParent(_shipNodeGO.transform, false);
+        var spriteRT             = spriteGO.GetComponent<RectTransform>();
+        spriteRT.anchorMin       = new Vector2(0.5f, 0.5f);
+        spriteRT.anchorMax       = new Vector2(0.5f, 0.5f);
+        spriteRT.pivot           = new Vector2(0.5f, 0.5f);
+        spriteRT.anchoredPosition = Vector2.zero;
+        spriteRT.sizeDelta       = new Vector2(50f, 50f);
+
+        var img = spriteGO.AddComponent<Image>();
         if (shipSprite != null)
         {
             img.sprite         = shipSprite;
@@ -573,17 +611,36 @@ public class SystemViewController : MonoBehaviour
         }
         else
         {
-            // Fallback: bright cyan triangle-ish square if sprite not wired
+            // Fallback: bright cyan if sprite not wired
             img.sprite = null;
             img.color  = new Color(0.2f, 0.9f, 1.0f, 1f);
         }
 
-        // Tapping the ship while it's at a planet opens that planet's POI popup.
-        var shipBtn = _shipNodeGO.AddComponent<Button>();
-        shipBtn.transition = Selectable.Transition.None;
+        // ── Button on the container — targetGraphic points to the sprite ─────
+        var shipBtn            = _shipNodeGO.AddComponent<Button>();
+        shipBtn.transition     = Selectable.Transition.None;
+        shipBtn.targetGraphic  = img;
         shipBtn.onClick.AddListener(OnShipClicked);
 
         _shipCurrentPoi = startPoi;
+    }
+
+    private void SetShipBackdropVisible(bool visible)
+    {
+        if (_shipBackdropImg == null) return;
+
+        if (visible && _shipBackdropRT != null)
+        {
+            // Size the backdrop to cover whichever is larger: the ship sprite
+            // or the POI node beneath it, with a small margin either way.
+            float poiSize  = _shipCurrentPoi != null ? PlanetDisplaySize(_shipCurrentPoi) : 0f;
+            float diameter = Mathf.Max(62f, poiSize + 12f);
+            _shipBackdropRT.sizeDelta = new Vector2(diameter, diameter);
+        }
+
+        var c = _shipBackdropImg.color;
+        c.a   = visible ? 0.55f : 0f;
+        _shipBackdropImg.color = c;
     }
 
     private void OnShipClicked()
@@ -627,6 +684,7 @@ public class SystemViewController : MonoBehaviour
         PointOfInterest target, Vector2 fromPos, Vector2 toPos)
     {
         _shipFlying = true;
+        SetShipBackdropVisible(false);
         SetNavButtonsInteractable(false);
 
         Vector2 dir      = toPos - fromPos;
@@ -635,6 +693,7 @@ public class SystemViewController : MonoBehaviour
         {
             _shipCurrentPoi = target;
             _shipFlying     = false;
+            SetShipBackdropVisible(true);
             SetNavButtonsInteractable(true);
             MarkVisited(target);
             ShowPOIDetail(target);
@@ -719,6 +778,7 @@ public class SystemViewController : MonoBehaviour
         _shipFlying              = false;
         _flyCoroutine            = null;
 
+        SetShipBackdropVisible(true);
         SetNavButtonsInteractable(true);
         MarkVisited(target);
         ShowPOIDetail(target);
