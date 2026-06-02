@@ -322,58 +322,47 @@ public class SystemViewController : MonoBehaviour
 
         if (_pois == null) return;
 
-        // Force a layout pass so systemMapArea.rect is accurate
-        Canvas.ForceUpdateCanvases();
-
-        // ── Pixel bounds for orbits ───────────────────────────────────────
-        // Map area is landscape (≈1920×870 canvas units); use the shorter axis
-        // so orbits stay circular regardless of aspect ratio.
-        Rect  mapRect    = systemMapArea.rect;
-        float mapShort   = Mathf.Min(mapRect.width, mapRect.height);
-        float minOrbitPx = 65f + 40f;          // clear the 130 px star + breathing room
-        float maxOrbitPx = mapShort * 0.5f * 0.88f;
+        // ── Minimum orbit clearance (star radius + breathing room) ───────
+        float minOrbitPx = 65f + 40f;   // 130 px star diameter + 40 px gap
 
         // ── Find each POI's normalised orbital radius ─────────────────────
         // Data is stored as  SystemX/Y = 0.5 ± r*cos/sin(angle)
         int n = _pois.Count;
         var normRadii = new float[n];
-        float maxNormR = 0f;
         for (int i = 0; i < n; i++)
         {
             float dx = _pois[i].SystemX - 0.5f;
             float dy = _pois[i].SystemY - 0.5f;
             normRadii[i] = Mathf.Sqrt(dx * dx + dy * dy);
-            if (normRadii[i] > maxNormR) maxNormR = normRadii[i];
         }
-        if (maxNormR < 0.01f) maxNormR = 0.5f;
 
         // ── Sort POIs by orbit radius ─────────────────────────────────────
         var indices = new int[n];
         for (int i = 0; i < n; i++) indices[i] = i;
         System.Array.Sort(indices, (a, b) => normRadii[a].CompareTo(normRadii[b]));
 
-        // ── Assign pixel orbit radii with enforced minimum spacing ────────
-        // 1. Start from an ideal Lerp distribution that preserves relative spacing.
-        // 2. Walk sorted orbits and bump each up by minGapPx if needed.
-        // 3. If the last orbit overflowed maxOrbitPx, compress proportionally.
-        const float MinGapPx = 55f;
+        // ── Assign pixel orbit radii preserving proportional spacing ──────
+        // With panning available, orbits no longer need to fit within the
+        // viewport — outer planets simply require a pan or zoom-out to see.
+        // A fixed px-per-normR scale lets genuine spacing differences (e.g. the
+        // wide Mars→Jupiter asteroid-belt gap in Sol) show up directly.
+        //
+        // Co-orbital POIs (|normR diff| < CoOrbitThresh) share the same ring
+        // radius — this correctly handles Earth + Earth Station.
+        const float OrbitScalePx  = 1000f;  // canvas px per normalised orbit unit
+        const float MinGapPx      = 30f;    // minimum px between distinct rings
+        const float CoOrbitThresh = 0.01f;  // normR diff treated as the same orbit
 
         var orbitPxArr = new float[n];
         for (int i = 0; i < n; i++)
-        {
-            float t = normRadii[indices[i]] / maxNormR;
-            orbitPxArr[i] = Mathf.Lerp(minOrbitPx, maxOrbitPx, t);
-        }
-        for (int i = 1; i < n; i++)
-            orbitPxArr[i] = Mathf.Max(orbitPxArr[i], orbitPxArr[i - 1] + MinGapPx);
+            orbitPxArr[i] = minOrbitPx + normRadii[indices[i]] * OrbitScalePx;
 
-        if (n > 1 && orbitPxArr[n - 1] > maxOrbitPx)
+        for (int i = 1; i < n; i++)
         {
-            float overflow  = orbitPxArr[n - 1] - minOrbitPx;
-            float available = maxOrbitPx          - minOrbitPx;
-            float scale     = available / overflow;
-            for (int i = 0; i < n; i++)
-                orbitPxArr[i] = minOrbitPx + (orbitPxArr[i] - minOrbitPx) * scale;
+            bool coOrbital = Mathf.Abs(normRadii[indices[i]] - normRadii[indices[i - 1]]) < CoOrbitThresh;
+            orbitPxArr[i] = coOrbital
+                ? orbitPxArr[i - 1]                                     // share the ring
+                : Mathf.Max(orbitPxArr[i], orbitPxArr[i - 1] + MinGapPx);
         }
 
         // ── Scale node sizes down for dense systems ───────────────────────
@@ -415,7 +404,7 @@ public class SystemViewController : MonoBehaviour
                     // Spawn just outside the visible map edge, opposite the first
                     // destination POI, as if the ship just dropped out of warp.
                     Vector2 dir      = destPos.magnitude > 0.01f ? destPos.normalized : Vector2.up;
-                    float   edgeDist = Mathf.Min(mapRect.width, mapRect.height) * 0.5f + 60f;
+                    float   edgeDist = Mathf.Min(systemMapArea.rect.width, systemMapArea.rect.height) * 0.5f + 60f;
                     SpawnShip(-dir * edgeDist, null);
 
                     // Point the ship toward the star (center of the map).

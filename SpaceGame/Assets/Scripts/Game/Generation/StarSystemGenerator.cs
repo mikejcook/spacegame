@@ -444,19 +444,19 @@ public static class StarSystemGenerator
             desc: "A scorched, airless rock baked by the sun. Rich in heavy metals."));
 
         pois.Add(MakeSolPlanet(sol, saveGameId, rng,
-            name: "Venus", type: PlanetType.Cloudy, variant: 1, orbitalRadius: 0.12f,
+            name: "Venus", type: PlanetType.Cloudy, variant: 1, orbitalRadius: 0.13f,
             hasAtmosphere: true, isHabitable: false,
             desc: "A hellish world shrouded in thick, toxic clouds. Surface pressure crushes unshielded hulls."));
 
         float earthAngle = (float)(rng.NextDouble() * Math.PI * 2);
         pois.Add(MakeSolPlanetAtAngle(sol, saveGameId, rng,
-            name: "Earth", type: PlanetType.Terrestrial, variant: 1, orbitalRadius: 0.17f,
+            name: "Earth", type: PlanetType.Terrestrial, variant: 1, orbitalRadius: 0.16f,
             angle: earthAngle,
             hasAtmosphere: true, isHabitable: true,
             desc: "Humanity's birthplace. Still the most populated world in known space, and the seat of the Colonial Authority."));
 
         pois.Add(MakeSolPlanet(sol, saveGameId, rng,
-            name: "Mars", type: PlanetType.Arid, variant: 1, orbitalRadius: 0.22f,
+            name: "Mars", type: PlanetType.Arid, variant: 1, orbitalRadius: 0.19f,
             hasAtmosphere: true, isHabitable: false,
             desc: "The first world humanity terraformed. Dome cities dot the rust-red surface; full breathable atmosphere is still a century away."));
 
@@ -471,7 +471,7 @@ public static class StarSystemGenerator
             desc: "Its iconic rings make it the most recognisable sight in Sol. Ring-mining consortia operate here under heavy Authority licence."));
 
         pois.Add(MakeSolPlanet(sol, saveGameId, rng,
-            name: "Uranus", type: PlanetType.Icy, variant: 1, orbitalRadius: 0.41f,
+            name: "Uranus", type: PlanetType.Icy, variant: 1, orbitalRadius: 0.42f,
             hasAtmosphere: true, isHabitable: false,
             desc: "A frigid ice giant tilted almost on its side. Remote, inhospitable, but a useful waypoint for deep-system runs."));
 
@@ -489,8 +489,8 @@ public static class StarSystemGenerator
             StarSystemId = sol.Id,
             Name         = "Earth Station",
             POIType      = Constants.POI.Types.SpaceStation,
-            SystemX      = Math.Clamp(0.5f + 0.17f * (float)Math.Cos(stationAngle), 0.05f, 0.95f),
-            SystemY      = Math.Clamp(0.5f + 0.17f * (float)Math.Sin(stationAngle), 0.05f, 0.95f),
+            SystemX      = Math.Clamp(0.5f + 0.16f * (float)Math.Cos(stationAngle), 0.05f, 0.95f),
+            SystemY      = Math.Clamp(0.5f + 0.16f * (float)Math.Sin(stationAngle), 0.05f, 0.95f),
             DangerLevel  = 0,
             IsBoardable  = true,
             Description  = "Humanity's oldest space station — still the busiest port in known space. " +
@@ -689,10 +689,12 @@ public static class StarSystemGenerator
 
         // Distribute planets evenly around the system, with up to ±25% per-slot jitter,
         // so no two planets land in the same angular neighbourhood regardless of count.
-        float slotWidth = (float)(2.0 * Math.PI / Math.Max(total, 1));
-        float jitter    = (float)(rng.NextDouble() - 0.5) * slotWidth * 0.5f;
-        float angle     = baseAngle + index * slotWidth + jitter;
-        float radius    = 0.08f + (index / (float)Math.Max(total, 1)) * 0.35f;
+        float slotWidth   = (float)(2.0 * Math.PI / Math.Max(total, 1));
+        float jitter      = (float)(rng.NextDouble() - 0.5) * slotWidth * 0.5f;
+        float angle       = baseAngle + index * slotWidth + jitter;
+        float baseRadius  = 0.08f + (index / (float)Math.Max(total, 1)) * 0.35f;
+        float radJitter   = (float)(rng.NextDouble() - 0.5) * 0.06f;  // ±0.03 variation
+        float radius      = Math.Clamp(baseRadius + radJitter, 0.07f, 0.46f);
 
         return new PointOfInterest
         {
