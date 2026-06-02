@@ -529,6 +529,17 @@ public class SystemViewController : MonoBehaviour
             img.preserveAspect = true;
             img.type           = Image.Type.Simple;
         }
+        else if (poi.POIType == Constants.POI.Types.DerelictStation && stationSprite != null)
+        {
+            img.sprite         = stationSprite;
+            img.color          = new Color(0.82f, 0.82f, 0.90f, 1f); // light grey-blue: dead, no power
+            img.preserveAspect = true;
+            img.type           = Image.Type.Simple;
+
+            // Same stable tumble treatment as derelict ships
+            float tumbleAngle = ((poi.Id * 137.508f) % 360f);
+            rt.localEulerAngles = new Vector3(0f, 0f, tumbleAngle);
+        }
         else if (poi.POIType == Constants.POI.Types.DerelictShip && derelictSprite != null)
         {
             img.sprite         = derelictSprite;
