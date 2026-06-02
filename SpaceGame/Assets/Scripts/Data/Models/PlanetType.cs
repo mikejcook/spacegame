@@ -58,6 +58,29 @@ public static class PlanetTypeExtensions
     public static bool IsGaseous(this PlanetType type) => type >= PlanetType.GaseousBlue;
 
     /// <summary>
+    /// Base display diameter (canvas px) for a planet of this type, before any
+    /// per-system size variation is applied. Five tiers:
+    ///   tiny   (airless rocks)        ~40 px
+    ///   small  (arid/frozen worlds)   ~52 px
+    ///   medium (habitable/ocean)      ~64 px
+    ///   large  (icy/magma)            ~72 px
+    ///   giant  (all gaseous types)    ~90 px
+    /// </summary>
+    public static float BaseDisplaySize(this PlanetType type)
+    {
+        if (type.IsGaseous()) return 90f;
+        return type switch
+        {
+            PlanetType.Airless or PlanetType.Barren or PlanetType.Cratered
+                or PlanetType.Lunar or PlanetType.Rocky                       => 40f,
+            PlanetType.Arid or PlanetType.Dry or PlanetType.Frozen
+                or PlanetType.Glacial or PlanetType.Snowy                     => 52f,
+            PlanetType.Icy or PlanetType.Magma                                => 72f,
+            _                                                                  => 64f,
+        };
+    }
+
+    /// <summary>
     /// Returns the filename stem used by PlanetLibrary (without the _XX suffix).
     /// Handles the typo in the original asset pack ("OrgangeGiant" vs "OrangeGiant").
     /// </summary>

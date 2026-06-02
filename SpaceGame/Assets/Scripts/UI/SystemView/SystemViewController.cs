@@ -365,11 +365,6 @@ public class SystemViewController : MonoBehaviour
                 : Mathf.Max(orbitPxArr[i], orbitPxArr[i - 1] + MinGapPx);
         }
 
-        // ── Scale node sizes down for dense systems ───────────────────────
-        float sizeMult = n <= 5 ? 1.00f
-                       : n <= 8 ? 0.82f
-                                : 0.68f;
-
         // ── Spawn orbit rings first (rendered behind planet nodes) ────────
         for (int i = 0; i < n; i++)
             _orbitRings.Add(SpawnOrbitRing(orbitPxArr[i]));
@@ -377,10 +372,8 @@ public class SystemViewController : MonoBehaviour
         // ── Spawn POI nodes on top ────────────────────────────────────────
         for (int i = 0; i < n; i++)
         {
-            var   poi    = _pois[indices[i]];
-            bool  planet = poi.POIType == Constants.POI.Types.Planet;
-            float base_  = planet ? (poi.PlanetType.IsGaseous() ? 80f : 62f) : 48f;
-            float size   = base_ * sizeMult;
+            var   poi   = _pois[indices[i]];
+            float size  = PlanetDisplaySize(poi);
 
             float dx    = poi.SystemX - 0.5f;
             float dy    = poi.SystemY - 0.5f;
@@ -401,10 +394,11 @@ public class SystemViewController : MonoBehaviour
 
                 if (enteringNewSystem)
                 {
-                    // Spawn just outside the visible map edge, opposite the first
-                    // destination POI, as if the ship just dropped out of warp.
+                    // Spawn beyond the outermost orbit, opposite the first destination POI,
+                    // as if the ship just dropped out of warp at the system's edge.
                     Vector2 dir      = destPos.magnitude > 0.01f ? destPos.normalized : Vector2.up;
-                    float   edgeDist = Mathf.Min(systemMapArea.rect.width, systemMapArea.rect.height) * 0.5f + 60f;
+                    float   outerOrbit = n > 0 ? orbitPxArr[n - 1] : minOrbitPx;
+                    float   edgeDist   = outerOrbit + 120f;
                     SpawnShip(-dir * edgeDist, null);
 
                     // Point the ship toward the star (center of the map).
@@ -442,6 +436,48 @@ public class SystemViewController : MonoBehaviour
         ring.Segments  = 90;
 
         return go;
+    }
+
+    /// <summary>
+    /// Returns the display diameter (canvas px) for a POI node.
+    ///
+    /// Planets: Sol planets use hand-tuned sizes reflecting real relative diameters;
+    /// procedural planets get a type-tier base (tiny/small/medium/large/giant) with
+    /// ±18 % variation seeded from the POI's database Id so size is stable per save.
+    /// Non-planets (stations, derelicts, etc.) are a fixed 48 px.
+    /// </summary>
+    private static float PlanetDisplaySize(PointOfInterest poi)
+    {
+        if (poi.POIType != Constants.POI.Types.Planet) return 48f;
+
+        // Sol hand-tuned sizes — loosely reflect real relative planetary diameters,
+        // compressed so gas giants aren't absurdly large.
+        switch (poi.Name)
+        {
+            case "Mercury": return 30f;
+            case "Venus":   return 60f;
+            case "Earth":   return 64f;
+            case "Mars":    return 44f;
+            case "Jupiter": return 110f;
+            case "Saturn":  return  95f;
+            case "Uranus":  return  76f;
+            case "Neptune": return  74f;
+        }
+
+        // Alpha Centauri hand-tuned sizes (4 planets)
+        switch (poi.Name)
+        {
+            case "Alpha Centauri I":   return 46f;   // magma — smallish
+            case "Alpha Centauri II":  return 56f;   // arid
+            case "Alpha Centauri III": return 66f;   // terrestrial — Earth-like
+            case "Alpha Centauri IV":  return 58f;   // frozen — mid-size
+        }
+
+        // Procedural: type-tier base ± 18 % variation, seeded from poi.Id
+        float baseSize = poi.PlanetType.BaseDisplaySize();
+        uint  hash     = unchecked((uint)poi.Id * 2654435761u);  // Knuth multiplicative hash
+        float t        = (hash & 0xFFFFu) / 65535f;              // 0..1, uniform-ish
+        return baseSize * Mathf.Lerp(0.82f, 1.18f, t);
     }
 
     private GameObject SpawnPOINode(PointOfInterest poi,
