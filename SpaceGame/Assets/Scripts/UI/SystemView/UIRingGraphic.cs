@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// configurable at runtime via the public properties.
 /// </summary>
 [RequireComponent(typeof(CanvasRenderer))]
-public class UIRingGraphic : Graphic
+public class UIRingGraphic : MaskableGraphic
 {
     [SerializeField] private float _thickness = 1.5f;
     [SerializeField] private int   _segments  = 80;
