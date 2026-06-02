@@ -444,11 +444,12 @@ public static class StarSystemGenerator
             desc: "A scorched, airless rock baked by the sun. Rich in heavy metals."));
 
         pois.Add(MakeSolPlanet(sol, saveGameId, rng,
-            name: "Venus", type: PlanetType.Cloudy, variant: 1, orbitalRadius: 0.13f,
+            name: "Venus", type: PlanetType.Muddy, variant: 1, orbitalRadius: 0.13f,
             hasAtmosphere: true, isHabitable: false,
             desc: "A hellish world shrouded in thick, toxic clouds. Surface pressure crushes unshielded hulls."));
 
-        float earthAngle = (float)(rng.NextDouble() * Math.PI * 2);
+        rng.NextDouble(); // consume the rng slot Earth's angle used to occupy
+        const float earthAngle = (float)(Math.PI * 5.0 / 6.0); // 150° — west-northwest
         pois.Add(MakeSolPlanetAtAngle(sol, saveGameId, rng,
             name: "Earth", type: PlanetType.Terrestrial, variant: 1, orbitalRadius: 0.16f,
             angle: earthAngle,
