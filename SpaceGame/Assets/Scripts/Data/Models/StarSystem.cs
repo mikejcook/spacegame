@@ -50,6 +50,10 @@ public class StarSystem
     // Danger level 1-5 (affects encounter DCs and enemy strength)
     public int DangerLevel { get; set; } = 1;
 
+    // Minimum FTL drive tier required to reach this system (1-6, maps to EquipmentTier.MkI-MkVI).
+    // Sol = 1; each outer cluster increments by one tier.
+    public int FtlTierRequired { get; set; } = 1;
+
     // Reproducible generation
     public int Seed { get; set; }
 

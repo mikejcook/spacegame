@@ -66,6 +66,7 @@ public static class StarSystemGenerator
             HasSpaceStation = true,
             DangerLevel     = 2,
             Seed            = 1,
+            FtlTierRequired = 1,   // nearest system — Mk I FTL sufficient
             Description     = "A triple-star system and humanity's nearest stellar neighbour. " +
                               "The two yellow dwarfs host a handful of colonised worlds and a busy trade station."
         };
@@ -84,6 +85,7 @@ public static class StarSystemGenerator
             HasSpaceStation = false,
             DangerLevel     = 3,
             Seed            = 2,
+            FtlTierRequired = 1,   // still in the inner cluster — Mk I FTL sufficient
             Description     = "A fast-moving red dwarf just six light years from Sol. " +
                               "Its rocky planets sit deep in a tidal-lock zone — cold, dark, and largely unexplored."
         };
@@ -140,7 +142,8 @@ public static class StarSystemGenerator
         float    galaxyX,
         float    galaxyY,
         int      seed,
-        int      saveGameId)
+        int      saveGameId,
+        int      ftlTierRequired = 1)
     {
         var rng         = new Random(seed);
         int dangerLevel = rng.Next(1, 6);
@@ -148,18 +151,113 @@ public static class StarSystemGenerator
 
         return new StarSystem
         {
-            Name            = name,
-            StarType        = starType,
-            IsKnown         = true,
-            GalaxyX         = galaxyX,
-            GalaxyY         = galaxyY,
-            IsExplored      = false,
-            HasSpaceStation = hasStation,
-            DangerLevel     = dangerLevel,
-            Seed            = seed,
-            SaveGameId      = saveGameId,
-            Description     = BuildSystemDescription(starType, dangerLevel, hasStation)
+            Name             = name,
+            StarType         = starType,
+            IsKnown          = true,
+            GalaxyX          = galaxyX,
+            GalaxyY          = galaxyY,
+            IsExplored       = false,
+            HasSpaceStation  = hasStation,
+            DangerLevel      = dangerLevel,
+            Seed             = seed,
+            SaveGameId       = saveGameId,
+            FtlTierRequired  = ftlTierRequired,
+            Description      = BuildSystemDescription(starType, dangerLevel, hasStation)
         };
+    }
+
+    /// <summary>
+    /// Generates <paramref name="count"/> galaxy-map positions in a ring centred on a specific
+    /// point (e.g. Sol's position) rather than the galaxy centre.  Used to produce FTL-tier
+    /// clusters at increasing radial distance from Sol.
+    ///
+    /// Candidates that fall within <paramref name="minSpacing"/> of anything in
+    /// <paramref name="avoidPositions"/> or already-placed positions are retried up to 40 times.
+    /// </summary>
+    // Galaxy image centre in normalised coordinates.
+    // The bright galactic core extends roughly this far — any candidate inside
+    // this radius is rejected so systems don't spawn in the unreadable glow.
+    public  const float GalacticCoreGX     = 0.50f;
+    public  const float GalacticCoreGY     = 0.50f;
+    public  const float GalacticCoreRadius = 0.14f;
+
+    public static (float gx, float gy)[] GenerateClusterPositions(
+        float                centerGx,
+        float                centerGy,
+        float                innerR,
+        float                outerR,
+        int                  count,
+        int                  seed,
+        (float gx, float gy)[] avoidPositions = null,
+        float                minSpacing        = 0.05f,
+        bool                 avoidGalacticCore = true)
+    {
+        if (count <= 0) return Array.Empty<(float, float)>();
+
+        var rng = new Random(seed ^ unchecked((int)0xBEEF1234));
+        const double GoldenAngle = 2.39996322972865332;
+        double startAngle = rng.NextDouble() * Math.PI * 2;
+
+        var result = new (float gx, float gy)[count];
+        var placed = new List<(float gx, float gy)>(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            float bestGx = 0f, bestGy = 0f;
+            float bestMinDist = -1f;
+
+            for (int attempt = 0; attempt < 60; attempt++)
+            {
+                float gx, gy;
+                if (attempt == 0)
+                {
+                    float t      = (i + 0.5f) / count;
+                    float r      = innerR + t * (outerR - innerR);
+                    float jitter = (float)(rng.NextDouble() - 0.5) * 0.025f;
+                    r = Math.Clamp(r + jitter, innerR, outerR);
+                    double angle = startAngle + i * GoldenAngle;
+                    gx = Math.Clamp(centerGx + r * (float)Math.Cos(angle), 0.05f, 0.95f);
+                    gy = Math.Clamp(centerGy + r * (float)Math.Sin(angle), 0.05f, 0.95f);
+                }
+                else
+                {
+                    float r      = innerR + (float)rng.NextDouble() * (outerR - innerR);
+                    double angle = rng.NextDouble() * Math.PI * 2;
+                    gx = Math.Clamp(centerGx + r * (float)Math.Cos(angle), 0.05f, 0.95f);
+                    gy = Math.Clamp(centerGy + r * (float)Math.Sin(angle), 0.05f, 0.95f);
+                }
+
+                // Reject candidates inside the bright galactic core
+                if (avoidGalacticCore)
+                {
+                    float cdx = gx - GalacticCoreGX;
+                    float cdy = gy - GalacticCoreGY;
+                    if (cdx * cdx + cdy * cdy < GalacticCoreRadius * GalacticCoreRadius)
+                        continue;
+                }
+
+                if (!TooClose(gx, gy, avoidPositions, minSpacing) &&
+                    !TooClose(gx, gy, placed,          minSpacing))
+                {
+                    bestGx = gx;
+                    bestGy = gy;
+                    goto placed;
+                }
+
+                float minDist = MinDistTo(gx, gy, avoidPositions, placed);
+                if (minDist > bestMinDist)
+                {
+                    bestMinDist = minDist;
+                    bestGx      = gx;
+                    bestGy      = gy;
+                }
+            }
+
+            placed:
+            result[i] = (bestGx, bestGy);
+            placed.Add((bestGx, bestGy));
+        }
+        return result;
     }
 
     /// <summary>

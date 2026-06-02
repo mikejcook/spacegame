@@ -189,14 +189,14 @@ public class ShipViewController : MonoBehaviour
             detailDescText.text = desc;
         }
 
-        // Upgrade cost — placeholder until resource system is defined.
+        // Upgrade cost + button state — disable Upgrade at max tier.
+        bool canUpgrade = TryGetNextTier(item, out var next);
         if (detailCostText != null)
-        {
-            if (TryGetNextTier(item, out var next))
-                detailCostText.text = $"{Constants.Ship.UpgradeCost(next)} Resources";
-            else
-                detailCostText.text = "MAX TIER";
-        }
+            detailCostText.text = canUpgrade
+                ? $"{Constants.Ship.UpgradeCost(next)} Resources"
+                : "MAX TIER";
+        if (upgradeButton != null)
+            upgradeButton.interactable = canUpgrade;
 
         SetDetailVisible(true);
         SetConfirmVisible(false);

@@ -151,8 +151,13 @@ public class SystemViewController : MonoBehaviour
         crewNavButton?.onClick.AddListener(ShowCrewView);
 
         // Galaxy view → arriving at a system switches the System View to it.
+        // Galaxy view → disable/re-enable nav buttons during warp flight.
         if (galaxyViewController != null)
+        {
             galaxyViewController.OnSystemSelected = OnGalaxySystemSelected;
+            galaxyViewController.OnFlightStarted  = () => SetNavButtonsInteractable(false);
+            galaxyViewController.OnFlightEnded    = () => SetNavButtonsInteractable(true);
+        }
 
         // ── Neutralise the Shift MainButton Animator on the close button ──
         //
@@ -552,6 +557,7 @@ public class SystemViewController : MonoBehaviour
         PointOfInterest target, Vector2 fromPos, Vector2 toPos)
     {
         _shipFlying = true;
+        SetNavButtonsInteractable(false);
 
         Vector2 dir      = toPos - fromPos;
         float   distance = dir.magnitude;
@@ -559,6 +565,7 @@ public class SystemViewController : MonoBehaviour
         {
             _shipCurrentPoi = target;
             _shipFlying     = false;
+            SetNavButtonsInteractable(true);
             ShowPOIDetail(target);
             yield break;
         }
@@ -641,6 +648,7 @@ public class SystemViewController : MonoBehaviour
         _shipFlying              = false;
         _flyCoroutine            = null;
 
+        SetNavButtonsInteractable(true);
         ShowPOIDetail(target);
     }
 
@@ -742,6 +750,14 @@ public class SystemViewController : MonoBehaviour
         SpawnPOINodes();
 
         ShowSystemView();
+    }
+
+    private void SetNavButtonsInteractable(bool interactable)
+    {
+        if (systemNavButton != null) systemNavButton.interactable = interactable;
+        if (galaxyNavButton != null) galaxyNavButton.interactable = interactable;
+        if (shipNavButton   != null) shipNavButton.interactable   = interactable;
+        if (crewNavButton   != null) crewNavButton.interactable   = interactable;
     }
 
     private void ShowShipView()

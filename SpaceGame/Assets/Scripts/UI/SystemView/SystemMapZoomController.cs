@@ -232,6 +232,17 @@ public class SystemMapZoomController : MonoBehaviour
 
     private void Commit()
     {
+        // Clamp pan so the player cannot drag past the map's own edges.
+        // At zoom z the content is (w*z) × (h*z); the farthest the centre can
+        // travel before the edge leaves the viewport is half that size.
+        if (_rt.parent is RectTransform parentRT)
+        {
+            float hw = parentRT.rect.width  * _zoom * 0.5f;
+            float hh = parentRT.rect.height * _zoom * 0.5f;
+            _offset.x = Mathf.Clamp(_offset.x, -hw, hw);
+            _offset.y = Mathf.Clamp(_offset.y, -hh, hh);
+        }
+
         _rt.anchoredPosition = _offset;
         _rt.localScale       = new Vector3(_zoom, _zoom, 1f);
     }

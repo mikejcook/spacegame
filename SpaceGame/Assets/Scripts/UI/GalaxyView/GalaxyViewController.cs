@@ -72,6 +72,12 @@ public class GalaxyViewController : MonoBehaviour
     /// </summary>
     public System.Action<StarSystem> OnSystemSelected;
 
+    /// <summary>Invoked when galaxy-map warp flight begins.</summary>
+    public System.Action OnFlightStarted;
+
+    /// <summary>Invoked when galaxy-map warp flight ends (arrival or instant-snap).</summary>
+    public System.Action OnFlightEnded;
+
     // ── Private state ─────────────────────────────────────────────────────
 
     private PlanetLibrary            _planetLibrary;
@@ -307,15 +313,16 @@ public class GalaxyViewController : MonoBehaviour
         labelRT.anchorMax        = new Vector2(0.5f, 0f);
         labelRT.pivot            = new Vector2(0.5f, 1f);
         labelRT.anchoredPosition = new Vector2(0f, -(HitAreaSize * 0.5f + LabelOffset));
-        labelRT.sizeDelta        = new Vector2(160f, 24f);
+        labelRT.sizeDelta        = new Vector2(180f, 24f);
 
         var tmp = labelGO.AddComponent<TextMeshProUGUI>();
-        tmp.text          = system.Name;
+        bool isHandcrafted = HandcraftedNames.Contains(system.Name);
+        tmp.text          = isHandcrafted ? system.Name : $"{system.Name} [{system.FtlTierRequired}]";
         tmp.fontSize      = 14f;
         tmp.alignment     = TextAlignmentOptions.Center;
         tmp.color         = isCurrent
                             ? new Color(0.85f, 1.0f, 1.0f, 1.0f)
-                            : new Color(0.80f, 0.80f, 0.85f, 0.75f);
+                            : LabelColor(system);
         tmp.overflowMode  = TextOverflowModes.Overflow;
         // Prevent the label from blocking raycasts — only the root hit area should
         tmp.raycastTarget = false;
@@ -434,15 +441,30 @@ public class GalaxyViewController : MonoBehaviour
             systemInfoSubtitleText.text = $"{starTypeName}  ·  Danger: {dangerStr}";
         }
 
-        // Distance in light years
-        if (systemInfoDistanceText != null && _shipCurrentSystem != null)
+        // FTL gate — check before showing distance or enabling travel
+        int playerFtlTier = GameManager.Instance?.GetPlayerFtlTier() ?? 0;
+        bool ftlLocked    = system.FtlTierRequired > playerFtlTier;
+
+        // Distance / lock message
+        if (systemInfoDistanceText != null)
         {
-            float distanceLY = CalculateDistanceLY(_shipCurrentSystem, system);
-            systemInfoDistanceText.text = FormatLightYears(distanceLY);
-        }
-        else if (systemInfoDistanceText != null)
-        {
-            systemInfoDistanceText.text = "Distance unknown";
+            if (ftlLocked)
+            {
+                string tierLabel = Constants.Ship.TierLabel((EquipmentTier)system.FtlTierRequired);
+                systemInfoDistanceText.text  = $"FTL Drive {tierLabel} required";
+                systemInfoDistanceText.color = new Color(1.00f, 0.35f, 0.20f, 1f);  // red-orange
+            }
+            else if (_shipCurrentSystem != null)
+            {
+                float distanceLY = CalculateDistanceLY(_shipCurrentSystem, system);
+                systemInfoDistanceText.text  = FormatLightYears(distanceLY);
+                systemInfoDistanceText.color = Color.white;
+            }
+            else
+            {
+                systemInfoDistanceText.text  = "Distance unknown";
+                systemInfoDistanceText.color = Color.white;
+            }
         }
 
         // POI summary from database
@@ -461,6 +483,7 @@ public class GalaxyViewController : MonoBehaviour
         // has been active since Start() — playables are already bound.
         if (systemInfoTravelButton != null)
         {
+            systemInfoTravelButton.interactable = !ftlLocked;
             var anim = systemInfoTravelButton.GetComponent<Animator>();
             if (anim != null && anim.runtimeAnimatorController != null)
             {
@@ -559,6 +582,7 @@ public class GalaxyViewController : MonoBehaviour
         float toGX,   float toGY)
     {
         _shipFlying = true;
+        OnFlightStarted?.Invoke();
 
         // Calculate angle so the ship can rotate before/during warp-up
         Canvas.ForceUpdateCanvases();
@@ -571,6 +595,7 @@ public class GalaxyViewController : MonoBehaviour
         {
             _shipCurrentSystem = target;
             _shipFlying        = false;
+            OnFlightEnded?.Invoke();
             OnSystemSelected?.Invoke(target);
             yield break;
         }
@@ -677,10 +702,33 @@ public class GalaxyViewController : MonoBehaviour
         _shipFlying        = false;
         _flyCoroutine      = null;
 
+        OnFlightEnded?.Invoke();
         OnSystemSelected?.Invoke(target);
     }
 
     // ── Colour helpers ────────────────────────────────────────────────────
+
+    // The three hand-crafted systems are always white.
+    // All other systems are coloured from green (tier 1) to red (tier 6).
+    private static readonly System.Collections.Generic.HashSet<string> HandcraftedNames
+        = new System.Collections.Generic.HashSet<string>
+          { "Sol", "Alpha Centauri", "Barnard's Star" };
+
+    private static Color LabelColor(StarSystem system)
+    {
+        if (HandcraftedNames.Contains(system.Name))
+            return new Color(1.00f, 1.00f, 1.00f, 0.90f);   // white
+
+        return system.FtlTierRequired switch
+        {
+            1 => new Color(0.30f, 1.00f, 0.30f, 0.90f),   // green
+            2 => new Color(0.70f, 1.00f, 0.20f, 0.90f),   // yellow-green
+            3 => new Color(1.00f, 1.00f, 0.20f, 0.90f),   // yellow
+            4 => new Color(1.00f, 0.65f, 0.10f, 0.90f),   // orange
+            5 => new Color(1.00f, 0.35f, 0.10f, 0.90f),   // orange-red
+            _ => new Color(1.00f, 0.15f, 0.15f, 0.90f),   // red  (tier 6+)
+        };
+    }
 
     private static Color StarColour(StarType type, bool explored)
     {
