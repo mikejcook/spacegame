@@ -638,18 +638,35 @@ public static class StarSystemGenerator
     /// Generate all POIs for a procedurally generated star system.
     /// Call after the StarSystem has been inserted into the DB (needs system.Id).
     /// </summary>
-    public static List<PointOfInterest> GeneratePOIsForSystem(StarSystem system, int saveGameId)
+    /// <param name="guaranteeHabitable">
+    /// When true, at least one planet in this system will be habitable.
+    /// Use this on one system per FTL-tier cluster to ensure the cluster has
+    /// a habitable world even if random generation doesn't produce one naturally.
+    /// </param>
+    public static List<PointOfInterest> GeneratePOIsForSystem(
+        StarSystem system, int saveGameId, bool guaranteeHabitable = false)
     {
         var rng  = new Random(system.Seed + 1000);
         var pois = new List<PointOfInterest>();
 
-        // Planets (1-6)
+        // Planets (4-6)
         // Base angle randomises the whole system's orientation; individual planets are then
         // distributed evenly (with small jitter) so no two land in the same angular slot.
-        int   planetCount = rng.Next(1, 7);
+        int   planetCount = rng.Next(4, 7);
         float baseAngle   = (float)(rng.NextDouble() * Math.PI * 2);
         for (int i = 0; i < planetCount; i++)
             pois.Add(GeneratePlanet(system, saveGameId, i, planetCount, rng, baseAngle));
+
+        // Ensure at least one habitable planet if requested and none generated naturally.
+        if (guaranteeHabitable && !pois.Exists(p => p.POIType == Constants.POI.Types.Planet && p.IsHabitable))
+        {
+            // Pick a random planet slot and upgrade it to a habitable Terrestrial.
+            var p           = pois[rng.Next(0, planetCount)];
+            p.PlanetType    = PlanetType.Terrestrial;
+            p.HasAtmosphere = true;
+            p.IsHabitable   = true;
+            p.Description   = BuildPlanetDescription(PlanetType.Terrestrial, habitable: true);
+        }
 
         // Asteroid field (50% chance)
         if (rng.Next(0, 10) < 5)

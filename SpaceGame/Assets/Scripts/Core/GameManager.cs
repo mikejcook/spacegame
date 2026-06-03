@@ -247,6 +247,7 @@ public class GameManager : MonoBehaviour
                         avoidPositions: allPlaced.ToArray(),
                         minSpacing:     minSpacing);
 
+                    bool tierHabitableGuaranteed = false;
                     for (int i = 0; i < toPlace; i++)
                     {
                         var (name, starType) = candidates[catalogueIdx];
@@ -256,7 +257,15 @@ public class GameManager : MonoBehaviour
                             seed:            galaxySeed + 200 + catalogueIdx,
                             saveGameId:      CurrentSave.Id,
                             ftlTierRequired: ftlTier);
-                        InsertSystemWithPOIs(sys, CurrentSave.Id);
+
+                        // Guarantee exactly one habitable planet per tier cluster.
+                        // Use the first system in the tier as the designated carrier;
+                        // once set, subsequent systems in the same tier generate freely.
+                        bool guaranteeHabitable = !tierHabitableGuaranteed;
+                        InsertSystemWithPOIs(sys, CurrentSave.Id,
+                            poiGenerator: (s, id) => StarSystemGenerator.GeneratePOIsForSystem(s, id, guaranteeHabitable));
+                        tierHabitableGuaranteed = true;
+
                         allPlaced.Add((positions[i].gx, positions[i].gy));
                         catalogueIdx++;
                         totalInserted++;
@@ -308,7 +317,7 @@ public class GameManager : MonoBehaviour
     {
         system.SaveGameId = saveGameId;
         Database.StarSystems.Insert(system);
-        poiGenerator ??= StarSystemGenerator.GeneratePOIsForSystem;
+        if (poiGenerator == null) poiGenerator = (s, id) => StarSystemGenerator.GeneratePOIsForSystem(s, id);
         var pois = poiGenerator(system, saveGameId);
         foreach (var poi in pois)
         {
