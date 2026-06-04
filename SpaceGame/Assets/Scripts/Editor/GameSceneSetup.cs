@@ -339,6 +339,63 @@ public static class GameSceneSetup
         salvageTMP.fontStyle          = FontStyles.Bold;
         salvageTMP.enableWordWrapping = false;
 
+        // ── Combat header stats — hidden by default, shown during combat ─────
+        // Displays player's own Shield% and Hull% on the right side of the
+        // header, replacing the salvage widget. CanvasGroup controls visibility
+        // so no GameObjects are disabled (avoids Shift animator binding issues).
+        //
+        //   CombatHeaderStats  (CanvasGroup, right-anchored)
+        //     PlayerShieldText ("SHIELDS  100%")
+        //     DividerText      ("|")
+        //     PlayerHullText   ("HULL  100%")
+        var combatHeaderStats = MakeUIGO("CombatHeaderStats", header.transform);
+        {
+            var rt       = combatHeaderStats.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot     = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(380f, 56f);
+            rt.anchoredPosition = new Vector2(-16f, 0f);
+        }
+        var chsCG = combatHeaderStats.AddComponent<CanvasGroup>();
+        chsCG.alpha          = 0f;
+        chsCG.blocksRaycasts = false;
+        chsCG.interactable   = false;
+
+        var chsHLG = combatHeaderStats.AddComponent<HorizontalLayoutGroup>();
+        chsHLG.padding                = new RectOffset(0, 0, 0, 0);
+        chsHLG.spacing                = 12f;
+        chsHLG.childControlWidth      = false;
+        chsHLG.childControlHeight     = false;
+        chsHLG.childForceExpandWidth  = false;
+        chsHLG.childForceExpandHeight = false;
+        chsHLG.childAlignment         = TextAnchor.MiddleRight;
+
+        var playerShieldText = MakeTMP(combatHeaderStats.transform, "PlayerShieldText", "SHIELDS  100%", 26, TextWhite);
+        {
+            var rt       = playerShieldText.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(170f, 40f);
+        }
+        playerShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
+        playerShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
+        var chsDivider = MakeTMP(combatHeaderStats.transform, "DividerText", "|", 26, TextSubtle);
+        {
+            var rt       = chsDivider.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(16f, 40f);
+        }
+        chsDivider.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
+        var playerHullText = MakeTMP(combatHeaderStats.transform, "PlayerHullText", "HULL  100%", 26, TextWhite);
+        {
+            var rt       = playerHullText.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(160f, 40f);
+        }
+        playerHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
+        playerHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
         return header;
     }
 
@@ -1184,13 +1241,22 @@ public static class GameSceneSetup
     // ── Combat view — full body area, starts hidden ──────────────────────────
     //
     // Hierarchy:
-    //   CombatView                  (CombatViewController MonoBehaviour)
-    //   ├─ PlayerShipImage          (Image, left-centre, player ship sprite)
-    //   ├─ EnemyShipImage           (Image, right-centre, placeholder enemy)
-    //   └─ CombatActionBar          (bottom strip, replaces NavBar during combat)
-    //      ├─ AccentLine            (2 px cyan rule at top of bar)
-    //      └─ ButtonContainer       (HorizontalLayoutGroup)
-    //         └─ EndTurnButton      (Shift MainButton — "END TURN")
+    //   CombatView                     (CombatViewController MonoBehaviour)
+    //   ├─ EnemyLeftSlot / CenterSlot / RightSlot
+    //   ├─ PlayerShipImage             (bottom-centre, nose up)
+    //   ├─ CrosshairRoot               (animated targeting crosshair)
+    //   └─ CombatActionBar             (bottom 96 px strip)
+    //      ├─ AccentLine               (2 px cyan rule at top)
+    //      ├─ FireTorpedesContainer    (left-anchored, 300 px)
+    //      │  └─ FireTorpedesButton    (Shift MainButton — "FIRE TORPEDOES")
+    //      ├─ TargetInfoPanel          (centre, flexible — enemy Shield/Hull %)
+    //      │  ├─ TargetInfoTitle       ("TARGET", 16 px)
+    //      │  └─ TargetStatsRow        (HLG)
+    //      │     ├─ TargetShieldText   ("SHIELDS  100%")
+    //      │     ├─ DividerText        ("|")
+    //      │     └─ TargetHullText     ("HULL  100%")
+    //      └─ FireBeamWeaponContainer  (right-anchored, 300 px)
+    //         └─ FireBeamWeaponButton  (Shift MainButton — "FIRE BEAM WEAPON")
 
     static GameObject BuildCombatView(Transform parent)
     {
@@ -1244,45 +1310,146 @@ public static class GameSceneSetup
         }
 
         // ── Action bar — 96 px strip at the bottom ───────────────────────
+        //
+        // Layout (left → right):
+        //   FireTorpedesContainer   (300 px, left-anchored)
+        //     FireTorpedesButton    (Shift MainButton — "FIRE TORPEDOES")
+        //   TargetInfoPanel         (centre, flexible)
+        //     TargetInfoTitle       ("TARGET", 18 px)
+        //     TargetStatsRow        (HLG)
+        //       TargetShieldText    ("SHIELDS  100%")
+        //       DividerText         ("|")
+        //       TargetHullText      ("HULL  100%")
+        //   FireBeamWeaponContainer (300 px, right-anchored)
+        //     FireBeamWeaponButton  (Shift MainButton — "FIRE BEAM WEAPON")
         var actionBar = MakeImage(combatView.transform, "CombatActionBar", HeaderBar);
         PlaceRect(actionBar, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 48f), v2(0f, 96f));
 
         var actionRule = MakeImage(actionBar.transform, "AccentLine", AccentCyan);
         PlaceRect(actionRule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -1f), v2(0f, 2f));
 
-        var actionContainer = MakeUIGO("ButtonContainer", actionBar.transform);
+        const float WeaponBtnWidth = 300f;
+        const float ActionBarPad   = 16f;
+
+        // ── Left weapon button ────────────────────────────────────────────
+        var torpContainer = MakeUIGO("FireTorpedesContainer", actionBar.transform);
         {
-            var rt = actionContainer.GetComponent<RectTransform>();
-            rt.pivot            = new Vector2(0.5f, 0f);
-            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 16f);
-            rt.sizeDelta        = new Vector2(860f, 64f);
+            var rt              = torpContainer.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 0f);
+            rt.anchorMax        = new Vector2(0f, 1f);
+            rt.pivot            = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(ActionBarPad, 0f);
+            rt.sizeDelta        = new Vector2(WeaponBtnWidth, -20f);
         }
-
-        var hlg = actionContainer.AddComponent<HorizontalLayoutGroup>();
-        hlg.padding                = new RectOffset(0, 0, 0, 0);
-        hlg.spacing                = 16f;
-        hlg.childControlWidth      = true;
-        hlg.childControlHeight     = true;
-        hlg.childForceExpandWidth  = true;
-        hlg.childForceExpandHeight = true;
-        hlg.childAlignment         = TextAnchor.MiddleCenter;
-
-        var endTurnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
-        if (endTurnPrefab != null)
+        var weaponBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        if (weaponBtnPrefab != null)
         {
-            var go = (GameObject)Object.Instantiate(endTurnPrefab, actionContainer.transform);
-            go.name = "EndTurnButton";
+            var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, torpContainer.transform);
+            go.name = "FireTorpedesButton";
             var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "END TURN";
+            if (mb != null) mb.buttonText = "FIRE TORPEDOES";
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
         else
         {
-            var go  = MakeImage(actionContainer.transform, "EndTurnButton", BtnNormal);
+            var go  = MakeImage(torpContainer.transform, "FireTorpedesButton", BtnNormal);
             go.AddComponent<Button>();
-            var lbl = MakeTMP(go.transform, "Label", "END TURN", 22, TextWhite);
+            var lbl = MakeTMP(go.transform, "Label", "FIRE TORPEDOES", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+            Stretch(go);
+        }
+
+        // ── Target info panel — centre ────────────────────────────────────
+        var targetInfoPanel = MakeUIGO("TargetInfoPanel", actionBar.transform);
+        {
+            var rt       = targetInfoPanel.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(ActionBarPad + WeaponBtnWidth + 8f, 6f);
+            rt.offsetMax = new Vector2(-(ActionBarPad + WeaponBtnWidth + 8f), -6f);
+        }
+        var tipVLG = targetInfoPanel.AddComponent<VerticalLayoutGroup>();
+        tipVLG.padding                = new RectOffset(0, 0, 4, 4);
+        tipVLG.spacing                = 2f;
+        tipVLG.childControlWidth      = true;
+        tipVLG.childControlHeight     = true;
+        tipVLG.childForceExpandWidth  = true;
+        tipVLG.childForceExpandHeight = true;
+        tipVLG.childAlignment         = TextAnchor.MiddleCenter;
+
+        var tipTitle = MakeTMP(targetInfoPanel.transform, "TargetInfoTitle", "TARGET", 16, TextSubtle);
+        tipTitle.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        {
+            var le           = tipTitle.AddComponent<LayoutElement>();
+            le.preferredHeight = 20f;
+            le.flexibleHeight  = 0f;
+        }
+
+        var statsRow = MakeUIGO("TargetStatsRow", targetInfoPanel.transform);
+        {
+            var le           = statsRow.AddComponent<LayoutElement>();
+            le.flexibleHeight = 1f;
+        }
+        var statsHLG = statsRow.AddComponent<HorizontalLayoutGroup>();
+        statsHLG.padding                = new RectOffset(0, 0, 0, 0);
+        statsHLG.spacing                = 12f;
+        statsHLG.childControlWidth      = true;
+        statsHLG.childControlHeight     = true;
+        statsHLG.childForceExpandWidth  = true;
+        statsHLG.childForceExpandHeight = true;
+        statsHLG.childAlignment         = TextAnchor.MiddleCenter;
+
+        var targetShieldText = MakeTMP(statsRow.transform, "TargetShieldText", "SHIELDS  100%", 24, TextWhite);
+        targetShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
+        targetShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
+        var tipDivider = MakeTMP(statsRow.transform, "DividerText", "|", 24, TextSubtle);
+        tipDivider.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        {
+            var le          = tipDivider.AddComponent<LayoutElement>();
+            le.preferredWidth = 20f;
+            le.flexibleWidth  = 0f;
+        }
+
+        var targetHullText = MakeTMP(statsRow.transform, "TargetHullText", "HULL  100%", 24, TextWhite);
+        targetHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
+        targetHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
+        // ── Right weapon button ───────────────────────────────────────────
+        var beamContainer = MakeUIGO("FireBeamWeaponContainer", actionBar.transform);
+        {
+            var rt              = beamContainer.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(1f, 0f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-ActionBarPad, 0f);
+            rt.sizeDelta        = new Vector2(WeaponBtnWidth, -20f);
+        }
+        if (weaponBtnPrefab != null)
+        {
+            var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, beamContainer.transform);
+            go.name = "FireBeamWeaponButton";
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "FIRE BEAM WEAPON";
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+        else
+        {
+            var go  = MakeImage(beamContainer.transform, "FireBeamWeaponButton", BtnNormal);
+            go.AddComponent<Button>();
+            var lbl = MakeTMP(go.transform, "Label", "FIRE BEAM WEAPON", 20, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+            Stretch(go);
         }
 
         // ── Targeting crosshair — centred in the enemy arena ─────────────
@@ -1573,9 +1740,11 @@ public static class GameSceneSetup
     {
         var so = new SerializedObject(ctrl);
 
-        Set(so, "starfieldBackground", background.GetComponent<RawImage>());
-        Set(so, "systemNameText",      Find<TMP_Text>(header, "SystemNameText"));
-        Set(so, "salvageText",         Find<TMP_Text>(header, "SalvageWidget/SalvageText"));
+        Set(so, "starfieldBackground",    background.GetComponent<RawImage>());
+        Set(so, "systemNameText",         Find<TMP_Text>(header, "SystemNameText"));
+        Set(so, "salvageText",            Find<TMP_Text>(header, "SalvageWidget/SalvageText"));
+        Set(so, "salvageWidgetGO",        header.transform.Find("SalvageWidget")?.gameObject);
+        Set(so, "combatHeaderStatsGroup", header.transform.Find("CombatHeaderStats")?.GetComponent<CanvasGroup>());
         Set(so, "systemMapArea",       FindRT(body, "SystemMap"));
         Set(so, "starNode",            Find<Image>(body, "SystemMap/StarNode"));
 
@@ -1809,6 +1978,26 @@ public static class GameSceneSetup
 
                 cvcSo.FindProperty("combatActionBar").objectReferenceValue =
                     combatView.transform.Find("CombatActionBar")?.gameObject;
+
+                // Fire buttons — inside their containers (Shift prefab is the direct child)
+                var torpContainerTf = combatView.transform.Find("CombatActionBar/FireTorpedesContainer");
+                var beamContainerTf = combatView.transform.Find("CombatActionBar/FireBeamWeaponContainer");
+                cvcSo.FindProperty("fireTorpedesButton").objectReferenceValue =
+                    torpContainerTf?.GetComponentInChildren<Button>(true);
+                cvcSo.FindProperty("fireBeamWeaponButton").objectReferenceValue =
+                    beamContainerTf?.GetComponentInChildren<Button>(true);
+
+                // Target info texts
+                cvcSo.FindProperty("targetShieldText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatActionBar/TargetInfoPanel/TargetStatsRow/TargetShieldText");
+                cvcSo.FindProperty("targetHullText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatActionBar/TargetInfoPanel/TargetStatsRow/TargetHullText");
+
+                // Player stats texts (in the header combat overlay)
+                cvcSo.FindProperty("playerShieldText").objectReferenceValue =
+                    Find<TMP_Text>(header, "CombatHeaderStats/PlayerShieldText");
+                cvcSo.FindProperty("playerHullText").objectReferenceValue =
+                    Find<TMP_Text>(header, "CombatHeaderStats/PlayerHullText");
 
                 // Crosshair — wire textures from TooManyCrosshairs then wire the component
                 var outerTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Crosshairs/xArrowheadInwards128.png");

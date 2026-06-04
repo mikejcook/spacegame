@@ -46,8 +46,10 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private RawImage starfieldBackground;
 
     [Header("Header")]
-    [SerializeField] private TMP_Text systemNameText;
-    [SerializeField] private TMP_Text salvageText;
+    [SerializeField] private TMP_Text    systemNameText;
+    [SerializeField] private TMP_Text    salvageText;
+    [SerializeField] private GameObject  salvageWidgetGO;
+    [SerializeField] private CanvasGroup combatHeaderStatsGroup;
 
     [Header("System Map")]
     [Tooltip("RectTransform of the map area. POI nodes are spawned as children here.")]
@@ -1017,9 +1019,18 @@ public class SystemViewController : MonoBehaviour
             navBarCanvasGroup.interactable   = false;
         }
 
+        // Hide non-combat header elements; show combat stats
+        if (systemNameText != null) systemNameText.gameObject.SetActive(false);
+        if (salvageWidgetGO != null) salvageWidgetGO.SetActive(false);
+        if (combatHeaderStatsGroup != null)
+        {
+            combatHeaderStatsGroup.alpha          = 1f;
+            combatHeaderStatsGroup.blocksRaycasts = true;
+            combatHeaderStatsGroup.interactable   = true;
+        }
+
         combatViewController?.OnCombatEnter();
         combatViewController?.StartCombat(enemies);
-        if (systemNameText != null) systemNameText.text = "Space Battle";
         UpdateCombatDebugButtonLabel();
     }
 
@@ -1032,6 +1043,16 @@ public class SystemViewController : MonoBehaviour
         _inCombat = false;
 
         combatViewController?.OnCombatExit();
+
+        // Restore header elements
+        if (systemNameText != null) systemNameText.gameObject.SetActive(true);
+        if (salvageWidgetGO != null) salvageWidgetGO.SetActive(true);
+        if (combatHeaderStatsGroup != null)
+        {
+            combatHeaderStatsGroup.alpha          = 0f;
+            combatHeaderStatsGroup.blocksRaycasts = false;
+            combatHeaderStatsGroup.interactable   = false;
+        }
 
         if (combatViewCanvasGroup != null)
         {

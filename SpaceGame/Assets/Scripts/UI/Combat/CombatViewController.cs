@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -91,6 +92,18 @@ public class CombatViewController : MonoBehaviour
     [Header("Action Bar")]
     [SerializeField] private GameObject combatActionBar;
 
+    [Header("Action Bar Buttons — wired by GameSceneSetup")]
+    [SerializeField] private Button fireTorpedesButton;
+    [SerializeField] private Button fireBeamWeaponButton;
+
+    [Header("Target Info Display — wired by GameSceneSetup")]
+    [SerializeField] private TMP_Text targetShieldText;
+    [SerializeField] private TMP_Text targetHullText;
+
+    [Header("Player Stats Display (header) — wired by GameSceneSetup")]
+    [SerializeField] private TMP_Text playerShieldText;
+    [SerializeField] private TMP_Text playerHullText;
+
     [Header("Crosshair")]
     [SerializeField] private CombatCrosshair combatCrosshair;
 
@@ -98,6 +111,15 @@ public class CombatViewController : MonoBehaviour
     [SerializeField] private Button enemyLeftButton;
     [SerializeField] private Button enemyCenterButton;
     [SerializeField] private Button enemyRightButton;
+
+    // -----------------------------------------------------------------------
+    // Combat state
+    // -----------------------------------------------------------------------
+
+    private float _playerShieldPct = 100f;
+    private float _playerHullPct   = 100f;
+    private float _targetShieldPct = 100f;
+    private float _targetHullPct   = 100f;
 
     // -----------------------------------------------------------------------
     // Public API
@@ -117,9 +139,63 @@ public class CombatViewController : MonoBehaviour
         enemyLeftButton?.onClick.AddListener(  () => SetTarget(enemyLeftSlotRT));
         enemyCenterButton?.onClick.AddListener(() => SetTarget(enemyCenterSlotRT));
         enemyRightButton?.onClick.AddListener( () => SetTarget(enemyRightSlotRT));
+
+        fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
+        fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
+
+        RefreshDisplays();
     }
 
-    public void OnCombatEnter()  => Debug.Log("[CombatViewController] Combat entered.");
+    /// <summary>Fire torpedoes at the current target.</summary>
+    public void FireTorpedoes()
+    {
+        PulseCrosshair();
+        Debug.Log("[CombatViewController] Fire Torpedoes!");
+        // TODO: apply torpedo damage to target
+    }
+
+    /// <summary>Fire beam weapon at the current target.</summary>
+    public void FireBeamWeapon()
+    {
+        PulseCrosshair();
+        Debug.Log("[CombatViewController] Fire Beam Weapon!");
+        // TODO: apply beam damage to target
+    }
+
+    /// <summary>Set player shield/hull percentages and refresh the header display.</summary>
+    public void SetPlayerStats(float shieldPct, float hullPct)
+    {
+        _playerShieldPct = Mathf.Clamp(shieldPct, 0f, 100f);
+        _playerHullPct   = Mathf.Clamp(hullPct,   0f, 100f);
+        RefreshDisplays();
+    }
+
+    /// <summary>Set the targeted enemy's shield/hull percentages.</summary>
+    public void SetTargetStats(float shieldPct, float hullPct)
+    {
+        _targetShieldPct = Mathf.Clamp(shieldPct, 0f, 100f);
+        _targetHullPct   = Mathf.Clamp(hullPct,   0f, 100f);
+        RefreshDisplays();
+    }
+
+    private void RefreshDisplays()
+    {
+        if (playerShieldText != null) playerShieldText.text = $"SHIELDS  {_playerShieldPct:0}%";
+        if (playerHullText   != null) playerHullText.text   = $"HULL  {_playerHullPct:0}%";
+        if (targetShieldText != null) targetShieldText.text = $"SHIELDS  {_targetShieldPct:0}%";
+        if (targetHullText   != null) targetHullText.text   = $"HULL  {_targetHullPct:0}%";
+    }
+
+    public void OnCombatEnter()
+    {
+        _playerShieldPct = 100f;
+        _playerHullPct   = 100f;
+        _targetShieldPct = 100f;
+        _targetHullPct   = 100f;
+        RefreshDisplays();
+        Debug.Log("[CombatViewController] Combat entered.");
+    }
+
     public void OnCombatExit()   { HideAllEnemySlots(); combatCrosshair?.Hide(); Debug.Log("[CombatViewController] Combat exited."); }
 
     /// <summary>Trigger a single crosshair pulse — call when the player fires.</summary>
@@ -130,6 +206,10 @@ public class CombatViewController : MonoBehaviour
     {
         if (slotRT == null) return;
         combatCrosshair?.SnapToSlot(slotRT);
+        // Reset target stats to 100% for the newly selected enemy (placeholder until real combat data)
+        _targetShieldPct = 100f;
+        _targetHullPct   = 100f;
+        RefreshDisplays();
         Debug.Log($"[CombatViewController] Targeted: {slotRT.name}");
     }
 
