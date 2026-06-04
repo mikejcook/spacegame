@@ -27,9 +27,12 @@ public class CombatCrosshair : MonoBehaviour
 
     [Header("Appearance")]
     [SerializeField] private Color crosshairColor = new Color(0f, 0.71f, 1f, 1f);  // Shift UI blue #00B5FF
-    [SerializeField] private float slotPadding    = 30f;   // extra canvas units added on each side
-    [SerializeField] private float minSize        = 160f;  // smallest crosshair (covers tiny fighters)
-    [SerializeField] private float maxSize        = 480f;  // largest crosshair (dreadnaught needs ~386)
+
+    // Sizing constants — not serialized so code changes take effect immediately
+    // without requiring a scene rebuild.
+    private const float SlotPadding = 80f;  // extra canvas units added on each side of the diagonal
+    private const float MinSize     = 160f; // floor so tiny fighters always get a visible frame
+    private const float MaxSize     = 600f; // ceiling so dreadnaughts don't overflow the viewport
 
     [Header("Snap Animation")]
     [SerializeField] private float snapInTime     = 0.12f;  // seconds for entrance scale-in
@@ -78,18 +81,28 @@ public class CombatCrosshair : MonoBehaviour
     {
         if (slotRT == null || _rt == null) return;
 
-        // Match the slot's point-anchor position inside the shared parent (CombatView).
-        _rt.anchorMin        = slotRT.anchorMin;
-        _rt.anchorMax        = slotRT.anchorMax;
-        _rt.anchoredPosition = slotRT.anchoredPosition;
+        // Derive the slot's world-space centre from its rendered corners.
+        // This is robust against any anchor/pivot ambiguity — we never copy
+        // anchor values between RectTransforms because Unity adjusts
+        // anchoredPosition differently depending on the current sizeDelta.
+        var corners = new Vector3[4];
+        slotRT.GetWorldCorners(corners);
+        // corners: [0]=bottom-left [1]=top-left [2]=top-right [3]=bottom-right
+        var worldCenter = (corners[0] + corners[2]) * 0.5f;
 
-        // Frame the ship with padding.  slotRT.sizeDelta is updated at runtime
-        // by CombatViewController.ShowEnemySlot once the sprite is known.
-        // Use the larger dimension to keep the crosshair square, then clamp
-        // so tiny fighters get a minimum visible size and huge dreadnaughts
-        // don't overflow the viewport.
-        float raw  = Mathf.Max(slotRT.sizeDelta.x, slotRT.sizeDelta.y) + slotPadding * 2f;
-        float size = Mathf.Clamp(raw, minSize, maxSize);
+        // Convert to the crosshair parent's local space and pin with a fixed
+        // centre anchor so the position is expressed as a simple offset.
+        var parentRT = _rt.parent as RectTransform;
+        if (parentRT == null) return;
+        _rt.anchorMin        = new Vector2(0.5f, 0.5f);
+        _rt.anchorMax        = new Vector2(0.5f, 0.5f);
+        _rt.anchoredPosition = parentRT.InverseTransformPoint(worldCenter);
+
+        // Size: use the sprite diagonal so the crosshair frames the ship
+        // correctly regardless of its baked rotation (235°, 180°, 125°).
+        Vector2 s = slotRT.sizeDelta;
+        float raw = Mathf.Sqrt(s.x * s.x + s.y * s.y) + SlotPadding * 2f;
+        float size = Mathf.Clamp(raw, MinSize, MaxSize);
         _rt.sizeDelta = new Vector2(size, size);
 
         StopAllCoroutines();
