@@ -116,10 +116,19 @@ public class CombatViewController : MonoBehaviour
     [Header("Projectiles — wired by GameSceneSetup")]
     [Tooltip("RectTransform that projectiles are spawned into (covers combat arena, above ships).")]
     [SerializeField] private RectTransform projectileContainer;
-    [Tooltip("fx_bolt00 sprite — used for the beam weapon / plasma bolt.")]
-    [SerializeField] private Sprite plasmaBoltSprite;
     [Tooltip("missile_1 sprite — used for torpedo fire.")]
     [SerializeField] private Sprite missileSprite;
+
+    [Header("Beam Weapon — wired by GameSceneSetup")]
+    [Tooltip("laser_noise00 texture stretched along the beam line.")]
+    [SerializeField] private Texture2D beamTexture;
+    [Tooltip("glow_round00 sprite used for the impact circle and muzzle flash.")]
+    [SerializeField] private Sprite beamGlowSprite;
+
+    [Header("Audio — wired by GameSceneSetup")]
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip   beamWeaponClip;
+    [SerializeField] private AudioClip   torpedoClip;
 
     // -----------------------------------------------------------------------
     // Combat state
@@ -167,6 +176,7 @@ public class CombatViewController : MonoBehaviour
     {
         if (_currentTargetRT == null) return;
         PulseCrosshair();
+        sfxSource?.PlayOneShot(torpedoClip);
         // Missiles are larger and slower than plasma bolts.
         LaunchProjectile(missileSprite, new Vector2(40f, 96f), duration: 0.55f);
         Debug.Log("[CombatViewController] Fire Torpedoes!");
@@ -178,8 +188,8 @@ public class CombatViewController : MonoBehaviour
     {
         if (_currentTargetRT == null) return;
         PulseCrosshair();
-        // Plasma bolt is compact and fast.
-        LaunchProjectile(plasmaBoltSprite, new Vector2(72f, 72f), duration: 0.28f);
+        sfxSource?.PlayOneShot(beamWeaponClip);
+        LaunchBeamWeapon();
         Debug.Log("[CombatViewController] Fire Beam Weapon!");
         // TODO: apply beam damage to target
     }
@@ -210,6 +220,33 @@ public class CombatViewController : MonoBehaviour
 
         var proj = go.AddComponent<CombatProjectile>();
         proj.Launch(startWorld, endWorld, sprite, displaySize, duration);
+    }
+
+    /// <summary>
+    /// Spawn a CombatBeamEffect from the player ship to the current target.
+    /// Beam line uses laser_noise00.png; impact + muzzle glows use glow_round00.png.
+    /// </summary>
+    private void LaunchBeamWeapon()
+    {
+        if (projectileContainer == null || playerShipImage == null || _currentTargetRT == null)
+            return;
+
+        // Origin: nose = top-centre of the player ship image (sprite faces up).
+        var shipCorners = new Vector3[4];
+        playerShipImage.rectTransform.GetWorldCorners(shipCorners);
+        // corners: [0]=bottom-left  [1]=top-left  [2]=top-right  [3]=bottom-right
+        Vector3 noseWorld = (shipCorners[1] + shipCorners[2]) * 0.5f;
+
+        var go = new GameObject("BeamEffect", typeof(RectTransform));
+        go.transform.SetParent(projectileContainer, worldPositionStays: false);
+
+        var effect = go.AddComponent<CombatBeamEffect>();
+        effect.Fire(
+            noseWorld,
+            _currentTargetRT.position,
+            beamTexture,
+            beamGlowSprite
+        );
     }
 
     /// <summary>Set player shield/hull percentages and refresh the header display.</summary>

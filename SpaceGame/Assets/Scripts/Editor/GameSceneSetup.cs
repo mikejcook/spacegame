@@ -2138,17 +2138,13 @@ public static class GameSceneSetup
 
                 Debug.Log($"[GameSceneSetup] Loaded {dgbSprites.Count} DGB ship sprites.");
 
-                // ── Projectile sprites ────────────────────────────────────
-                // fx_bolt00.png → plasma bolt (beam weapon)
-                // missile_1.png → torpedo projectile
-                // Both may need reimporting as Single sprites if not done yet.
+                // ── Torpedo projectile sprite ─────────────────────────────
+                // missile_1.png must be imported as Single sprite for the
+                // "{name}" lookup to work (no _0 suffix appended).
                 const string EffectsFolder = "Assets/DGB Spaceships/Effects";
-                const string BoltPath    = EffectsFolder + "/fx_bolt00.png";
-                const string MissilePath = DgbSpritesFolder + "/missile_1.png";
-
-                foreach (var path in new[] { BoltPath, MissilePath })
+                const string MissilePath   = DgbSpritesFolder + "/missile_1.png";
                 {
-                    var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                    var imp = AssetImporter.GetAtPath(MissilePath) as TextureImporter;
                     if (imp != null &&
                         (imp.textureType      != TextureImporterType.Sprite ||
                          imp.spriteImportMode != SpriteImportMode.Single))
@@ -2156,19 +2152,71 @@ public static class GameSceneSetup
                         imp.textureType      = TextureImporterType.Sprite;
                         imp.spriteImportMode = SpriteImportMode.Single;
                         imp.spritePivot      = new Vector2(0.5f, 0.5f);
-                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
-                        Debug.Log($"[GameSceneSetup] Reimported as Single Sprite: {System.IO.Path.GetFileName(path)}");
+                        AssetDatabase.ImportAsset(MissilePath, ImportAssetOptions.ForceUpdate);
+                        Debug.Log($"[GameSceneSetup] Reimported as Single Sprite: missile_1.png");
+                    }
+                }
+                var missileSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MissilePath);
+                if (missileSprite == null)
+                    Debug.LogWarning($"[GameSceneSetup] Missile sprite not found: {MissilePath}");
+                cvcSo.FindProperty("missileSprite").objectReferenceValue = missileSprite;
+
+                // ── Beam weapon textures ──────────────────────────────────
+                // laser_noise00.png → beam line (RawImage — keep as Texture2D, not Sprite)
+                // glow_round00.png  → impact glow + muzzle flash (Image — import as Single Sprite)
+                const string LaserTexPath = EffectsFolder + "/laser_noise00.png";
+                const string GlowPath     = EffectsFolder + "/glow_round00.png";
+
+                // Ensure laser is a plain Texture2D (not Sprite).
+                {
+                    var imp = AssetImporter.GetAtPath(LaserTexPath) as TextureImporter;
+                    if (imp != null && imp.textureType != TextureImporterType.Default)
+                    {
+                        imp.textureType = TextureImporterType.Default;
+                        AssetDatabase.ImportAsset(LaserTexPath, ImportAssetOptions.ForceUpdate);
+                        Debug.Log("[GameSceneSetup] Reimported laser_noise00.png as Default texture.");
+                    }
+                }
+                // Ensure glow is a Single Sprite.
+                {
+                    var imp = AssetImporter.GetAtPath(GlowPath) as TextureImporter;
+                    if (imp != null &&
+                        (imp.textureType      != TextureImporterType.Sprite ||
+                         imp.spriteImportMode != SpriteImportMode.Single))
+                    {
+                        imp.textureType      = TextureImporterType.Sprite;
+                        imp.spriteImportMode = SpriteImportMode.Single;
+                        imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                        AssetDatabase.ImportAsset(GlowPath, ImportAssetOptions.ForceUpdate);
+                        Debug.Log("[GameSceneSetup] Reimported glow_round00.png as Single Sprite.");
                     }
                 }
 
-                var boltSprite    = AssetDatabase.LoadAssetAtPath<Sprite>(BoltPath);
-                var missileSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MissilePath);
+                var beamTex   = AssetDatabase.LoadAssetAtPath<Texture2D>(LaserTexPath);
+                var glowSprite = AssetDatabase.LoadAssetAtPath<Sprite>(GlowPath);
 
-                if (boltSprite    == null) Debug.LogWarning($"[GameSceneSetup] Plasma bolt sprite not found: {BoltPath}");
-                if (missileSprite == null) Debug.LogWarning($"[GameSceneSetup] Missile sprite not found: {MissilePath}");
+                if (beamTex   == null) Debug.LogWarning($"[GameSceneSetup] Beam texture not found: {LaserTexPath}");
+                if (glowSprite == null) Debug.LogWarning($"[GameSceneSetup] Glow sprite not found: {GlowPath}");
 
-                cvcSo.FindProperty("plasmaBoltSprite").objectReferenceValue = boltSprite;
-                cvcSo.FindProperty("missileSprite").objectReferenceValue    = missileSprite;
+                cvcSo.FindProperty("beamTexture").objectReferenceValue    = beamTex;
+                cvcSo.FindProperty("beamGlowSprite").objectReferenceValue = glowSprite;
+
+                // ── Combat audio ──────────────────────────────────────────
+                var combatAudioSrc = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();
+                cvcSo.FindProperty("sfxSource").objectReferenceValue = combatAudioSrc;
+
+                // Short SFX must use DecompressOnLoad — Compressed In Memory adds
+                // a decode delay that makes the sound play mid-flight instead of
+                // on button press.
+                EnsureAudioDecompressOnLoad("Assets/Audio/SFX/beam_weapon.mp3");
+                EnsureAudioDecompressOnLoad("Assets/Audio/SFX/torpedo.mp3");
+
+                var beamClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/beam_weapon.mp3");
+                var torpClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/torpedo.mp3");
+                if (beamClip != null) cvcSo.FindProperty("beamWeaponClip").objectReferenceValue = beamClip;
+                else Debug.LogWarning("[GameSceneSetup] beam_weapon.mp3 not found at Assets/Audio/SFX/.");
+                if (torpClip != null) cvcSo.FindProperty("torpedoClip").objectReferenceValue = torpClip;
+                else Debug.LogWarning("[GameSceneSetup] torpedo.mp3 not found at Assets/Audio/SFX/.");
 
                 // Projectile container
                 var projLayerTf = combatView.transform.Find("ProjectileLayer");
@@ -2294,6 +2342,23 @@ public static class GameSceneSetup
         rt.anchorMax        = anchorMax;
         rt.anchoredPosition = pos;
         rt.sizeDelta        = size;
+    }
+
+    /// <summary>
+    /// Ensures an audio clip is imported with DecompressOnLoad so it plays
+    /// with zero decode latency.  Required for short SFX — Compressed In Memory
+    /// decompresses on-the-fly and adds an audible delay on PlayOneShot.
+    /// </summary>
+    static void EnsureAudioDecompressOnLoad(string path)
+    {
+        var imp = AssetImporter.GetAtPath(path) as AudioImporter;
+        if (imp == null) return;
+        var settings = imp.defaultSampleSettings;
+        if (settings.loadType == AudioClipLoadType.DecompressOnLoad) return;
+        settings.loadType          = AudioClipLoadType.DecompressOnLoad;
+        imp.defaultSampleSettings  = settings;
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        Debug.Log($"[GameSceneSetup] Set DecompressOnLoad: {System.IO.Path.GetFileName(path)}");
     }
 
     static void Set(SerializedObject so, string prop, Object value)
