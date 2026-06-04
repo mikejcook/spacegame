@@ -145,10 +145,13 @@ public static class GameSceneSetup
         Stretch(svcGO);
 
         // ── Build child hierarchy ─────────────────────────────────────────
-        var header    = BuildHeader(svcGO.transform);
-        var body      = BuildBody(svcGO.transform);
-        var navBar    = BuildNavBar(svcGO.transform);
-        var poiDetail = BuildPOIDetailPanel(svcGO.transform);
+        var header     = BuildHeader(svcGO.transform);
+        var body       = BuildBody(svcGO.transform);
+        var navBar     = BuildNavBar(svcGO.transform);
+        var poiDetail  = BuildPOIDetailPanel(svcGO.transform);
+        // CombatView is a sibling of Body/NavBar so it covers the full area
+        // below the header (including the NavBar strip) when active.
+        var combatView = BuildCombatView(svcGO.transform);
 
         // ── Wire UIElementSound audio source on all Shift buttons ─────────
         var uiAudio = uiAudioGO.GetComponent<AudioSource>();
@@ -160,7 +163,7 @@ public static class GameSceneSetup
         }
 
         // ── Wire serialised fields ────────────────────────────────────────
-        WireController(controller, bg, header, body, navBar, poiDetail);
+        WireController(controller, bg, header, body, navBar, poiDetail, combatView);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
@@ -191,6 +194,36 @@ public static class GameSceneSetup
         PlaceRect(sysName, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 0f), v2(-40f, 0f));
         sysName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         sysName.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        // Debug combat toggle button — left-aligned in the header.
+        // Temporary: gives a quick way to enter/exit the combat view while
+        // developing. Remove (or hide) once gameplay triggers combat properly.
+        var btnPrefabForHeader = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        if (btnPrefabForHeader != null)
+        {
+            var combatDbgGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
+            combatDbgGO.name = "CombatDebugButton";
+            var mb = combatDbgGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "⚔ BATTLE";
+            var rt = combatDbgGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.sizeDelta = new Vector2(200f, 56f);
+            rt.anchoredPosition = new Vector2(12f, 0f);
+        }
+        else
+        {
+            var combatDbgGO = MakeImage(header.transform, "CombatDebugButton", BtnNormal);
+            combatDbgGO.AddComponent<Button>();
+            var lbl = MakeTMP(combatDbgGO.transform, "Label", "⚔ BATTLE", 20, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+            var rt = combatDbgGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.sizeDelta = new Vector2(200f, 56f);
+            rt.anchoredPosition = new Vector2(12f, 0f);
+        }
 
         // Salvage widget — icon + count, right-aligned in the header
         //   SalvageWidget  (HorizontalLayoutGroup, right-anchored)
@@ -1095,6 +1128,154 @@ public static class GameSceneSetup
         return crewView;
     }
 
+    // ── Combat view — full body area, starts hidden ──────────────────────────
+    //
+    // Hierarchy:
+    //   CombatView                  (CombatViewController MonoBehaviour)
+    //   ├─ PlayerShipImage          (Image, left-centre, player ship sprite)
+    //   ├─ EnemyShipImage           (Image, right-centre, placeholder enemy)
+    //   └─ CombatActionBar          (bottom strip, replaces NavBar during combat)
+    //      ├─ AccentLine            (2 px cyan rule at top of bar)
+    //      └─ ButtonContainer       (HorizontalLayoutGroup)
+    //         └─ EndTurnButton      (Shift MainButton — "END TURN")
+
+    static GameObject BuildCombatView(Transform parent)
+    {
+        // CombatView is a sibling of Body and NavBar (child of SystemViewController).
+        // Fills all space below the 90 px header — covers the NavBar area too, so
+        // the action bar at the bottom sits at the true screen edge.
+        var combatView = MakeUIGO("CombatView", parent);
+        {
+            var rt       = combatView.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = new Vector2(0f, -90f);
+        }
+        combatView.AddComponent<CombatViewController>();
+
+        // CanvasGroup — show/hide without disabling Shift button Animators (CLAUDE.md)
+        var cg = combatView.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+
+        // ── Enemy ship slots (upper area) ────────────────────────────────
+        // Each slot is a CanvasGroup point-anchored at the centre of its screen
+        // third. sizeDelta is set at runtime by CombatViewController based on
+        // CombatShipDisplaySize; the builder seeds it at Large (240×213 canvas
+        // units). The inner Image is pre-rotated to aim at the player ship
+        // (bottom-centre). Angles derived from canvas positions:
+        //   Left (cx 0.18)  → atan2(-dx, dy) ≈ 235 ° (down-right)
+        //   Centre           → 180 °           (straight down)
+        //   Right (cx 0.82) → ≈ 125 °          (down-left)
+        BuildEnemySlot(combatView.transform, "EnemyLeftSlot",   "EnemyLeftImage",
+                       new Vector2(0.18f, 0.80f), 235f);
+        BuildEnemySlot(combatView.transform, "EnemyCenterSlot", "EnemyCenterImage",
+                       new Vector2(0.50f, 0.80f), 180f);
+        BuildEnemySlot(combatView.transform, "EnemyRightSlot",  "EnemyRightImage",
+                       new Vector2(0.82f, 0.80f), 125f);
+
+        // ── Player ship — bottom-centre, ~1/3 smaller, nose up ───────────
+        // Previous anchors: (0.425, 0.13)→(0.575, 0.31) = 15%×18%.
+        // Reduce each span by 1/3: 10%×12%. Keep vertical centre same.
+        var playerShip = MakeImage(combatView.transform, "PlayerShipImage", Color.white);
+        PlaceRect(playerShip, anchor(0.45f, 0.22f), anchor(0.55f, 0.34f), v2(0f, 0f), v2(0f, 0f));
+        {
+            var rt = playerShip.GetComponent<RectTransform>();
+            rt.localEulerAngles = new Vector3(0f, 0f, -90f);
+            var img = playerShip.GetComponent<Image>();
+            img.preserveAspect = true;
+            img.type           = Image.Type.Simple;
+            img.color          = Color.white;
+        }
+
+        // ── Action bar — 96 px strip at the bottom ───────────────────────
+        var actionBar = MakeImage(combatView.transform, "CombatActionBar", HeaderBar);
+        PlaceRect(actionBar, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 48f), v2(0f, 96f));
+
+        var actionRule = MakeImage(actionBar.transform, "AccentLine", AccentCyan);
+        PlaceRect(actionRule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -1f), v2(0f, 2f));
+
+        var actionContainer = MakeUIGO("ButtonContainer", actionBar.transform);
+        {
+            var rt = actionContainer.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 16f);
+            rt.sizeDelta        = new Vector2(860f, 64f);
+        }
+
+        var hlg = actionContainer.AddComponent<HorizontalLayoutGroup>();
+        hlg.padding                = new RectOffset(0, 0, 0, 0);
+        hlg.spacing                = 16f;
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childAlignment         = TextAnchor.MiddleCenter;
+
+        var endTurnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        if (endTurnPrefab != null)
+        {
+            var go = (GameObject)Object.Instantiate(endTurnPrefab, actionContainer.transform);
+            go.name = "EndTurnButton";
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "END TURN";
+        }
+        else
+        {
+            var go  = MakeImage(actionContainer.transform, "EndTurnButton", BtnNormal);
+            go.AddComponent<Button>();
+            var lbl = MakeTMP(go.transform, "Label", "END TURN", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+
+        return combatView;
+    }
+
+    // ── Enemy slot — point-anchored CanvasGroup + Image child ───────────────
+    //
+    //   slotCenter  — normalised position of the slot's pivot in CombatView space.
+    //   imageRotZ   — pre-baked z-rotation of the ship image so it aims at the
+    //                 player ship (bottom-centre of the arena).
+
+    static void BuildEnemySlot(Transform parent, string slotName, string imageName,
+                                Vector2 slotCenter, float imageRotZ)
+    {
+        // Slot root — point-anchored at slotCenter, sized to Large by default.
+        // CombatViewController resizes sizeDelta at runtime per CombatShipDisplaySize.
+        var slot = MakeUIGO(slotName, parent);
+        {
+            var rt              = slot.GetComponent<RectTransform>();
+            rt.anchorMin        = slotCenter;
+            rt.anchorMax        = slotCenter;
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta        = new Vector2(240f, 213f); // Large — runtime overrides this
+        }
+        var slotCG = slot.AddComponent<CanvasGroup>();
+        slotCG.alpha          = 0f;
+        slotCG.blocksRaycasts = false;
+        slotCG.interactable   = false;
+
+        // Ship image — stretch-fills the slot; pre-rotated to face the player.
+        var img = MakeImage(slot.transform, imageName, Color.white);
+        {
+            var rt              = img.GetComponent<RectTransform>();
+            rt.anchorMin        = Vector2.zero;
+            rt.anchorMax        = Vector2.one;
+            rt.offsetMin        = Vector2.zero;
+            rt.offsetMax        = Vector2.zero;
+            rt.localEulerAngles = new Vector3(0f, 0f, imageRotZ);
+        }
+        var imgComp = img.GetComponent<Image>();
+        imgComp.preserveAspect = true;
+        imgComp.type           = Image.Type.Simple;
+        imgComp.color          = Color.white;
+    }
+
     // -----------------------------------------------------------------------
     // Nav bar — bottom 80 px with four centred navigation buttons
     // -----------------------------------------------------------------------
@@ -1109,6 +1290,11 @@ public static class GameSceneSetup
         // nav bar will not be flush on home-indicator devices.
         var bar = MakeImage(parent, "NavBar", HeaderBar);
         PlaceRect(bar, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 48f), v2(0f, 96f));
+
+        // CanvasGroup — used by SystemViewController to hide the bar during
+        // combat (alpha=0, blocksRaycasts=false) while keeping Shift button
+        // Animators continuously bound (SetActive(false) would break them).
+        bar.AddComponent<CanvasGroup>();
 
         // On devices with a home indicator (iPhone X+) the bar expands downward
         // so its background covers the indicator strip. The button container is
@@ -1292,7 +1478,8 @@ public static class GameSceneSetup
     static void WireController(SystemViewController ctrl,
                                 GameObject background,
                                 GameObject header, GameObject body,
-                                GameObject navBar, GameObject poiDetail)
+                                GameObject navBar, GameObject poiDetail,
+                                GameObject combatView)
     {
         var so = new SerializedObject(ctrl);
 
@@ -1478,6 +1665,91 @@ public static class GameSceneSetup
             so.FindProperty("crewViewPanel").objectReferenceValue = crewViewGO;
         else
             Debug.LogWarning("[GameSceneSetup] CrewView not found under Body.");
+
+        // Combat view — passed directly (it's a sibling of Body, not a child)
+        if (combatView != null)
+        {
+            so.FindProperty("combatViewPanel").objectReferenceValue = combatView;
+            so.FindProperty("combatViewCanvasGroup").objectReferenceValue =
+                combatView.GetComponent<CanvasGroup>();
+            var cvc = combatView.GetComponent<CombatViewController>();
+            so.FindProperty("combatViewController").objectReferenceValue = cvc;
+
+            if (cvc != null)
+            {
+                var cvcSo = new SerializedObject(cvc);
+
+                // Player ship
+                var playerImg = Find<Image>(combatView, "PlayerShipImage");
+                cvcSo.FindProperty("playerShipImage").objectReferenceValue = playerImg;
+                if (shipSprite != null && playerImg != null)
+                    playerImg.sprite = shipSprite;
+
+                // Enemy slots — CanvasGroup + RectTransform on slot root, Image on child
+                var leftSlot   = combatView.transform.Find("EnemyLeftSlot");
+                var centerSlot = combatView.transform.Find("EnemyCenterSlot");
+                var rightSlot  = combatView.transform.Find("EnemyRightSlot");
+
+                cvcSo.FindProperty("enemyLeftGroup").objectReferenceValue =
+                    leftSlot?.GetComponent<CanvasGroup>();
+                cvcSo.FindProperty("enemyLeftSlotRT").objectReferenceValue =
+                    leftSlot?.GetComponent<RectTransform>();
+                cvcSo.FindProperty("enemyLeftImage").objectReferenceValue =
+                    leftSlot?.Find("EnemyLeftImage")?.GetComponent<Image>();
+
+                cvcSo.FindProperty("enemyCenterGroup").objectReferenceValue =
+                    centerSlot?.GetComponent<CanvasGroup>();
+                cvcSo.FindProperty("enemyCenterSlotRT").objectReferenceValue =
+                    centerSlot?.GetComponent<RectTransform>();
+                cvcSo.FindProperty("enemyCenterImage").objectReferenceValue =
+                    centerSlot?.Find("EnemyCenterImage")?.GetComponent<Image>();
+
+                cvcSo.FindProperty("enemyRightGroup").objectReferenceValue =
+                    rightSlot?.GetComponent<CanvasGroup>();
+                cvcSo.FindProperty("enemyRightSlotRT").objectReferenceValue =
+                    rightSlot?.GetComponent<RectTransform>();
+                cvcSo.FindProperty("enemyRightImage").objectReferenceValue =
+                    rightSlot?.Find("EnemyRightImage")?.GetComponent<Image>();
+
+                cvcSo.FindProperty("combatActionBar").objectReferenceValue =
+                    combatView.transform.Find("CombatActionBar")?.gameObject;
+
+                // Load all DGB ship sprites and populate the library array
+                var dgbGuids   = AssetDatabase.FindAssets("t:Sprite",
+                                     new[] { "Assets/DGB Spaceships/Spaceship Sprites" });
+                var dgbSprites = new System.Collections.Generic.List<Sprite>();
+                foreach (var guid in dgbGuids)
+                {
+                    var path   = AssetDatabase.GUIDToAssetPath(guid);
+                    var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                    if (sprite != null) dgbSprites.Add(sprite);
+                }
+                var spritesProp = cvcSo.FindProperty("dgbShipSprites");
+                spritesProp.arraySize = dgbSprites.Count;
+                for (int i = 0; i < dgbSprites.Count; i++)
+                    spritesProp.GetArrayElementAtIndex(i).objectReferenceValue = dgbSprites[i];
+
+                Debug.Log($"[GameSceneSetup] Loaded {dgbSprites.Count} DGB ship sprites.");
+                cvcSo.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning("[GameSceneSetup] CombatViewController not found on CombatView.");
+        }
+        else Debug.LogWarning("[GameSceneSetup] CombatView is null — check Setup().");
+
+        // NavBar CanvasGroup — hidden during combat so it doesn't show through CombatView
+        var navBarCG = navBar.GetComponent<CanvasGroup>();
+        if (navBarCG != null)
+            so.FindProperty("navBarCanvasGroup").objectReferenceValue = navBarCG;
+        else
+            Debug.LogWarning("[GameSceneSetup] CanvasGroup not found on NavBar.");
+
+        // Debug combat button — in the header
+        var combatDbgTf = header.transform.Find("CombatDebugButton");
+        if (combatDbgTf != null)
+            so.FindProperty("combatDebugButton").objectReferenceValue =
+                combatDbgTf.GetComponentInChildren<Button>(true);
+        else
+            Debug.LogWarning("[GameSceneSetup] CombatDebugButton not found in Header.");
 
         so.ApplyModifiedProperties();
     }

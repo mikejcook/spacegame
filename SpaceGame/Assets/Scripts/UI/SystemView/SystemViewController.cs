@@ -84,6 +84,21 @@ public class SystemViewController : MonoBehaviour
     [Header("Crew View")]
     [SerializeField] private GameObject crewViewPanel;
 
+    [Header("Combat View")]
+    [Tooltip("Root CombatView panel — sibling of Body, covers full area below header including NavBar.")]
+    [SerializeField] private GameObject           combatViewPanel;
+    [Tooltip("CanvasGroup on CombatView — used for show/hide so Shift button Animators inside stay continuously bound.")]
+    [SerializeField] private CanvasGroup          combatViewCanvasGroup;
+    [SerializeField] private CombatViewController combatViewController;
+
+    [Header("Combat — Debug")]
+    [Tooltip("Temporary button in the header that toggles the combat view. Remove once combat is triggered by gameplay events.")]
+    [SerializeField] private Button combatDebugButton;
+
+    [Header("Nav Bar")]
+    [Tooltip("CanvasGroup on the NavBar — hidden during combat so it doesn't show through the CombatView.")]
+    [SerializeField] private CanvasGroup navBarCanvasGroup;
+
     [Header("Audio")]
     [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip   sublightEngineClip;
@@ -123,6 +138,9 @@ public class SystemViewController : MonoBehaviour
     private PlanetLibrary            _planetLibrary;
     private SystemMapZoomController  _systemMapZoomController;
 
+    // ── Combat state ──────────────────────────────────────────────────────────
+    private bool _inCombat;
+
     // ── Fallback colours (used when PlanetLibrary has no sprite for a type) ─
     private static readonly Color ColourPlanetSolid   = new Color(0.30f, 0.75f, 0.40f, 1f);
     private static readonly Color ColourPlanetGaseous = new Color(0.90f, 0.65f, 0.25f, 1f);
@@ -159,6 +177,15 @@ public class SystemViewController : MonoBehaviour
         galaxyNavButton?.onClick.AddListener(ShowGalaxyView);
         shipNavButton?.onClick.AddListener(ShowShipView);
         crewNavButton?.onClick.AddListener(ShowCrewView);
+
+        // Debug combat toggle — temporary, removed once combat has real triggers.
+        // Default: one red medium enemy (variant 0).
+        combatDebugButton?.onClick.AddListener(() => ToggleCombatView(new[]
+        {
+            new EnemyShipConfig { color = DGBShipColor.Red,   size = DGBShipSize.Large,  variant = 0, displaySize = CombatShipDisplaySize.Large  },
+            new EnemyShipConfig { color = DGBShipColor.Green, size = DGBShipSize.Medium, variant = 0, displaySize = CombatShipDisplaySize.Medium },
+            new EnemyShipConfig { color = DGBShipColor.Blue,  size = DGBShipSize.Small,  variant = 0, displaySize = CombatShipDisplaySize.Small  },
+        }));
 
         // Galaxy view → arriving at a system switches the System View to it.
         // Galaxy view → disable/re-enable nav buttons during warp flight.
@@ -945,6 +972,93 @@ public class SystemViewController : MonoBehaviour
         if (shipViewPanel   != null) shipViewPanel.SetActive(false);
         if (systemNameText  != null) systemNameText.text = "Crew";
         if (crewViewPanel   != null) crewViewPanel.SetActive(true);
+    }
+
+    // -----------------------------------------------------------------------
+    // Combat View
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Switches to the Space Battle view: hides NavBar, hides all other body
+    /// panels, activates CombatView, and updates the debug button label.
+    /// </summary>
+    /// <summary>
+    /// Enters combat. Pass 1–3 EnemyShipConfig entries to populate the enemy fleet.
+    /// </summary>
+    public void ShowCombatView(EnemyShipConfig[] enemies = null)
+    {
+        if (_inCombat) return;
+        _inCombat = true;
+
+        HidePOIDetail();
+
+        // Hide all body panels so they don't render through the CombatView
+        // (CombatView has no solid background — the starfield shows through).
+        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
+        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+        if (shipViewPanel   != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+
+        if (combatViewCanvasGroup != null)
+        {
+            combatViewCanvasGroup.alpha          = 1f;
+            combatViewCanvasGroup.blocksRaycasts = true;
+            combatViewCanvasGroup.interactable   = true;
+        }
+
+        if (navBarCanvasGroup != null)
+        {
+            navBarCanvasGroup.alpha          = 0f;
+            navBarCanvasGroup.blocksRaycasts = false;
+            navBarCanvasGroup.interactable   = false;
+        }
+
+        combatViewController?.OnCombatEnter();
+        combatViewController?.StartCombat(enemies);
+        if (systemNameText != null) systemNameText.text = "Space Battle";
+        UpdateCombatDebugButtonLabel();
+    }
+
+    /// <summary>
+    /// Leaves the Space Battle view and returns to System View.
+    /// </summary>
+    public void HideCombatView()
+    {
+        if (!_inCombat) return;
+        _inCombat = false;
+
+        combatViewController?.OnCombatExit();
+
+        if (combatViewCanvasGroup != null)
+        {
+            combatViewCanvasGroup.alpha          = 0f;
+            combatViewCanvasGroup.blocksRaycasts = false;
+            combatViewCanvasGroup.interactable   = false;
+        }
+
+        if (navBarCanvasGroup != null)
+        {
+            navBarCanvasGroup.alpha          = 1f;
+            navBarCanvasGroup.blocksRaycasts = true;
+            navBarCanvasGroup.interactable   = true;
+        }
+
+        ShowSystemView();
+        UpdateCombatDebugButtonLabel();
+    }
+
+    /// <summary>Toggles combat view — used by the temporary debug header button.</summary>
+    private void ToggleCombatView(EnemyShipConfig[] enemies = null)
+    {
+        if (_inCombat) HideCombatView();
+        else           ShowCombatView(enemies);
+    }
+
+    private void UpdateCombatDebugButtonLabel()
+    {
+        if (combatDebugButton == null) return;
+        var mb = combatDebugButton.GetComponentInParent<Michsky.UI.Shift.MainButton>();
+        if (mb != null) mb.buttonText = _inCombat ? "◀ EXIT BATTLE" : "⚔ BATTLE";
     }
 
     // -----------------------------------------------------------------------
