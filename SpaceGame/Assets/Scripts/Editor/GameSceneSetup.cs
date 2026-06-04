@@ -80,6 +80,37 @@ public static class GameSceneSetup
     // Entry point
     // -----------------------------------------------------------------------
 
+    [MenuItem("Star Captain/Debug DGB Sprites")]
+    public static void DebugDGBSprites()
+    {
+        const string folder = "Assets/DGB Spaceships/Spaceship Sprites";
+
+        // 1 — what does FindAssets("t:Texture2D") see?
+        var guidsT = AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
+        Debug.Log($"[DGB Debug] FindAssets t:Texture2D found {guidsT.Length} assets");
+        foreach (var g in guidsT)
+            Debug.Log($"  Texture2D guid → path: {AssetDatabase.GUIDToAssetPath(g)}");
+
+        // 2 — what does FindAssets("t:Sprite") see?
+        var guidsS = AssetDatabase.FindAssets("t:Sprite", new[] { folder });
+        Debug.Log($"[DGB Debug] FindAssets t:Sprite found {guidsS.Length} assets");
+        foreach (var g in guidsS)
+            Debug.Log($"  Sprite guid → path: {AssetDatabase.GUIDToAssetPath(g)}");
+
+        // 3 — try loading one sprite by direct path
+        var testPath   = $"{folder}/red_dreadnaught_1.png";
+        var testSprite = AssetDatabase.LoadAssetAtPath<Sprite>(testPath);
+        var testTex    = AssetDatabase.LoadAssetAtPath<Texture2D>(testPath);
+        Debug.Log($"[DGB Debug] Direct load '{testPath}' → Sprite: {(testSprite != null ? testSprite.name : "NULL")}, Texture2D: {(testTex != null ? testTex.name : "NULL")}");
+
+        // 4 — textureType of that file
+        var imp = AssetImporter.GetAtPath(testPath) as TextureImporter;
+        if (imp != null)
+            Debug.Log($"[DGB Debug] textureType={imp.textureType}  spriteImportMode={imp.spriteImportMode}");
+        else
+            Debug.Log("[DGB Debug] No TextureImporter found for test path");
+    }
+
     [MenuItem("Star Captain/Setup Game Scene")]
     public static void Setup()
     {
@@ -1714,15 +1745,31 @@ public static class GameSceneSetup
                 cvcSo.FindProperty("combatActionBar").objectReferenceValue =
                     combatView.transform.Find("CombatActionBar")?.gameObject;
 
-                // Load all DGB ship sprites and populate the library array
-                var dgbGuids   = AssetDatabase.FindAssets("t:Sprite",
-                                     new[] { "Assets/DGB Spaceships/Spaceship Sprites" });
+                // Load all DGB ship sprites and populate the library array.
+                // PNGs default to Texture2D on first import — reimport as Single
+                // sprite so LoadAssetAtPath<Sprite> returns a valid asset.
+                const string DgbSpritesFolder = "Assets/DGB Spaceships/Spaceship Sprites";
+                var dgbGuids   = AssetDatabase.FindAssets("t:Texture2D", new[] { DgbSpritesFolder });
                 var dgbSprites = new System.Collections.Generic.List<Sprite>();
                 foreach (var guid in dgbGuids)
                 {
-                    var path   = AssetDatabase.GUIDToAssetPath(guid);
+                    var path     = AssetDatabase.GUIDToAssetPath(guid);
+                    var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                    // Must be Sprite type AND Single mode — Multiple mode appends "_0"
+                    // to the sprite name, breaking our "{color}_{class}_{variant}" lookup.
+                    if (importer != null &&
+                        (importer.textureType      != TextureImporterType.Sprite ||
+                         importer.spriteImportMode != SpriteImportMode.Single))
+                    {
+                        importer.textureType      = TextureImporterType.Sprite;
+                        importer.spriteImportMode = SpriteImportMode.Single;
+                        importer.spritePivot      = new Vector2(0.5f, 0.5f);
+                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+                        Debug.Log($"[GameSceneSetup] Reimported as Single Sprite: {System.IO.Path.GetFileName(path)}");
+                    }
                     var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
                     if (sprite != null) dgbSprites.Add(sprite);
+                    else Debug.LogWarning($"[GameSceneSetup] Could not load sprite: {path}");
                 }
                 var spritesProp = cvcSo.FindProperty("dgbShipSprites");
                 spritesProp.arraySize = dgbSprites.Count;

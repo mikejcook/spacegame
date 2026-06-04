@@ -182,9 +182,9 @@ public class SystemViewController : MonoBehaviour
         // Default: one red medium enemy (variant 0).
         combatDebugButton?.onClick.AddListener(() => ToggleCombatView(new[]
         {
-            new EnemyShipConfig { color = DGBShipColor.Red,   size = DGBShipSize.Large,  variant = 0, displaySize = CombatShipDisplaySize.Large  },
-            new EnemyShipConfig { color = DGBShipColor.Green, size = DGBShipSize.Medium, variant = 0, displaySize = CombatShipDisplaySize.Medium },
-            new EnemyShipConfig { color = DGBShipColor.Blue,  size = DGBShipSize.Small,  variant = 0, displaySize = CombatShipDisplaySize.Small  },
+            new EnemyShipConfig { color = DGBShipColor.Red,   shipClass = DGBShipClass.Dreadnaught, variant = 1, displaySize = CombatShipDisplaySize.Large  },
+            new EnemyShipConfig { color = DGBShipColor.Green, shipClass = DGBShipClass.Cruiser,     variant = 1, displaySize = CombatShipDisplaySize.Medium },
+            new EnemyShipConfig { color = DGBShipColor.Blue,  shipClass = DGBShipClass.Fighter,     variant = 1, displaySize = CombatShipDisplaySize.Small  },
         }));
 
         // Galaxy view → arriving at a system switches the System View to it.

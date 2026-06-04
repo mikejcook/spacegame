@@ -892,6 +892,117 @@ var positions = StarSystemGenerator.GenerateGalaxyPositions(
 The method retries each candidate up to 40 times before accepting the
 closest valid fallback, so it degrades gracefully even in very dense layouts.
 
+## DGB Spaceships asset pack
+
+Purchased asset pack at `Assets/DGB Spaceships/`. Contains top-down sci-fi ship sprites
+drawn by David Baumgart (artist for Starsector). Sprites face **upward** by default.
+
+### Naming convention
+
+```
+{color}_{class}_{variant}.png
+```
+
+| Token | Values |
+|---|---|
+| color | `blue`, `green`, `red` |
+| class | `fighter`, `corvette`, `cruiser`, `battleship`, `dreadnaught` (smallest → largest) |
+| variant | `1`, `2`, … (not all class/color combos have a variant 2) |
+
+Missiles (`missile_1.png`, `missile_2.png`) are in the same folder but are **not ship sprites** — reserved for weapon-fire visuals only. Do not include them in enemy ship selection.
+
+Not every class exists for every color — availability is variable. The sprite lookup in `CombatViewController.GetEnemySprite` falls back to variant 1 if a higher variant is missing.
+
+### Import requirement — must be Single sprite mode
+
+Unity imports new PNGs in **Multiple** sprite mode by default. In Multiple mode, `LoadAssetAtPath<Sprite>` returns a sprite named `red_dreadnaught_1_0` (with a `_0` suffix), which breaks the `{color}_{class}_{variant}` lookup.
+
+**Rule:** all DGB ship sprites must be imported as `SpriteImportMode.Single`. `GameSceneSetup` enforces this automatically during the builder's sprite-loading pass — it checks both `textureType` and `spriteImportMode` and force-reimports any that are in Multiple mode. If sprites ever show as placeholders in combat, run **Star Captain → Debug DGB Sprites** to verify import mode, then rebuild the scene.
+
+### Combat display sizes
+
+`CombatShipDisplaySize` (Small / Medium / Large) is independent of the sprite's class tier. Any class can be shown at any display size. Sizes are defined in `CombatViewController` as canvas-unit `sizeDelta` values applied to the slot's `RectTransform` at runtime.
+
+## Space combat view architecture
+
+### CombatView is a sibling of Body, not a child
+
+`CombatView` lives as a direct child of `SystemViewController` — a sibling of `Header`, `Body`, and `NavBar` — not a child of `Body`. This is intentional: it must cover the **full area below the header**, including the NavBar strip, so that `CombatActionBar` sits at the true screen bottom. A CombatView inside Body would stop at the top of the NavBar, leaving a gap.
+
+```
+SystemViewController
+  Header
+  Body            ← SystemMap / GalaxyView / ShipView / CrewView live here
+  NavBar
+  POIDetailPanel
+  CombatView      ← sibling, anchored offsetMax=(0, -90) to cover NavBar too
+```
+
+### Show/hide pattern for CombatView
+
+`CombatView` uses a `CanvasGroup` (not `SetActive`) because it contains Shift `MainButton` components whose Animators must stay continuously bound (per the rule elsewhere in this file).
+
+`ShowCombatView()` must do **all** of:
+1. Hide Body panels (`systemMapArea`, `galaxyViewPanel`, `shipViewPanel`, `crewViewPanel`) via `SetActive(false)` — CombatView has no solid background, so panels behind it remain visible.
+2. Hide the `NavBar` via its `CanvasGroup` (alpha=0, blocksRaycasts=false) — same reason.
+3. Show `CombatView` via its `CanvasGroup` (alpha=1, blocksRaycasts=true).
+
+`HideCombatView()` reverses all three, then calls `ShowSystemView()`.
+
+### Enemy slot layout
+
+Three enemy slots (`EnemyLeftSlot`, `EnemyCenterSlot`, `EnemyRightSlot`) are point-anchored at the centre of their screen third (left x≈0.18, centre x=0.50, right x≈0.82). `sizeDelta` is set at runtime by `CombatViewController.StartCombat` based on `CombatShipDisplaySize`.
+
+Enemy ship images are pre-rotated in the builder to aim at the player ship (bottom-centre). DGB sprites face up (0°), so:
+
+| Slot | Rotation | Direction |
+|---|---|---|
+| Left | 235° | down-right toward player |
+| Centre | 180° | straight down |
+| Right | 125° | down-left toward player |
+
+The formula for a +Y-facing sprite to point from position A toward position B in canvas space: `angle = Atan2(-(B.x - A.x), B.y - A.y) * Rad2Deg`.
+
+### Enemy count → slot mapping
+
+| Count | Slots used |
+|---|---|
+| 1 | Centre only |
+| 2 | Left + Right |
+| 3 | Left + Centre + Right |
+
+### Files to know
+
+- `Assets/Scripts/UI/Combat/CombatViewController.cs` — runtime driver; `StartCombat(EnemyShipConfig[])` is the entry point.
+- `Assets/Scripts/Data/Models/EnemyShipConfig.cs` — `DGBShipColor`, `DGBShipClass`, `CombatShipDisplaySize` enums + `EnemyShipConfig` class.
+- Combat view is built by `GameSceneSetup.BuildCombatView()` and `BuildEnemySlot()`.
+
+## Unity UI gotchas that bit us (none are Unity 6 specific)
+
+### `Shift MainButton` in a `HorizontalLayoutGroup` collapses to zero width
+
+`HorizontalLayoutGroup` with `childControlWidth = true` and `childForceExpandWidth = false` sizes each child to its **preferred width**. The Shift `MainButton` prefab has no `LayoutElement` and no meaningful preferred width, so it collapses to near-zero — appearing as a thin sliver or tiny rotated text.
+
+**Rule:** any `HorizontalLayoutGroup` containing Shift `MainButton` children must use `childForceExpandWidth = true`, or each button must have an explicit `LayoutElement.preferredWidth`. The nav bar and combat action bar both use `childForceExpandWidth = true` for this reason.
+
+### Setting `pivot` after `PlaceRect` does not move the rect
+
+In Unity editor scripts, setting `RectTransform.pivot` after `anchoredPosition` is already set does **not** recalculate the position (unlike the editor UI, which preserves visual position). The anchor-to-pivot offset is reinterpreted with the new pivot, effectively shifting the rect.
+
+**Rule:** always set `pivot` **before** setting `anchoredPosition` (or use `offsetMin`/`offsetMax` which are pivot-independent). The combat action bar `ButtonContainer` does this correctly:
+
+```csharp
+var rt = actionContainer.GetComponent<RectTransform>();
+rt.pivot            = new Vector2(0.5f, 0f);   // set pivot first
+rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+rt.anchoredPosition = new Vector2(0f, 16f);    // then position
+rt.sizeDelta        = new Vector2(860f, 64f);
+```
+
+### `AssetDatabase.FindAssets("t:Sprite")` misses Multiple-mode sprites
+
+For sprites imported as `SpriteImportMode.Multiple`, `FindAssets("t:Sprite")` returns the asset path correctly but `LoadAssetAtPath<Sprite>(path)` gives a sprite whose `.name` has a `_0` suffix appended. Use `FindAssets("t:Texture2D")` to locate the assets, then check **both** `textureType` and `spriteImportMode` before deciding whether to reimport. When in doubt, run **Star Captain → Debug DGB Sprites** which reports both search results and the direct-load name.
+
 ## When the user reports a UI bug
 
 Before assuming a Unity-version or framework change, check this order:
@@ -903,4 +1014,5 @@ Before assuming a Unity-version or framework change, check this order:
 3. Is any `Mask` using `Color.clear`?
 4. Is any `LayoutGroup` using `ChildForceExpand*` on children whose
    `LayoutElement.flexibleHeight/Width` is supposed to constrain them?
-5. Only then consider Unity-version regressions.
+5. Is any Shift `MainButton` in an HLG without `childForceExpandWidth = true`?
+6. Only then consider Unity-version regressions.

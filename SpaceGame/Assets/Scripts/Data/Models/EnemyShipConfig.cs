@@ -1,7 +1,7 @@
 /// <summary>
 /// How large the enemy ship appears in the combat arena.
-/// Independent of the DGB sprite's own size tier — a Tiny sprite can be
-/// shown at Large display size and vice versa.
+/// Independent of the ship's class — a Fighter can be shown at Large display
+/// size and a Dreadnaught at Small if the encounter calls for it.
 /// </summary>
 public enum CombatShipDisplaySize
 {
@@ -14,8 +14,8 @@ public enum CombatShipDisplaySize
 }
 
 /// <summary>
-/// Colour faction of a DGB Spaceship sprite.
-/// Maps directly to the filename prefix (e.g. "red_medium00.png").
+/// Faction colour of a DGB ship sprite.
+/// Maps to the first token of the filename: "{color}_{class}_{variant}.png".
 /// </summary>
 public enum DGBShipColor
 {
@@ -25,18 +25,18 @@ public enum DGBShipColor
 }
 
 /// <summary>
-/// Size class of a DGB Spaceship sprite.
-/// Maps to the size token in the filename (e.g. "medium" in "red_medium00.png").
-/// Note: Missile is only available in the Red colour.
+/// Ship class tier, smallest to largest.
+/// Maps to the second token of the filename: "{color}_{class}_{variant}.png".
+/// Not every class exists for every colour — the sprite lookup falls back
+/// gracefully when a combination is missing.
 /// </summary>
-public enum DGBShipSize
+public enum DGBShipClass
 {
-    Tiny,
-    Small,
-    Medium,
-    Large,
-    Huge,
-    Missile,
+    Fighter,
+    Corvette,
+    Cruiser,
+    Battleship,
+    Dreadnaught,
 }
 
 /// <summary>
@@ -47,12 +47,12 @@ public enum DGBShipSize
 public class EnemyShipConfig
 {
     public DGBShipColor          color       = DGBShipColor.Red;
-    public DGBShipSize           size        = DGBShipSize.Medium;
+    public DGBShipClass          shipClass   = DGBShipClass.Cruiser;
     public CombatShipDisplaySize displaySize = CombatShipDisplaySize.Medium;
 
     /// <summary>
-    /// Sprite variant index (0 or 1). Not all size/colour combos have a variant 1
-    /// — the lookup falls back to variant 0 if variant 1 is missing.
+    /// Sprite variant number (1, 2, …). Not all class/colour combos have multiple
+    /// variants — the lookup falls back to variant 1 if the requested number is missing.
     /// </summary>
-    public int variant = 0;
+    public int variant = 1;
 }

@@ -74,6 +74,15 @@ public class CombatViewController : MonoBehaviour
     // Public API
     // -----------------------------------------------------------------------
 
+    private void Awake()
+    {
+        int count = dgbShipSprites != null ? dgbShipSprites.Length : 0;
+        Debug.Log($"[CombatViewController] Awake — dgbShipSprites count: {count}");
+        if (count > 0)
+            foreach (var s in dgbShipSprites)
+                Debug.Log($"  sprite: '{s?.name}'");
+    }
+
     public void OnCombatEnter()  => Debug.Log("[CombatViewController] Combat entered.");
     public void OnCombatExit()   { HideAllEnemySlots(); Debug.Log("[CombatViewController] Combat exited."); }
 
@@ -125,16 +134,17 @@ public class CombatViewController : MonoBehaviour
     // Sprite lookup
     // -----------------------------------------------------------------------
 
-    public Sprite GetEnemySprite(DGBShipColor color, DGBShipSize size, int variant = 0)
+    public Sprite GetEnemySprite(DGBShipColor color, DGBShipClass shipClass, int variant = 1)
     {
         if (dgbShipSprites == null) return null;
 
-        var sprite = FindSprite(BuildSpriteName(color, size, variant));
-        if (sprite == null && variant != 0)
-            sprite = FindSprite(BuildSpriteName(color, size, 0));
+        var sprite = FindSprite(BuildSpriteName(color, shipClass, variant));
+        // Fall back to variant 1 (the base variant) if the requested one doesn't exist
+        if (sprite == null && variant != 1)
+            sprite = FindSprite(BuildSpriteName(color, shipClass, 1));
 
         if (sprite == null)
-            Debug.LogWarning($"[CombatViewController] No DGB sprite: {color} {size} v{variant}");
+            Debug.LogWarning($"[CombatViewController] No DGB sprite: {color} {shipClass} v{variant}");
 
         return sprite;
     }
@@ -155,14 +165,12 @@ public class CombatViewController : MonoBehaviour
     {
         if (config == null) return;
 
-        // Resize the slot based on the requested display size
         if (slotRT != null)
             slotRT.sizeDelta = GetDisplaySize(config.displaySize);
 
-        // Assign sprite
         if (img != null)
         {
-            var sprite = GetEnemySprite(config.color, config.size, config.variant);
+            var sprite = GetEnemySprite(config.color, config.shipClass, config.variant);
             img.sprite = sprite;
             img.color  = sprite != null ? Color.white : new Color(0.6f, 0.2f, 0.2f, 0.4f);
         }
@@ -185,8 +193,9 @@ public class CombatViewController : MonoBehaviour
         group.interactable   = visible;
     }
 
-    private static string BuildSpriteName(DGBShipColor color, DGBShipSize size, int variant)
-        => $"{color.ToString().ToLower()}_{size.ToString().ToLower()}{variant:00}";
+    // Filename format: "{color}_{class}_{variant}"  e.g. "red_cruiser_1"
+    private static string BuildSpriteName(DGBShipColor color, DGBShipClass shipClass, int variant)
+        => $"{color.ToString().ToLower()}_{shipClass.ToString().ToLower()}_{variant}";
 
     private Sprite FindSprite(string name)
     {
