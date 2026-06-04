@@ -113,6 +113,14 @@ public class CombatViewController : MonoBehaviour
     [SerializeField] private Button enemyCenterButton;
     [SerializeField] private Button enemyRightButton;
 
+    [Header("Projectiles — wired by GameSceneSetup")]
+    [Tooltip("RectTransform that projectiles are spawned into (covers combat arena, above ships).")]
+    [SerializeField] private RectTransform projectileContainer;
+    [Tooltip("fx_bolt00 sprite — used for the beam weapon / plasma bolt.")]
+    [SerializeField] private Sprite plasmaBoltSprite;
+    [Tooltip("missile_1 sprite — used for torpedo fire.")]
+    [SerializeField] private Sprite missileSprite;
+
     // -----------------------------------------------------------------------
     // Combat state
     // -----------------------------------------------------------------------
@@ -121,6 +129,9 @@ public class CombatViewController : MonoBehaviour
     private float _playerHullPct   = 100f;
     private float _targetShieldPct = 100f;
     private float _targetHullPct   = 100f;
+
+    // The slot RectTransform that is currently targeted — updated by SetTarget().
+    private RectTransform _currentTargetRT;
 
     // Maps each slot RectTransform to the EnemyShipConfig it displays, so
     // SetTarget can update the title label with the correct ship class.
@@ -154,7 +165,10 @@ public class CombatViewController : MonoBehaviour
     /// <summary>Fire torpedoes at the current target.</summary>
     public void FireTorpedoes()
     {
+        if (_currentTargetRT == null) return;
         PulseCrosshair();
+        // Missiles are larger and slower than plasma bolts.
+        LaunchProjectile(missileSprite, new Vector2(40f, 96f), duration: 0.55f);
         Debug.Log("[CombatViewController] Fire Torpedoes!");
         // TODO: apply torpedo damage to target
     }
@@ -162,9 +176,40 @@ public class CombatViewController : MonoBehaviour
     /// <summary>Fire beam weapon at the current target.</summary>
     public void FireBeamWeapon()
     {
+        if (_currentTargetRT == null) return;
         PulseCrosshair();
+        // Plasma bolt is compact and fast.
+        LaunchProjectile(plasmaBoltSprite, new Vector2(72f, 72f), duration: 0.28f);
         Debug.Log("[CombatViewController] Fire Beam Weapon!");
         // TODO: apply beam damage to target
+    }
+
+    // -----------------------------------------------------------------------
+    // Projectile helpers
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Spawn a projectile that travels from the player ship to the current target.
+    /// Safe to call even when projectileContainer or the sprites are not wired —
+    /// it just skips silently so combat doesn't break on machines without the assets.
+    /// </summary>
+    private void LaunchProjectile(Sprite sprite, Vector2 displaySize, float duration)
+    {
+        if (projectileContainer == null || playerShipImage == null || _currentTargetRT == null)
+            return;
+
+        // Origin: world-space centre of the player ship image.
+        Vector3 startWorld = playerShipImage.transform.position;
+
+        // Destination: world-space centre of the targeted enemy slot.
+        Vector3 endWorld = _currentTargetRT.position;
+
+        // Spawn as a plain RectTransform child of the projectile layer.
+        var go   = new GameObject("Projectile", typeof(RectTransform));
+        go.transform.SetParent(projectileContainer, worldPositionStays: false);
+
+        var proj = go.AddComponent<CombatProjectile>();
+        proj.Launch(startWorld, endWorld, sprite, displaySize, duration);
     }
 
     /// <summary>Set player shield/hull percentages and refresh the header display.</summary>
@@ -203,7 +248,7 @@ public class CombatViewController : MonoBehaviour
         Debug.Log("[CombatViewController] Combat entered.");
     }
 
-    public void OnCombatExit()   { HideAllEnemySlots(); combatCrosshair?.Hide(); Debug.Log("[CombatViewController] Combat exited."); }
+    public void OnCombatExit()   { HideAllEnemySlots(); combatCrosshair?.Hide(); _currentTargetRT = null; Debug.Log("[CombatViewController] Combat exited."); }
 
     /// <summary>Trigger a single crosshair pulse — call when the player fires.</summary>
     public void PulseCrosshair() => combatCrosshair?.Pulse();
@@ -212,6 +257,7 @@ public class CombatViewController : MonoBehaviour
     public void SetTarget(RectTransform slotRT)
     {
         if (slotRT == null) return;
+        _currentTargetRT = slotRT;
         combatCrosshair?.SnapToSlot(slotRT);
 
         // Update title with the targeted ship's class name

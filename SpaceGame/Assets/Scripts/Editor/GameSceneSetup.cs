@@ -1244,8 +1244,9 @@ public static class GameSceneSetup
     //   CombatView                     (CombatViewController MonoBehaviour)
     //   ├─ EnemyLeftSlot / CenterSlot / RightSlot
     //   ├─ PlayerShipImage             (bottom-centre, nose up)
-    //   ├─ CrosshairRoot               (animated targeting crosshair)
-    //   └─ CombatActionBar             (bottom 96 px strip)
+    //   ├─ CombatActionBar             (bottom 96 px strip)
+    //   ├─ ProjectileLayer             (full-stretch, above ships; projectiles spawned here at runtime)
+    //   └─ CrosshairRoot               (animated targeting crosshair, drawn last / on top)
     //      ├─ AccentLine               (2 px cyan rule at top)
     //      ├─ FireTorpedesContainer    (left-anchored, 300 px)
     //      │  └─ FireTorpedesButton    (Shift MainButton — "FIRE TORPEDOES")
@@ -1302,7 +1303,7 @@ public static class GameSceneSetup
         PlaceRect(playerShip, anchor(0.45f, 0.22f), anchor(0.55f, 0.34f), v2(0f, 0f), v2(0f, 0f));
         {
             var rt = playerShip.GetComponent<RectTransform>();
-            rt.localEulerAngles = new Vector3(0f, 0f, -90f);
+            rt.localEulerAngles = Vector3.zero;  // DGB sprites face up (+Y) by default
             var img = playerShip.GetComponent<Image>();
             img.preserveAspect = true;
             img.type           = Image.Type.Simple;
@@ -1489,6 +1490,23 @@ public static class GameSceneSetup
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             Stretch(go);
         }
+
+        // ── Projectile layer — full-stretch, above ships/crosshair ───────
+        // CombatViewController.LaunchProjectile() instantiates transient Image
+        // children into this layer at runtime. It never blocks raycasts so
+        // enemy tap-buttons remain interactive during a shot animation.
+        var projectileLayer = MakeUIGO("ProjectileLayer", combatView.transform);
+        {
+            var rt       = projectileLayer.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+        var projLayerCG          = projectileLayer.AddComponent<CanvasGroup>();
+        projLayerCG.alpha        = 1f;
+        projLayerCG.blocksRaycasts = false;
+        projLayerCG.interactable   = false;
 
         // ── Targeting crosshair — centred in the enemy arena ─────────────
         // CrosshairRoot sits at the vertical midpoint of the enemy area
@@ -2119,6 +2137,46 @@ public static class GameSceneSetup
                     spritesProp.GetArrayElementAtIndex(i).objectReferenceValue = dgbSprites[i];
 
                 Debug.Log($"[GameSceneSetup] Loaded {dgbSprites.Count} DGB ship sprites.");
+
+                // ── Projectile sprites ────────────────────────────────────
+                // fx_bolt00.png → plasma bolt (beam weapon)
+                // missile_1.png → torpedo projectile
+                // Both may need reimporting as Single sprites if not done yet.
+                const string EffectsFolder = "Assets/DGB Spaceships/Effects";
+                const string BoltPath    = EffectsFolder + "/fx_bolt00.png";
+                const string MissilePath = DgbSpritesFolder + "/missile_1.png";
+
+                foreach (var path in new[] { BoltPath, MissilePath })
+                {
+                    var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                    if (imp != null &&
+                        (imp.textureType      != TextureImporterType.Sprite ||
+                         imp.spriteImportMode != SpriteImportMode.Single))
+                    {
+                        imp.textureType      = TextureImporterType.Sprite;
+                        imp.spriteImportMode = SpriteImportMode.Single;
+                        imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+                        Debug.Log($"[GameSceneSetup] Reimported as Single Sprite: {System.IO.Path.GetFileName(path)}");
+                    }
+                }
+
+                var boltSprite    = AssetDatabase.LoadAssetAtPath<Sprite>(BoltPath);
+                var missileSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MissilePath);
+
+                if (boltSprite    == null) Debug.LogWarning($"[GameSceneSetup] Plasma bolt sprite not found: {BoltPath}");
+                if (missileSprite == null) Debug.LogWarning($"[GameSceneSetup] Missile sprite not found: {MissilePath}");
+
+                cvcSo.FindProperty("plasmaBoltSprite").objectReferenceValue = boltSprite;
+                cvcSo.FindProperty("missileSprite").objectReferenceValue    = missileSprite;
+
+                // Projectile container
+                var projLayerTf = combatView.transform.Find("ProjectileLayer");
+                cvcSo.FindProperty("projectileContainer").objectReferenceValue =
+                    projLayerTf?.GetComponent<RectTransform>();
+                if (projLayerTf == null)
+                    Debug.LogWarning("[GameSceneSetup] ProjectileLayer not found under CombatView.");
+
                 cvcSo.ApplyModifiedProperties();
             }
             else Debug.LogWarning("[GameSceneSetup] CombatViewController not found on CombatView.");
