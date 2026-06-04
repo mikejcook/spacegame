@@ -1811,8 +1811,8 @@ public static class GameSceneSetup
                     combatView.transform.Find("CombatActionBar")?.gameObject;
 
                 // Crosshair — wire textures from TooManyCrosshairs then wire the component
-                const string CrosshairBase = "Assets/TooManyCrosshairs/128px/Glow/";
-                var outerTex = AssetDatabase.LoadAssetAtPath<Texture2D>(CrosshairBase + "xhair/xArrowheadInwards128Glow.png");
+                const string CrosshairBase = "Assets/TooManyCrosshairs/128px/Base/";
+                var outerTex = AssetDatabase.LoadAssetAtPath<Texture2D>(CrosshairBase + "xHair/xArrowheadInwards128.png");
 
                 var crosshairRootTf = combatView.transform.Find("CrosshairRoot");
                 if (crosshairRootTf != null)
@@ -1825,7 +1825,7 @@ public static class GameSceneSetup
                         var outerRI = crosshairRootTf.Find("CrosshairOuter")?.GetComponent<RawImage>();
 
                         if (outerTex != null && outerRI != null)  outerRI.texture = outerTex;
-                        else if (outerTex == null) Debug.LogWarning("[GameSceneSetup] xArrowheadInwards128Glow.png not found — crosshair will be blank.");
+                        else if (outerTex == null) Debug.LogWarning("[GameSceneSetup] xArrowheadInwards128.png not found — crosshair will be blank.");
 
                         chSo.FindProperty("outerImage").objectReferenceValue = outerRI;
                         chSo.ApplyModifiedProperties();
