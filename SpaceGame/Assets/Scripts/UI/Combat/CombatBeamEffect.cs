@@ -30,16 +30,19 @@ public class CombatBeamEffect : MonoBehaviour
     // Tile the laser noise once every N canvas units along the beam length.
     private const float TilePer = 96f;
 
-    // ── Tint ─────────────────────────────────────────────────────────────────
+    // ── Default tint (player beam) ────────────────────────────────────────────
     // Matches AccentCyan from GameSceneSetup (0.30, 0.85, 1.00).
-    private static readonly Color BeamTint   = new Color(0.30f, 0.85f, 1.00f, 1f);
-    private static readonly Color GlowTint   = new Color(0.30f, 0.85f, 1.00f, 1f);
-    private static readonly Color MuzzleTint = new Color(0.70f, 0.95f, 1.00f, 1f);
+    public static readonly Color PlayerBeamTint = new Color(0.30f, 0.85f, 1.00f, 1f);
+    // Enemy beam: hostile orange-red.
+    public static readonly Color EnemyBeamTint  = new Color(1.00f, 0.35f, 0.10f, 1f);
 
     // ── Timing (seconds) ─────────────────────────────────────────────────────
     private const float FadeInTime  = 0.05f;
     private const float HoldTime    = 0.12f;
     private const float FadeOutTime = 0.20f;
+
+    /// <summary>Total wall-clock duration of the beam animation. Use this to know when to wait.</summary>
+    public const float AnimationDuration = FadeInTime + HoldTime + FadeOutTime;
 
     // ── Peak alpha for each element ───────────────────────────────────────────
     private const float BeamAlpha   = 0.90f;
@@ -53,14 +56,17 @@ public class CombatBeamEffect : MonoBehaviour
     /// <summary>
     /// Begin the beam effect.  Call once immediately after AddComponent.
     /// </summary>
-    /// <param name="startWorld">World-space centre of the player ship.</param>
-    /// <param name="endWorld">World-space centre of the targeted enemy slot.</param>
-    /// <param name="beamTexture">laser_noise00 texture for the beam strip (may be null — beam still fires).</param>
+    /// <param name="startWorld">World-space origin of the beam.</param>
+    /// <param name="endWorld">World-space target of the beam.</param>
+    /// <param name="beamTexture">laser_noise00 texture for the beam strip (may be null).</param>
     /// <param name="glowSprite">glow_round00 sprite for the impact circle (may be null).</param>
+    /// <param name="tint">Base color for beam, glow, and muzzle flash. Defaults to PlayerBeamTint (cyan).</param>
     public void Fire(Vector3 startWorld, Vector3 endWorld,
-                     Texture beamTexture, Sprite glowSprite)
+                     Texture beamTexture, Sprite glowSprite,
+                     Color? tint = null)
     {
-        StartCoroutine(BeamRoutine(startWorld, endWorld, beamTexture, glowSprite));
+        Color baseColor = tint ?? PlayerBeamTint;
+        StartCoroutine(BeamRoutine(startWorld, endWorld, beamTexture, glowSprite, baseColor));
     }
 
     // -----------------------------------------------------------------------
@@ -68,41 +74,46 @@ public class CombatBeamEffect : MonoBehaviour
     // -----------------------------------------------------------------------
 
     private IEnumerator BeamRoutine(Vector3 start, Vector3 end,
-                                    Texture beamTexture, Sprite glowSprite)
+                                    Texture beamTexture, Sprite glowSprite,
+                                    Color baseColor)
     {
+        // Derive per-instance tints from the base color.
+        Color beamTint   = baseColor;
+        Color glowTint   = baseColor;
+        Color muzzleTint = Color.Lerp(baseColor, Color.white, 0.4f);
+
         // ── Geometry ──────────────────────────────────────────────────────
         Vector3 dir      = end - start;
         float   distance = dir.magnitude;
         float   angle    = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;  // angle from +X
 
         // ── Beam line ─────────────────────────────────────────────────────
-        var beamRI = MakeBeamLine(start, end, distance, angle, beamTexture);
+        var beamRI = MakeBeamLine(start, end, distance, angle, beamTexture, beamTint);
 
         // ── Impact glow ───────────────────────────────────────────────────
         Image    glowImg = null;
         RawImage glowRI  = null;
         if (glowSprite != null)
         {
-            glowImg = MakeGlowImage(end, GlowSize, glowSprite);
+            glowImg = MakeGlowImage(end, GlowSize, glowSprite, glowTint);
         }
         else
         {
-            // Fallback: plain white rectangle if the glow sprite is missing.
-            glowRI = MakeGlowRaw(end, GlowSize);
+            // Fallback: plain colored rectangle if the glow sprite is missing.
+            glowRI = MakeGlowRaw(end, GlowSize, glowTint);
         }
 
         // ── Muzzle flash ──────────────────────────────────────────────────
-        // Small glow at the origin, fades out on its own half-way through.
         Image    muzzleImg = null;
         RawImage muzzleRI  = null;
         if (glowSprite != null)
         {
-            muzzleImg = MakeGlowImage(start, MuzzleSize, glowSprite);
-            muzzleImg.color = new Color(MuzzleTint.r, MuzzleTint.g, MuzzleTint.b, 0f);
+            muzzleImg = MakeGlowImage(start, MuzzleSize, glowSprite, muzzleTint);
+            muzzleImg.color = new Color(muzzleTint.r, muzzleTint.g, muzzleTint.b, 0f);
         }
         else
         {
-            muzzleRI = MakeGlowRaw(start, MuzzleSize);
+            muzzleRI = MakeGlowRaw(start, MuzzleSize, muzzleTint);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────
@@ -167,7 +178,7 @@ public class CombatBeamEffect : MonoBehaviour
 
     private RawImage MakeBeamLine(Vector3 start, Vector3 end,
                                    float distance, float angleDeg,
-                                   Texture tex)
+                                   Texture tex, Color tint)
     {
         var go = new GameObject("BeamLine", typeof(RectTransform));
         go.transform.SetParent(transform, false);
@@ -176,18 +187,17 @@ public class CombatBeamEffect : MonoBehaviour
         rt.anchorMin    = new Vector2(0.5f, 0.5f);
         rt.anchorMax    = new Vector2(0.5f, 0.5f);
         rt.pivot        = new Vector2(0.5f, 0.5f);
-        rt.position     = (start + end) * 0.5f;   // world-space midpoint
+        rt.position     = (start + end) * 0.5f;
         rt.sizeDelta    = new Vector2(distance, BeamThickness);
         rt.localEulerAngles = new Vector3(0f, 0f, angleDeg);
 
         var ri           = go.AddComponent<RawImage>();
         ri.texture       = tex;
-        ri.color         = new Color(BeamTint.r, BeamTint.g, BeamTint.b, 0f);
+        ri.color         = new Color(tint.r, tint.g, tint.b, 0f);
         ri.raycastTarget = false;
 
         if (tex != null)
         {
-            // Tile the noise texture along the beam's length for a richer look.
             float tiles = Mathf.Max(1f, distance / TilePer);
             ri.uvRect   = new Rect(0f, 0f, tiles, 1f);
         }
@@ -195,7 +205,7 @@ public class CombatBeamEffect : MonoBehaviour
         return ri;
     }
 
-    private Image MakeGlowImage(Vector3 worldPos, float size, Sprite sprite)
+    private Image MakeGlowImage(Vector3 worldPos, float size, Sprite sprite, Color tint)
     {
         var go = new GameObject("Glow", typeof(RectTransform));
         go.transform.SetParent(transform, false);
@@ -211,13 +221,13 @@ public class CombatBeamEffect : MonoBehaviour
         img.sprite        = sprite;
         img.preserveAspect = true;
         img.type          = Image.Type.Simple;
-        img.color         = new Color(GlowTint.r, GlowTint.g, GlowTint.b, 0f);
+        img.color         = new Color(tint.r, tint.g, tint.b, 0f);
         img.raycastTarget = false;
 
         return img;
     }
 
-    private RawImage MakeGlowRaw(Vector3 worldPos, float size)
+    private RawImage MakeGlowRaw(Vector3 worldPos, float size, Color tint)
     {
         var go = new GameObject("Glow", typeof(RectTransform));
         go.transform.SetParent(transform, false);
@@ -230,7 +240,7 @@ public class CombatBeamEffect : MonoBehaviour
         rt.sizeDelta    = new Vector2(size, size);
 
         var ri           = go.AddComponent<RawImage>();
-        ri.color         = new Color(GlowTint.r, GlowTint.g, GlowTint.b, 0f);
+        ri.color         = new Color(tint.r, tint.g, tint.b, 0f);
         ri.raycastTarget = false;
         return ri;
     }

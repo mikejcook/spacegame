@@ -189,9 +189,7 @@ public class SystemViewController : MonoBehaviour
         // Default: one red medium enemy (variant 0).
         combatDebugButton?.onClick.AddListener(() => ToggleCombatView(new[]
         {
-            new EnemyShipConfig { color = DGBShipColor.Red,   shipClass = DGBShipClass.Dreadnaught, variant = 1 },
-            new EnemyShipConfig { color = DGBShipColor.Green, shipClass = DGBShipClass.Cruiser,     variant = 1 },
-            new EnemyShipConfig { color = DGBShipColor.Blue,  shipClass = DGBShipClass.Fighter,     variant = 1 },
+            new EnemyShipConfig { color = DGBShipColor.Red, shipClass = DGBShipClass.Corvette, variant = 1 },
         }));
 
         randomCombatButton?.onClick.AddListener(() => StartOrRestartCombat(BuildRandomEnemies()));
@@ -1056,6 +1054,49 @@ public class SystemViewController : MonoBehaviour
         }
 
         combatViewController?.OnCombatEnter();
+
+        // Build D20 combat state from current game data before handing off to the controller.
+        if (combatViewController != null && enemies != null)
+        {
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                var db   = gm.Database;
+                var ship = gm.PlayerShip;
+
+                // Read installed weapon/defense equipment from the ship's slots.
+                EquipmentItem GetSlotItem(string slotName)
+                {
+                    var slots = ship?.EquipmentSlots;
+                    if (slots == null) return null;
+                    if (!slots.TryGetValue(slotName, out int id) || id <= 0) return null;
+                    return db?.Equipment.Get(id);
+                }
+
+                var beamItem    = GetSlotItem(Constants.Ship.EquipmentSlots.BeamWeapons);
+                var torpedoItem = GetSlotItem(Constants.Ship.EquipmentSlots.Torpedoes);
+                var shieldItem  = GetSlotItem(Constants.Ship.EquipmentSlots.Shields);
+                var armorItem   = GetSlotItem(Constants.Ship.EquipmentSlots.Armor);
+
+                // No WeaponsOfficer in starting crew — captain mans the guns as fallback.
+                var weaponsOfficer = db?.GetCrewByRole(gm.CurrentSave?.Id ?? 0, Constants.Crew.Roles.WeaponsOfficer);
+
+                var combatState = CombatState.Begin(
+                    ship:          ship,
+                    captain:       gm.PlayerCaptain,
+                    weaponsOfficer: weaponsOfficer,
+                    pilot:         gm.PlayerPilot,
+                    enemies:       enemies,
+                    beamWeapon:    beamItem,
+                    torpedoes:     torpedoItem,
+                    shields:       shieldItem,
+                    armor:         armorItem
+                );
+
+                combatViewController.SetCombatState(combatState);
+            }
+        }
+
         combatViewController?.StartCombat(enemies);
         UpdateCombatDebugButtonLabel();
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -134,17 +135,18 @@ public class CombatViewController : MonoBehaviour
     // Combat state
     // -----------------------------------------------------------------------
 
-    private float _playerShieldPct = 100f;
-    private float _playerHullPct   = 100f;
-    private float _targetShieldPct = 100f;
-    private float _targetHullPct   = 100f;
-
     // The slot RectTransform that is currently targeted — updated by SetTarget().
     private RectTransform _currentTargetRT;
 
     // Maps each slot RectTransform to the EnemyShipConfig it displays, so
     // SetTarget can update the title label with the correct ship class.
     private readonly Dictionary<RectTransform, EnemyShipConfig> _slotToConfig = new();
+
+    // Maps each slot RectTransform to its live EnemyCombatState.
+    private readonly Dictionary<RectTransform, EnemyCombatState> _slotToState = new();
+
+    // Live D20 combat data — set by StartCombat().
+    private CombatState _combatState;
 
     // -----------------------------------------------------------------------
     // Public API
@@ -168,30 +170,218 @@ public class CombatViewController : MonoBehaviour
         fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
         fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
 
-        RefreshDisplays();
+        RefreshDisplays(100f, 100f, 100f, 100f);
     }
+
+    // Duration constants used when yielding for animations to finish.
+    private const float TorpedoFlightDuration = 0.55f;
 
     /// <summary>Fire torpedoes at the current target.</summary>
     public void FireTorpedoes()
     {
-        if (_currentTargetRT == null) return;
-        PulseCrosshair();
-        sfxSource?.PlayOneShot(torpedoClip);
-        // Missiles are larger and slower than plasma bolts.
-        LaunchProjectile(missileSprite, new Vector2(40f, 96f), duration: 0.55f);
-        Debug.Log("[CombatViewController] Fire Torpedoes!");
-        // TODO: apply torpedo damage to target
+        if (_currentTargetRT == null || _combatState == null) return;
+        if (_combatState.Phase != CombatPhase.PlayerTurn) return;
+        var target = GetTargetCombatState();
+        if (target == null) return;
+        StartCoroutine(PlayerTorpedoRoutine(target));
     }
 
     /// <summary>Fire beam weapon at the current target.</summary>
     public void FireBeamWeapon()
     {
-        if (_currentTargetRT == null) return;
+        if (_currentTargetRT == null || _combatState == null) return;
+        if (_combatState.Phase != CombatPhase.PlayerTurn) return;
+        var target = GetTargetCombatState();
+        if (target == null) return;
+        StartCoroutine(PlayerBeamRoutine(target));
+    }
+
+    // -----------------------------------------------------------------------
+    // Player action coroutines
+    // -----------------------------------------------------------------------
+
+    private IEnumerator PlayerBeamRoutine(EnemyCombatState target)
+    {
+        SetFireButtonsEnabled(false);
+
+        // Resolve dice immediately (damage is tracked internally).
+        var result = CombatResolver.PlayerFireBeam(_combatState, target);
+        Debug.Log($"[Combat] {result.Description}");
+
+        // Fire the visual and sound.
         PulseCrosshair();
         sfxSource?.PlayOneShot(beamWeaponClip);
         LaunchBeamWeapon();
-        Debug.Log("[CombatViewController] Fire Beam Weapon!");
-        // TODO: apply beam damage to target
+
+        // Wait for the animation to finish, then show damage landing.
+        yield return new WaitForSeconds(CombatBeamEffect.AnimationDuration);
+        RefreshDisplaysFromState();
+        CheckCombatEnd();
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(EnemyTurnRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+            SetFireButtonsEnabled(true);
+    }
+
+    private IEnumerator PlayerTorpedoRoutine(EnemyCombatState target)
+    {
+        SetFireButtonsEnabled(false);
+
+        var result = CombatResolver.PlayerFireTorpedo(_combatState, target);
+        Debug.Log($"[Combat] {result.Description}");
+
+        PulseCrosshair();
+        sfxSource?.PlayOneShot(torpedoClip);
+        LaunchProjectile(missileSprite, new Vector2(40f, 96f), TorpedoFlightDuration);
+
+        yield return new WaitForSeconds(TorpedoFlightDuration);
+        RefreshDisplaysFromState();
+        CheckCombatEnd();
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(EnemyTurnRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+            SetFireButtonsEnabled(true);
+    }
+
+    // -----------------------------------------------------------------------
+    // Enemy turn coroutine
+    // -----------------------------------------------------------------------
+
+    private IEnumerator EnemyTurnRoutine()
+    {
+        foreach (var enemy in _combatState.Enemies)
+        {
+            if (enemy.IsDestroyed) continue;
+
+            var result = CombatResolver.EnemyAttack(_combatState, enemy);
+            Debug.Log($"[Combat] {result.Description}");
+
+            // Fire the visual and sound; get back how long to wait.
+            var slotRT = GetSlotForEnemy(enemy);
+            float waitTime = 0f;
+            if (slotRT != null && playerShipImage != null)
+                waitTime = LaunchEnemyAttackEffect(slotRT, result.IsBeamAttack);
+
+            yield return new WaitForSeconds(waitTime);
+
+            // Show damage landing after the animation resolves.
+            RefreshDisplaysFromState();
+            CheckCombatEnd();
+
+            if (_combatState.Phase != CombatPhase.PlayerTurn) yield break;
+        }
+    }
+
+    /// <summary>
+    /// Spawns the beam or torpedo visual from an enemy slot toward the player ship,
+    /// plays the matching sound, and returns the animation duration to wait for.
+    /// </summary>
+    private float LaunchEnemyAttackEffect(RectTransform enemySlotRT, bool isBeam)
+    {
+        if (projectileContainer == null || playerShipImage == null) return 0f;
+
+        Vector3 fromWorld = enemySlotRT.position;
+
+        // Target the nose (top-centre) of the player ship.
+        var corners = new Vector3[4];
+        playerShipImage.rectTransform.GetWorldCorners(corners);
+        Vector3 toWorld = (corners[1] + corners[2]) * 0.5f;
+
+        if (isBeam)
+        {
+            sfxSource?.PlayOneShot(beamWeaponClip);
+            var go = new GameObject("EnemyBeamEffect", typeof(RectTransform));
+            go.transform.SetParent(projectileContainer, worldPositionStays: false);
+            go.AddComponent<CombatBeamEffect>().Fire(
+                fromWorld, toWorld, beamTexture, beamGlowSprite,
+                tint: CombatBeamEffect.EnemyBeamTint);
+            return CombatBeamEffect.AnimationDuration;
+        }
+        else
+        {
+            sfxSource?.PlayOneShot(torpedoClip);
+            LaunchProjectileFromTo(fromWorld, toWorld, missileSprite,
+                                   new Vector2(40f, 96f), TorpedoFlightDuration);
+            return TorpedoFlightDuration;
+        }
+    }
+
+    /// <summary>Like LaunchProjectile but takes explicit world positions instead of using _currentTargetRT.</summary>
+    private void LaunchProjectileFromTo(Vector3 startWorld, Vector3 endWorld,
+                                        Sprite sprite, Vector2 displaySize, float duration)
+    {
+        if (projectileContainer == null) return;
+
+        var go   = new GameObject("Projectile", typeof(RectTransform));
+        go.transform.SetParent(projectileContainer, worldPositionStays: false);
+
+        var proj = go.AddComponent<CombatProjectile>();
+        proj.Launch(startWorld, endWorld, sprite, displaySize, duration);
+    }
+
+    /// <summary>Reverse lookup: find the slot RectTransform that holds a given enemy state.</summary>
+    private RectTransform GetSlotForEnemy(EnemyCombatState enemy)
+    {
+        foreach (var kvp in _slotToState)
+            if (kvp.Value == enemy) return kvp.Key;
+        return null;
+    }
+
+    private void SetFireButtonsEnabled(bool enabled)
+    {
+        if (fireTorpedesButton   != null) fireTorpedesButton.interactable   = enabled;
+        if (fireBeamWeaponButton != null) fireBeamWeaponButton.interactable = enabled;
+    }
+
+    // -----------------------------------------------------------------------
+    // Combat end checks
+    // -----------------------------------------------------------------------
+
+    private void CheckCombatEnd()
+    {
+        if (_combatState == null) return;
+
+        if (_combatState.AllEnemiesDestroyed)
+        {
+            _combatState.Phase = CombatPhase.Victory;
+            Debug.Log("[Combat] Victory!");
+            // TODO: trigger victory sequence / XP / loot
+        }
+        else if (_combatState.PlayerDefeated)
+        {
+            _combatState.Phase = CombatPhase.Defeat;
+            Debug.Log("[Combat] Defeated!");
+            // TODO: trigger defeat sequence / game over
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // State helpers
+    // -----------------------------------------------------------------------
+
+    private EnemyCombatState GetTargetCombatState()
+    {
+        if (_currentTargetRT == null) return null;
+        _slotToState.TryGetValue(_currentTargetRT, out var state);
+        return state;
+    }
+
+    private void RefreshDisplaysFromState()
+    {
+        if (_combatState == null) { RefreshDisplays(100f, 100f, 100f, 100f); return; }
+
+        float pShield = _combatState.PlayerShieldPct * 100f;
+        float pHull   = _combatState.PlayerHullPct   * 100f;
+
+        var target = GetTargetCombatState();
+        float tShield = target != null ? target.ShieldPct * 100f : 100f;
+        float tHull   = target != null ? target.HullPct   * 100f : 100f;
+
+        RefreshDisplays(pShield, pHull, tShield, tHull);
     }
 
     // -----------------------------------------------------------------------
@@ -249,39 +439,33 @@ public class CombatViewController : MonoBehaviour
         );
     }
 
-    /// <summary>Set player shield/hull percentages and refresh the header display.</summary>
-    public void SetPlayerStats(float shieldPct, float hullPct)
+    /// <summary>
+    /// Initialise live D20 combat state. Call before StartCombat() when you have
+    /// access to the ship and crew. If not called, combat falls back to display-only mode.
+    /// </summary>
+    public void SetCombatState(CombatState combatState)
     {
-        _playerShieldPct = Mathf.Clamp(shieldPct, 0f, 100f);
-        _playerHullPct   = Mathf.Clamp(hullPct,   0f, 100f);
-        RefreshDisplays();
+        _combatState = combatState;
     }
 
-    /// <summary>Set the targeted enemy's shield/hull percentages.</summary>
-    public void SetTargetStats(float shieldPct, float hullPct)
+    private void RefreshDisplays(float playerShieldPct, float playerHullPct,
+                                  float targetShieldPct, float targetHullPct)
     {
-        _targetShieldPct = Mathf.Clamp(shieldPct, 0f, 100f);
-        _targetHullPct   = Mathf.Clamp(hullPct,   0f, 100f);
-        RefreshDisplays();
-    }
-
-    private void RefreshDisplays()
-    {
-        if (playerShieldText != null) playerShieldText.text = $"SHIELDS  {_playerShieldPct:0}%";
-        if (playerHullText   != null) playerHullText.text   = $"HULL  {_playerHullPct:0}%";
-        if (targetShieldText != null) targetShieldText.text = $"SHIELDS  {_targetShieldPct:0}%";
-        if (targetHullText   != null) targetHullText.text   = $"HULL  {_targetHullPct:0}%";
+        if (playerShieldText != null) playerShieldText.text = $"SHIELDS  {playerShieldPct:0}%";
+        if (playerHullText   != null) playerHullText.text   = $"HULL  {playerHullPct:0}%";
+        if (targetShieldText != null) targetShieldText.text = $"SHIELDS  {targetShieldPct:0}%";
+        if (targetHullText   != null) targetHullText.text   = $"HULL  {targetHullPct:0}%";
     }
 
     public void OnCombatEnter()
     {
+        StopAllCoroutines();   // cancel any in-flight turn routine from a previous combat
         _slotToConfig.Clear();
-        _playerShieldPct = 100f;
-        _playerHullPct   = 100f;
-        _targetShieldPct = 100f;
-        _targetHullPct   = 100f;
+        _slotToState.Clear();
+        _combatState = null;
+        SetFireButtonsEnabled(true);
         if (targetInfoTitle != null) targetInfoTitle.text = "TARGET";
-        RefreshDisplays();
+        RefreshDisplays(100f, 100f, 100f, 100f);
         Debug.Log("[CombatViewController] Combat entered.");
     }
 
@@ -306,10 +490,7 @@ public class CombatViewController : MonoBehaviour
                 targetInfoTitle.text = "TARGET";
         }
 
-        // Reset target stats to 100% for the newly selected enemy (placeholder until real combat data)
-        _targetShieldPct = 100f;
-        _targetHullPct   = 100f;
-        RefreshDisplays();
+        RefreshDisplaysFromState();
         Debug.Log($"[CombatViewController] Targeted: {slotRT.name}");
     }
 
@@ -334,6 +515,13 @@ public class CombatViewController : MonoBehaviour
         int count = Mathf.Clamp(enemies.Length, 1, 3);
 
         _slotToConfig.Clear();
+        _slotToState.Clear();
+
+        // If a CombatState was set via SetCombatState(), wire enemy states to slots.
+        // Index order matches the slot layout: [0]=left/centre, [1]=right, [2]=centre(3-enemy).
+        EnemyCombatState EnemyState(int idx) =>
+            (_combatState != null && idx < _combatState.Enemies.Count)
+                ? _combatState.Enemies[idx] : null;
 
         RectTransform defaultTarget = null;
         switch (count)
@@ -341,6 +529,7 @@ public class CombatViewController : MonoBehaviour
             case 1:
                 ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[0]);
                 _slotToConfig[enemyCenterSlotRT] = enemies[0];
+                if (EnemyState(0) != null) _slotToState[enemyCenterSlotRT] = EnemyState(0);
                 defaultTarget = enemyCenterSlotRT;
                 break;
             case 2:
@@ -348,6 +537,8 @@ public class CombatViewController : MonoBehaviour
                 ShowEnemySlot(enemyRightGroup, enemyRightSlotRT, enemyRightImage, enemies[1]);
                 _slotToConfig[enemyLeftSlotRT]  = enemies[0];
                 _slotToConfig[enemyRightSlotRT] = enemies[1];
+                if (EnemyState(0) != null) _slotToState[enemyLeftSlotRT]  = EnemyState(0);
+                if (EnemyState(1) != null) _slotToState[enemyRightSlotRT] = EnemyState(1);
                 defaultTarget = enemyLeftSlotRT;
                 break;
             case 3:
@@ -357,7 +548,10 @@ public class CombatViewController : MonoBehaviour
                 _slotToConfig[enemyLeftSlotRT]   = enemies[0];
                 _slotToConfig[enemyCenterSlotRT] = enemies[1];
                 _slotToConfig[enemyRightSlotRT]  = enemies[2];
-                defaultTarget = enemyCenterSlotRT;  // always open on the middle enemy
+                if (EnemyState(0) != null) _slotToState[enemyLeftSlotRT]   = EnemyState(0);
+                if (EnemyState(1) != null) _slotToState[enemyCenterSlotRT] = EnemyState(1);
+                if (EnemyState(2) != null) _slotToState[enemyRightSlotRT]  = EnemyState(2);
+                defaultTarget = enemyCenterSlotRT;
                 break;
         }
 

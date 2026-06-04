@@ -36,21 +36,25 @@ public static class Constants
 
     public static class Skills
     {
-        public const string Piloting    = "Piloting";
-        public const string Engineering = "Engineering";
-        public const string Science     = "Science";
-        public const string Medicine    = "Medicine";
-        public const string Combat      = "Combat";
-        public const string Diplomacy   = "Diplomacy";
-        public const string Survival    = "Survival";
-        public const string Navigation  = "Navigation";
-        public const string Electronics = "Electronics";
-        public const string Command     = "Command";
+        public const string Piloting     = "Piloting";
+        public const string Engineering  = "Engineering";
+        public const string Science      = "Science";
+        public const string Medicine     = "Medicine";
+        public const string Combat       = "Combat";
+        public const string Diplomacy    = "Diplomacy";
+        public const string Survival     = "Survival";
+        public const string Navigation   = "Navigation";
+        public const string Electronics  = "Electronics";
+        public const string Command      = "Command";
+        // Weapon-specific skills — used in space combat attack rolls
+        public const string BeamWeapons  = "BeamWeapons";
+        public const string Torpedoes    = "Torpedoes";
 
         public static readonly string[] All =
         {
             Piloting, Engineering, Science, Medicine, Combat,
-            Diplomacy, Survival, Navigation, Electronics, Command
+            Diplomacy, Survival, Navigation, Electronics, Command,
+            BeamWeapons, Torpedoes
         };
     }
 

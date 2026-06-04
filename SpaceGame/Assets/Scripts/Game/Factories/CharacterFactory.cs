@@ -146,7 +146,7 @@ public static class CharacterFactory
             Constants.Crew.Roles.Engineer       => Constants.Skills.Engineering,
             Constants.Crew.Roles.Scientist      => Constants.Skills.Science,
             Constants.Crew.Roles.Doctor         => Constants.Skills.Medicine,
-            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.Combat,
+            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.BeamWeapons,
             Constants.Crew.Roles.Soldier        => Constants.Skills.Combat,
             _                                   => Constants.Skills.Command
         };
@@ -157,7 +157,7 @@ public static class CharacterFactory
             Constants.Crew.Roles.Engineer       => Constants.Skills.Electronics,
             Constants.Crew.Roles.Scientist      => Constants.Skills.Electronics,
             Constants.Crew.Roles.Doctor         => Constants.Skills.Science,
-            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.Electronics,
+            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.Torpedoes,
             Constants.Crew.Roles.Soldier        => Constants.Skills.Survival,
             _                                   => Constants.Skills.Diplomacy
         };
