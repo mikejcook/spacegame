@@ -97,6 +97,7 @@ public class CombatViewController : MonoBehaviour
     [SerializeField] private Button fireBeamWeaponButton;
 
     [Header("Target Info Display — wired by GameSceneSetup")]
+    [SerializeField] private TMP_Text targetInfoTitle;
     [SerializeField] private TMP_Text targetShieldText;
     [SerializeField] private TMP_Text targetHullText;
 
@@ -120,6 +121,10 @@ public class CombatViewController : MonoBehaviour
     private float _playerHullPct   = 100f;
     private float _targetShieldPct = 100f;
     private float _targetHullPct   = 100f;
+
+    // Maps each slot RectTransform to the EnemyShipConfig it displays, so
+    // SetTarget can update the title label with the correct ship class.
+    private readonly Dictionary<RectTransform, EnemyShipConfig> _slotToConfig = new();
 
     // -----------------------------------------------------------------------
     // Public API
@@ -188,10 +193,12 @@ public class CombatViewController : MonoBehaviour
 
     public void OnCombatEnter()
     {
+        _slotToConfig.Clear();
         _playerShieldPct = 100f;
         _playerHullPct   = 100f;
         _targetShieldPct = 100f;
         _targetHullPct   = 100f;
+        if (targetInfoTitle != null) targetInfoTitle.text = "TARGET";
         RefreshDisplays();
         Debug.Log("[CombatViewController] Combat entered.");
     }
@@ -206,6 +213,16 @@ public class CombatViewController : MonoBehaviour
     {
         if (slotRT == null) return;
         combatCrosshair?.SnapToSlot(slotRT);
+
+        // Update title with the targeted ship's class name
+        if (targetInfoTitle != null)
+        {
+            if (_slotToConfig.TryGetValue(slotRT, out var config))
+                targetInfoTitle.text = config.shipClass.ToString().ToUpper();
+            else
+                targetInfoTitle.text = "TARGET";
+        }
+
         // Reset target stats to 100% for the newly selected enemy (placeholder until real combat data)
         _targetShieldPct = 100f;
         _targetHullPct   = 100f;
@@ -233,28 +250,35 @@ public class CombatViewController : MonoBehaviour
 
         int count = Mathf.Clamp(enemies.Length, 1, 3);
 
-        RectTransform firstSlot = null;
+        _slotToConfig.Clear();
+
+        RectTransform defaultTarget = null;
         switch (count)
         {
             case 1:
                 ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[0]);
-                firstSlot = enemyCenterSlotRT;
+                _slotToConfig[enemyCenterSlotRT] = enemies[0];
+                defaultTarget = enemyCenterSlotRT;
                 break;
             case 2:
                 ShowEnemySlot(enemyLeftGroup,  enemyLeftSlotRT,  enemyLeftImage,  enemies[0]);
                 ShowEnemySlot(enemyRightGroup, enemyRightSlotRT, enemyRightImage, enemies[1]);
-                firstSlot = enemyLeftSlotRT;
+                _slotToConfig[enemyLeftSlotRT]  = enemies[0];
+                _slotToConfig[enemyRightSlotRT] = enemies[1];
+                defaultTarget = enemyLeftSlotRT;
                 break;
             case 3:
                 ShowEnemySlot(enemyLeftGroup,   enemyLeftSlotRT,   enemyLeftImage,   enemies[0]);
                 ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[1]);
                 ShowEnemySlot(enemyRightGroup,  enemyRightSlotRT,  enemyRightImage,  enemies[2]);
-                firstSlot = enemyLeftSlotRT;
+                _slotToConfig[enemyLeftSlotRT]   = enemies[0];
+                _slotToConfig[enemyCenterSlotRT] = enemies[1];
+                _slotToConfig[enemyRightSlotRT]  = enemies[2];
+                defaultTarget = enemyCenterSlotRT;  // always open on the middle enemy
                 break;
         }
 
-        // Auto-target the first active enemy.
-        SetTarget(firstSlot);
+        SetTarget(defaultTarget);
     }
 
     public void SetPlayerShipSprite(Sprite sprite)

@@ -354,7 +354,7 @@ public static class GameSceneSetup
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot     = new Vector2(1f, 0.5f);
             rt.sizeDelta = new Vector2(380f, 56f);
-            rt.anchoredPosition = new Vector2(-16f, 0f);
+            rt.anchoredPosition = new Vector2(-48f, 0f);   // moved inward from edge
         }
         var chsCG = combatHeaderStats.AddComponent<CanvasGroup>();
         chsCG.alpha          = 0f;
@@ -1325,11 +1325,19 @@ public static class GameSceneSetup
         var actionBar = MakeImage(combatView.transform, "CombatActionBar", HeaderBar);
         PlaceRect(actionBar, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 48f), v2(0f, 96f));
 
+        // Mirror the NavBar safe-area pattern: bar background expands downward to
+        // cover the home-indicator strip; buttons/containers shift inward from edges.
+        var abSafeInset   = actionBar.AddComponent<SafeAreaInset>();
+        var abSafeInsetSo = new SerializedObject(abSafeInset);
+        abSafeInsetSo.FindProperty("_bottom").boolValue               = true;
+        abSafeInsetSo.FindProperty("_expandInsteadOfShift").boolValue = true;
+        abSafeInsetSo.ApplyModifiedProperties();
+
         var actionRule = MakeImage(actionBar.transform, "AccentLine", AccentCyan);
         PlaceRect(actionRule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -1f), v2(0f, 2f));
 
         const float WeaponBtnWidth = 300f;
-        const float ActionBarPad   = 16f;
+        const float ActionBarPad   = 40f;   // padding from each edge of the action bar
 
         // ── Left weapon button ────────────────────────────────────────────
         var torpContainer = MakeUIGO("FireTorpedesContainer", actionBar.transform);
@@ -1340,6 +1348,15 @@ public static class GameSceneSetup
             rt.pivot            = new Vector2(0f, 0.5f);
             rt.anchoredPosition = new Vector2(ActionBarPad, 0f);
             rt.sizeDelta        = new Vector2(WeaponBtnWidth, -20f);
+        }
+        // Shift the left button inward by the device's left safe-area inset so
+        // it clears the rounded display corners on iPhone (same pattern as
+        // LeftComponentColumn / CrewListPanel elsewhere in GameSceneSetup).
+        {
+            var inset   = torpContainer.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue = true;
+            insetSo.ApplyModifiedProperties();
         }
         var weaponBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
         if (weaponBtnPrefab != null)
@@ -1382,11 +1399,12 @@ public static class GameSceneSetup
         tipVLG.childForceExpandHeight = true;
         tipVLG.childAlignment         = TextAnchor.MiddleCenter;
 
-        var tipTitle = MakeTMP(targetInfoPanel.transform, "TargetInfoTitle", "TARGET", 16, TextSubtle);
+        var tipTitle = MakeTMP(targetInfoPanel.transform, "TargetInfoTitle", "TARGET", 22, TextSubtle);
         tipTitle.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        tipTitle.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
         {
             var le           = tipTitle.AddComponent<LayoutElement>();
-            le.preferredHeight = 20f;
+            le.preferredHeight = 26f;
             le.flexibleHeight  = 0f;
         }
 
@@ -1395,18 +1413,25 @@ public static class GameSceneSetup
             var le           = statsRow.AddComponent<LayoutElement>();
             le.flexibleHeight = 1f;
         }
+        // childForceExpandWidth OFF so labels keep their preferred widths and pack
+        // together around the centre divider instead of stretching to fill the panel.
         var statsHLG = statsRow.AddComponent<HorizontalLayoutGroup>();
         statsHLG.padding                = new RectOffset(0, 0, 0, 0);
-        statsHLG.spacing                = 12f;
+        statsHLG.spacing                = 8f;
         statsHLG.childControlWidth      = true;
         statsHLG.childControlHeight     = true;
-        statsHLG.childForceExpandWidth  = true;
+        statsHLG.childForceExpandWidth  = false;
         statsHLG.childForceExpandHeight = true;
         statsHLG.childAlignment         = TextAnchor.MiddleCenter;
 
         var targetShieldText = MakeTMP(statsRow.transform, "TargetShieldText", "SHIELDS  100%", 24, TextWhite);
         targetShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
         targetShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+        {
+            var le          = targetShieldText.AddComponent<LayoutElement>();
+            le.preferredWidth = 210f;
+            le.flexibleWidth  = 0f;
+        }
 
         var tipDivider = MakeTMP(statsRow.transform, "DividerText", "|", 24, TextSubtle);
         tipDivider.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
@@ -1419,6 +1444,11 @@ public static class GameSceneSetup
         var targetHullText = MakeTMP(statsRow.transform, "TargetHullText", "HULL  100%", 24, TextWhite);
         targetHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
         targetHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+        {
+            var le          = targetHullText.AddComponent<LayoutElement>();
+            le.preferredWidth = 190f;
+            le.flexibleWidth  = 0f;
+        }
 
         // ── Right weapon button ───────────────────────────────────────────
         var beamContainer = MakeUIGO("FireBeamWeaponContainer", actionBar.transform);
@@ -1429,6 +1459,14 @@ public static class GameSceneSetup
             rt.pivot            = new Vector2(1f, 0.5f);
             rt.anchoredPosition = new Vector2(-ActionBarPad, 0f);
             rt.sizeDelta        = new Vector2(WeaponBtnWidth, -20f);
+        }
+        // Shift the right button inward by the device's right safe-area inset
+        // (mirrors the _left inset on FireTorpedesContainer).
+        {
+            var inset   = beamContainer.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_right").boolValue = true;
+            insetSo.ApplyModifiedProperties();
         }
         if (weaponBtnPrefab != null)
         {
@@ -1988,6 +2026,8 @@ public static class GameSceneSetup
                     beamContainerTf?.GetComponentInChildren<Button>(true);
 
                 // Target info texts
+                cvcSo.FindProperty("targetInfoTitle").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatActionBar/TargetInfoPanel/TargetInfoTitle");
                 cvcSo.FindProperty("targetShieldText").objectReferenceValue =
                     Find<TMP_Text>(combatView, "CombatActionBar/TargetInfoPanel/TargetStatsRow/TargetShieldText");
                 cvcSo.FindProperty("targetHullText").objectReferenceValue =
