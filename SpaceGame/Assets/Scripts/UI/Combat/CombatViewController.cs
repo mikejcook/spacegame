@@ -91,6 +91,14 @@ public class CombatViewController : MonoBehaviour
     [Header("Action Bar")]
     [SerializeField] private GameObject combatActionBar;
 
+    [Header("Crosshair")]
+    [SerializeField] private CombatCrosshair combatCrosshair;
+
+    [Header("Enemy Tap Buttons — wired by GameSceneSetup")]
+    [SerializeField] private Button enemyLeftButton;
+    [SerializeField] private Button enemyCenterButton;
+    [SerializeField] private Button enemyRightButton;
+
     // -----------------------------------------------------------------------
     // Public API
     // -----------------------------------------------------------------------
@@ -104,8 +112,26 @@ public class CombatViewController : MonoBehaviour
                 Debug.Log($"  sprite: '{s?.name}'");
     }
 
+    private void Start()
+    {
+        enemyLeftButton?.onClick.AddListener(  () => SetTarget(enemyLeftSlotRT));
+        enemyCenterButton?.onClick.AddListener(() => SetTarget(enemyCenterSlotRT));
+        enemyRightButton?.onClick.AddListener( () => SetTarget(enemyRightSlotRT));
+    }
+
     public void OnCombatEnter()  => Debug.Log("[CombatViewController] Combat entered.");
-    public void OnCombatExit()   { HideAllEnemySlots(); Debug.Log("[CombatViewController] Combat exited."); }
+    public void OnCombatExit()   { HideAllEnemySlots(); combatCrosshair?.Hide(); Debug.Log("[CombatViewController] Combat exited."); }
+
+    /// <summary>Trigger a single crosshair pulse — call when the player fires.</summary>
+    public void PulseCrosshair() => combatCrosshair?.Pulse();
+
+    /// <summary>Move the crosshair onto the given slot. Also called internally on tap.</summary>
+    public void SetTarget(RectTransform slotRT)
+    {
+        if (slotRT == null) return;
+        combatCrosshair?.SnapToSlot(slotRT);
+        Debug.Log($"[CombatViewController] Targeted: {slotRT.name}");
+    }
 
     /// <summary>
     /// Configures the enemy fleet. Call after ShowCombatView().
@@ -127,21 +153,28 @@ public class CombatViewController : MonoBehaviour
 
         int count = Mathf.Clamp(enemies.Length, 1, 3);
 
+        RectTransform firstSlot = null;
         switch (count)
         {
             case 1:
                 ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[0]);
+                firstSlot = enemyCenterSlotRT;
                 break;
             case 2:
                 ShowEnemySlot(enemyLeftGroup,  enemyLeftSlotRT,  enemyLeftImage,  enemies[0]);
                 ShowEnemySlot(enemyRightGroup, enemyRightSlotRT, enemyRightImage, enemies[1]);
+                firstSlot = enemyLeftSlotRT;
                 break;
             case 3:
                 ShowEnemySlot(enemyLeftGroup,   enemyLeftSlotRT,   enemyLeftImage,   enemies[0]);
                 ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[1]);
                 ShowEnemySlot(enemyRightGroup,  enemyRightSlotRT,  enemyRightImage,  enemies[2]);
+                firstSlot = enemyLeftSlotRT;
                 break;
         }
+
+        // Auto-target the first active enemy.
+        SetTarget(firstSlot);
     }
 
     public void SetPlayerShipSprite(Sprite sprite)

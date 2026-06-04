@@ -239,8 +239,19 @@ public static class GameSceneSetup
             var rt = combatDbgGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot     = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(200f, 56f);
+            rt.sizeDelta = new Vector2(180f, 56f);
             rt.anchoredPosition = new Vector2(12f, 0f);
+
+            // RANDOM button — immediately to the right of BATTLE
+            var randomGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
+            randomGO.name = "RandomCombatButton";
+            var rmb = randomGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (rmb != null) rmb.buttonText = "🎲 RANDOM";
+            var rrt = randomGO.GetComponent<RectTransform>();
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
+            rrt.pivot     = new Vector2(0f, 0.5f);
+            rrt.sizeDelta = new Vector2(180f, 56f);
+            rrt.anchoredPosition = new Vector2(12f + 180f + 8f, 0f);
         }
         else
         {
@@ -252,8 +263,19 @@ public static class GameSceneSetup
             var rt = combatDbgGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot     = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(200f, 56f);
+            rt.sizeDelta = new Vector2(180f, 56f);
             rt.anchoredPosition = new Vector2(12f, 0f);
+
+            var randomGO = MakeImage(header.transform, "RandomCombatButton", BtnNormal);
+            randomGO.AddComponent<Button>();
+            var rlbl = MakeTMP(randomGO.transform, "Label", "🎲 RANDOM", 20, TextWhite);
+            Stretch(rlbl);
+            rlbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+            var rrt = randomGO.GetComponent<RectTransform>();
+            rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
+            rrt.pivot     = new Vector2(0f, 0.5f);
+            rrt.sizeDelta = new Vector2(180f, 56f);
+            rrt.anchoredPosition = new Vector2(12f + 180f + 8f, 0f);
         }
 
         // Salvage widget — icon + count, right-aligned in the header
@@ -1201,11 +1223,11 @@ public static class GameSceneSetup
         //   Centre           → 180 °           (straight down)
         //   Right (cx 0.82) → ≈ 125 °          (down-left)
         BuildEnemySlot(combatView.transform, "EnemyLeftSlot",   "EnemyLeftImage",
-                       new Vector2(0.18f, 0.80f), 235f);
+                       new Vector2(0.18f, 0.68f), 235f);
         BuildEnemySlot(combatView.transform, "EnemyCenterSlot", "EnemyCenterImage",
-                       new Vector2(0.50f, 0.80f), 180f);
+                       new Vector2(0.50f, 0.68f), 180f);
         BuildEnemySlot(combatView.transform, "EnemyRightSlot",  "EnemyRightImage",
-                       new Vector2(0.82f, 0.80f), 125f);
+                       new Vector2(0.82f, 0.68f), 125f);
 
         // ── Player ship — bottom-centre, ~1/3 smaller, nose up ───────────
         // Previous anchors: (0.425, 0.13)→(0.575, 0.31) = 15%×18%.
@@ -1263,6 +1285,37 @@ public static class GameSceneSetup
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
 
+        // ── Targeting crosshair — centred in the enemy arena ─────────────
+        // CrosshairRoot sits at the vertical midpoint of the enemy area
+        // (y ≈ 0.65 in CombatView space).
+        //   crosshairOuter — xArrowheadInwards128Glow (expands on firing)
+        // CombatCrosshair tints it blue in Start().
+        var crosshairRoot = MakeUIGO("CrosshairRoot", combatView.transform);
+        {
+            var rt              = crosshairRoot.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0.5f, 0.68f);
+            rt.anchorMax        = new Vector2(0.5f, 0.68f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta        = new Vector2(200f, 200f);
+        }
+        // CanvasGroup — Hide() sets alpha=0; Start() hides immediately until targeted.
+        var chCG       = crosshairRoot.AddComponent<CanvasGroup>();
+        chCG.alpha     = 0f;
+        crosshairRoot.AddComponent<CombatCrosshair>();
+
+        // outer — inward arrowhead ring (expands on Pulse)
+        var crosshairOuter = MakeUIGO("CrosshairOuter", crosshairRoot.transform);
+        {
+            var ri       = crosshairOuter.AddComponent<RawImage>();
+            ri.color     = Color.white;  // tinted to blue by CombatCrosshair.Start()
+            var rt       = crosshairOuter.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
         return combatView;
     }
 
@@ -1305,6 +1358,12 @@ public static class GameSceneSetup
         imgComp.preserveAspect = true;
         imgComp.type           = Image.Type.Simple;
         imgComp.color          = Color.white;
+
+        // Button — lets the player tap the ship to target it.
+        // Transition.None so the Image sprite/color is not touched by the Button.
+        // onClick listener is added at runtime in CombatViewController.Start().
+        var btn = img.AddComponent<Button>();
+        btn.transition = Selectable.Transition.None;
     }
 
     // -----------------------------------------------------------------------
@@ -1727,6 +1786,8 @@ public static class GameSceneSetup
                     leftSlot?.GetComponent<RectTransform>();
                 cvcSo.FindProperty("enemyLeftImage").objectReferenceValue =
                     leftSlot?.Find("EnemyLeftImage")?.GetComponent<Image>();
+                cvcSo.FindProperty("enemyLeftButton").objectReferenceValue =
+                    leftSlot?.Find("EnemyLeftImage")?.GetComponent<Button>();
 
                 cvcSo.FindProperty("enemyCenterGroup").objectReferenceValue =
                     centerSlot?.GetComponent<CanvasGroup>();
@@ -1734,6 +1795,8 @@ public static class GameSceneSetup
                     centerSlot?.GetComponent<RectTransform>();
                 cvcSo.FindProperty("enemyCenterImage").objectReferenceValue =
                     centerSlot?.Find("EnemyCenterImage")?.GetComponent<Image>();
+                cvcSo.FindProperty("enemyCenterButton").objectReferenceValue =
+                    centerSlot?.Find("EnemyCenterImage")?.GetComponent<Button>();
 
                 cvcSo.FindProperty("enemyRightGroup").objectReferenceValue =
                     rightSlot?.GetComponent<CanvasGroup>();
@@ -1741,9 +1804,38 @@ public static class GameSceneSetup
                     rightSlot?.GetComponent<RectTransform>();
                 cvcSo.FindProperty("enemyRightImage").objectReferenceValue =
                     rightSlot?.Find("EnemyRightImage")?.GetComponent<Image>();
+                cvcSo.FindProperty("enemyRightButton").objectReferenceValue =
+                    rightSlot?.Find("EnemyRightImage")?.GetComponent<Button>();
 
                 cvcSo.FindProperty("combatActionBar").objectReferenceValue =
                     combatView.transform.Find("CombatActionBar")?.gameObject;
+
+                // Crosshair — wire textures from TooManyCrosshairs then wire the component
+                const string CrosshairBase = "Assets/TooManyCrosshairs/128px/Glow/";
+                var outerTex = AssetDatabase.LoadAssetAtPath<Texture2D>(CrosshairBase + "xhair/xArrowheadInwards128Glow.png");
+
+                var crosshairRootTf = combatView.transform.Find("CrosshairRoot");
+                if (crosshairRootTf != null)
+                {
+                    var crosshairComp = crosshairRootTf.GetComponent<CombatCrosshair>();
+                    if (crosshairComp != null)
+                    {
+                        var chSo = new SerializedObject(crosshairComp);
+
+                        var outerRI = crosshairRootTf.Find("CrosshairOuter")?.GetComponent<RawImage>();
+
+                        if (outerTex != null && outerRI != null)  outerRI.texture = outerTex;
+                        else if (outerTex == null) Debug.LogWarning("[GameSceneSetup] xArrowheadInwards128Glow.png not found — crosshair will be blank.");
+
+                        chSo.FindProperty("outerImage").objectReferenceValue = outerRI;
+                        chSo.ApplyModifiedProperties();
+
+                        cvcSo.FindProperty("combatCrosshair").objectReferenceValue = crosshairComp;
+                        Debug.Log("[GameSceneSetup] CombatCrosshair wired.");
+                    }
+                    else Debug.LogWarning("[GameSceneSetup] CombatCrosshair component not found on CrosshairRoot.");
+                }
+                else Debug.LogWarning("[GameSceneSetup] CrosshairRoot not found under CombatView.");
 
                 // Load all DGB ship sprites and populate the library array.
                 // PNGs default to Texture2D on first import — reimport as Single
@@ -1797,6 +1889,14 @@ public static class GameSceneSetup
                 combatDbgTf.GetComponentInChildren<Button>(true);
         else
             Debug.LogWarning("[GameSceneSetup] CombatDebugButton not found in Header.");
+
+        // Random combat button — next to BATTLE in the header
+        var randomDbgTf = header.transform.Find("RandomCombatButton");
+        if (randomDbgTf != null)
+            so.FindProperty("randomCombatButton").objectReferenceValue =
+                randomDbgTf.GetComponentInChildren<Button>(true);
+        else
+            Debug.LogWarning("[GameSceneSetup] RandomCombatButton not found in Header.");
 
         so.ApplyModifiedProperties();
     }

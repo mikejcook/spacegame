@@ -94,6 +94,8 @@ public class SystemViewController : MonoBehaviour
     [Header("Combat — Debug")]
     [Tooltip("Temporary button in the header that toggles the combat view. Remove once combat is triggered by gameplay events.")]
     [SerializeField] private Button combatDebugButton;
+    [Tooltip("Enters combat with a randomly generated enemy fleet (1–3 ships, random class/colour).")]
+    [SerializeField] private Button randomCombatButton;
 
     [Header("Nav Bar")]
     [Tooltip("CanvasGroup on the NavBar — hidden during combat so it doesn't show through the CombatView.")]
@@ -186,6 +188,8 @@ public class SystemViewController : MonoBehaviour
             new EnemyShipConfig { color = DGBShipColor.Green, shipClass = DGBShipClass.Cruiser,     variant = 1 },
             new EnemyShipConfig { color = DGBShipColor.Blue,  shipClass = DGBShipClass.Fighter,     variant = 1 },
         }));
+
+        randomCombatButton?.onClick.AddListener(() => StartOrRestartCombat(BuildRandomEnemies()));
 
         // Galaxy view → arriving at a system switches the System View to it.
         // Galaxy view → disable/re-enable nav buttons during warp flight.
@@ -1054,11 +1058,51 @@ public class SystemViewController : MonoBehaviour
         else           ShowCombatView(enemies);
     }
 
+    /// <summary>
+    /// Enters combat if not already in it, or re-rolls the enemy fleet if already
+    /// in combat. Used by the RANDOM button so you can re-roll mid-battle.
+    /// </summary>
+    private void StartOrRestartCombat(EnemyShipConfig[] enemies)
+    {
+        if (_inCombat)
+            combatViewController?.StartCombat(enemies);   // swap enemies without exiting
+        else
+            ShowCombatView(enemies);
+    }
+
     private void UpdateCombatDebugButtonLabel()
     {
         if (combatDebugButton == null) return;
         var mb = combatDebugButton.GetComponentInParent<Michsky.UI.Shift.MainButton>();
         if (mb != null) mb.buttonText = _inCombat ? "◀ EXIT BATTLE" : "⚔ BATTLE";
+
+        // Random button stays enabled in combat so you can re-roll enemies mid-battle.
+    }
+
+    // Builds a random enemy fleet of 1–3 ships for debug/testing.
+    // Avoids known unavailable combos (e.g. Red Fighter has no sprite).
+    private static EnemyShipConfig[] BuildRandomEnemies()
+    {
+        var colors  = (DGBShipColor[])System.Enum.GetValues(typeof(DGBShipColor));
+        var classes = (DGBShipClass[])System.Enum.GetValues(typeof(DGBShipClass));
+
+        int count   = UnityEngine.Random.Range(1, 4);  // 1, 2, or 3
+        var configs = new EnemyShipConfig[count];
+        for (int i = 0; i < count; i++)
+        {
+            DGBShipColor col;
+            DGBShipClass cls;
+            // Retry until we get a valid combo (avoids Red Fighter, which has no sprite).
+            do
+            {
+                col = colors[UnityEngine.Random.Range(0, colors.Length)];
+                cls = classes[UnityEngine.Random.Range(0, classes.Length)];
+            }
+            while (col == DGBShipColor.Red && cls == DGBShipClass.Fighter);
+
+            configs[i] = new EnemyShipConfig { color = col, shipClass = cls, variant = 1 };
+        }
+        return configs;
     }
 
     // -----------------------------------------------------------------------
