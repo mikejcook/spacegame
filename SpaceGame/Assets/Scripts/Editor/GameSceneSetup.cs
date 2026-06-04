@@ -1827,18 +1827,39 @@ public static class GameSceneSetup
         }
         else Debug.LogWarning("[GameSceneSetup] FrigateCorsair prefab not found at " + DerelictPrefabPath);
 
-        const string ShipPrefabPath =
-            "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +
-            "2DScifiFighterExcaliburTopViewMasterPrefab.prefab";
-        var shipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ShipPrefabPath);
+        // ── Player ship sprite — blue_corvette_1 from DGB Spaceships ─────────
+        const string PlayerShipSpritePath = "Assets/DGB Spaceships/Spaceship Sprites/blue_corvette_1.png";
         Sprite shipSprite = null;
-        if (shipPrefab != null)
         {
-            var sr = shipPrefab.GetComponentInChildren<SpriteRenderer>(false);
-            if (sr != null) { shipSprite = sr.sprite; Set(so, "shipSprite", shipSprite); }
-            else Debug.LogWarning("[GameSceneSetup] No active SpriteRenderer in ship prefab.");
+            var imp = AssetImporter.GetAtPath(PlayerShipSpritePath) as TextureImporter;
+            if (imp != null && imp.spriteImportMode != SpriteImportMode.Single)
+            {
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(PlayerShipSpritePath, ImportAssetOptions.ForceUpdate);
+                Debug.Log("[GameSceneSetup] Re-imported blue_corvette_1.png as Single sprite.");
+            }
+            shipSprite = AssetDatabase.LoadAssetAtPath<Sprite>(PlayerShipSpritePath);
+            if (shipSprite != null) Set(so, "shipSprite", shipSprite);
+            else Debug.LogWarning("[GameSceneSetup] blue_corvette_1.png not found — check the DGB Spaceships import.");
         }
-        else Debug.LogWarning("[GameSceneSetup] Ship prefab not found.");
+
+        // ── Thruster sprite ────────────────────────────────────────────────────
+        const string ThrusterSpritePath = "Assets/DGB Spaceships/Effects/thrusters00.png";
+        Sprite thrusterSprite = null;
+        {
+            var imp = AssetImporter.GetAtPath(ThrusterSpritePath) as TextureImporter;
+            if (imp != null && imp.spriteImportMode != SpriteImportMode.Single)
+            {
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(ThrusterSpritePath, ImportAssetOptions.ForceUpdate);
+                Debug.Log("[GameSceneSetup] Re-imported thrusters00.png as Single sprite.");
+            }
+            thrusterSprite = AssetDatabase.LoadAssetAtPath<Sprite>(ThrusterSpritePath);
+            if (thrusterSprite != null) Set(so, "thrusterSprite", thrusterSprite);
+            else Debug.LogWarning("[GameSceneSetup] thrusters00.png not found — thruster effect will be invisible.");
+        }
 
         // Galaxy view
         var galaxyViewGO = body.transform.Find("GalaxyView")?.gameObject;
@@ -1853,7 +1874,8 @@ public static class GameSceneSetup
                 var bgTf  = galaxyViewGO.transform.Find("GalaxyMap/GalaxyBackground");
                 Set(gvcSo, "galaxyBackground", bgTf?.GetComponent<RawImage>());
                 Set(gvcSo, "systemNodesContainer", FindRT(galaxyViewGO, "GalaxyMap/SystemNodesContainer"));
-                if (shipSprite != null) Set(gvcSo, "shipSprite", shipSprite);
+                if (shipSprite    != null) Set(gvcSo, "shipSprite",     shipSprite);
+                if (thrusterSprite != null) Set(gvcSo, "thrusterSprite", thrusterSprite);
 
                 // System info panel
                 var infoPanel = galaxyViewGO.transform.Find("SystemInfoPanel")?.gameObject;

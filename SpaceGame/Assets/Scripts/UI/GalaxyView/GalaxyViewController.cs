@@ -50,6 +50,7 @@ public class GalaxyViewController : MonoBehaviour
     [SerializeField] private RawImage       galaxyBackground;
     [SerializeField] private RectTransform  systemNodesContainer;
     [SerializeField] private Sprite         shipSprite;
+    [SerializeField] private Sprite         thrusterSprite;
 
     [Header("System Info Panel")]
     [SerializeField] private GameObject systemInfoPanel;
@@ -103,8 +104,9 @@ public class GalaxyViewController : MonoBehaviour
     private readonly List<StarSystem>  _systems = new List<StarSystem>();
 
     // Ship
-    private GameObject   _shipNodeGO;
+    private GameObject    _shipNodeGO;
     private RectTransform _shipRT;
+    private Image         _thrusterImg;
     private StarSystem    _shipCurrentSystem;
     private bool          _shipFlying;
     private Coroutine     _flyCoroutine;
@@ -356,14 +358,41 @@ public class GalaxyViewController : MonoBehaviour
         _shipNodeGO = new GameObject("PlayerShip", typeof(RectTransform));
         _shipNodeGO.transform.SetParent(systemNodesContainer, false);
 
-        _shipRT          = _shipNodeGO.GetComponent<RectTransform>();
+        _shipRT           = _shipNodeGO.GetComponent<RectTransform>();
         _shipRT.anchorMin = new Vector2(gx, gy);
         _shipRT.anchorMax = new Vector2(gx, gy);
         _shipRT.pivot     = new Vector2(0.5f, 0.5f);
         _shipRT.anchoredPosition = Vector2.zero;
         _shipRT.sizeDelta = new Vector2(ShipSize, ShipSize);
 
-        var img = _shipNodeGO.AddComponent<Image>();
+        // ── Thruster child — rendered before (behind) the ship sprite ─────
+        var thrusterGO = new GameObject("ThrusterImage", typeof(RectTransform));
+        thrusterGO.transform.SetParent(_shipNodeGO.transform, false);
+        var thrusterRT              = thrusterGO.GetComponent<RectTransform>();
+        thrusterRT.anchorMin        = new Vector2(0.5f, 0.5f);
+        thrusterRT.anchorMax        = new Vector2(0.5f, 0.5f);
+        thrusterRT.pivot            = new Vector2(0.5f, 0.5f);
+        thrusterRT.anchoredPosition = new Vector2(0f, -12f);  // rear of ship in local space
+        thrusterRT.sizeDelta        = new Vector2(11f, 11f);
+
+        _thrusterImg                = thrusterGO.AddComponent<Image>();
+        _thrusterImg.sprite         = thrusterSprite;
+        _thrusterImg.color          = Color.white;
+        _thrusterImg.preserveAspect = true;
+        _thrusterImg.type           = Image.Type.Simple;
+        _thrusterImg.enabled        = false;
+
+        // ── Ship sprite (rendered on top of thruster) ─────────────────────
+        var shipGO = new GameObject("ShipImage", typeof(RectTransform));
+        shipGO.transform.SetParent(_shipNodeGO.transform, false);
+        var shipChildRT              = shipGO.GetComponent<RectTransform>();
+        shipChildRT.anchorMin        = new Vector2(0.5f, 0.5f);
+        shipChildRT.anchorMax        = new Vector2(0.5f, 0.5f);
+        shipChildRT.pivot            = new Vector2(0.5f, 0.5f);
+        shipChildRT.anchoredPosition = Vector2.zero;
+        shipChildRT.sizeDelta        = new Vector2(ShipSize, ShipSize);
+
+        var img = shipGO.AddComponent<Image>();
         if (shipSprite != null)
         {
             img.sprite         = shipSprite;
@@ -606,6 +635,7 @@ public class GalaxyViewController : MonoBehaviour
         float toGX,   float toGY)
     {
         _shipFlying = true;
+        if (_thrusterImg != null) _thrusterImg.enabled = true;
         OnFlightStarted?.Invoke();
 
         // Calculate angle so the ship can rotate before/during warp-up
@@ -619,13 +649,14 @@ public class GalaxyViewController : MonoBehaviour
         {
             _shipCurrentSystem = target;
             _shipFlying        = false;
+            if (_thrusterImg != null) _thrusterImg.enabled = false;
             OnFlightEnded?.Invoke();
             OnSystemSelected?.Invoke(target);
             yield break;
         }
 
-        // Sprite nose faces left (−X) → add 180° to standard Atan2 result
-        float targetAngleDeg = Mathf.Atan2(screenDY, screenDX) * Mathf.Rad2Deg + 180f;
+        // DGB sprites face UP (+Y). Formula for a +Y-facing sprite: Atan2(-dx, dy).
+        float targetAngleDeg = Mathf.Atan2(-screenDX, screenDY) * Mathf.Rad2Deg;
         float startAngleDeg  = _shipRT != null ? _shipRT.localEulerAngles.z : 0f;
         float deltaAngle     = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
 
@@ -725,6 +756,7 @@ public class GalaxyViewController : MonoBehaviour
         _shipCurrentSystem = target;
         _shipFlying        = false;
         _flyCoroutine      = null;
+        if (_thrusterImg != null) _thrusterImg.enabled = false;
 
         OnFlightEnded?.Invoke();
         OnSystemSelected?.Invoke(target);

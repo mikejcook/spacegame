@@ -65,8 +65,10 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button crewNavButton;
 
     [Header("Player Ship")]
-    [Tooltip("Sprite extracted from the ship prefab — wired by GameSceneSetup.")]
+    [Tooltip("Ship sprite — blue_corvette_1 from DGB Spaceships, wired by GameSceneSetup.")]
     [SerializeField] private Sprite shipSprite;
+    [Tooltip("Thruster flame sprite shown while the ship is flying — wired by GameSceneSetup.")]
+    [SerializeField] private Sprite thrusterSprite;
 
     [Header("POI Sprites")]
     [Tooltip("Sprite used for Space Station POI nodes — wired by GameSceneSetup.")]
@@ -135,6 +137,7 @@ public class SystemViewController : MonoBehaviour
     private RectTransform   _shipRT;
     private Image           _shipBackdropImg;
     private RectTransform   _shipBackdropRT;
+    private Image           _thrusterImg;
     private PointOfInterest _shipCurrentPoi;
     private bool            _shipFlying;
     private Coroutine       _flyCoroutine;
@@ -451,8 +454,8 @@ public class SystemViewController : MonoBehaviour
                     SpawnShip(-dir * edgeDist, null);
 
                     // Point the ship toward the star (center of the map).
-                    // dir already points inward; the sprite faces left so +180° compensates.
-                    float angleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
+                    // dir already points inward. DGB sprites face up (+Y): Atan2(-dx, dy).
+                    float angleDeg = Mathf.Atan2(-dir.x, dir.y) * Mathf.Rad2Deg;
                     if (_shipRT != null)
                         _shipRT.localEulerAngles = new Vector3(0f, 0f, angleDeg);
                 }
@@ -625,10 +628,12 @@ public class SystemViewController : MonoBehaviour
     /// Hierarchy:
     ///   PlayerShip          RectTransform + Button (positioning root)
     ///     ShipBackdrop      Image — dark semi-transparent circle for contrast
-    ///     ShipImage         Image — the actual ship sprite
+    ///     ThrusterImage     Image — engine flame, hidden until flying
+    ///     ShipImage         Image — the actual ship sprite (renders on top of thruster)
     ///
-    /// Separating the backdrop and sprite into children ensures the ship is
-    /// always readable regardless of what POI or orbit ring lies underneath it.
+    /// Children share the root's rotation, so the thruster stays behind the
+    /// engine as the ship turns. ThrusterImage sits below ShipImage in the
+    /// hierarchy so it renders underneath.
     /// </summary>
     private void SpawnShip(Vector2 startPos, PointOfInterest startPoi)
     {
@@ -657,6 +662,24 @@ public class SystemViewController : MonoBehaviour
         _shipBackdropImg        = backdropGO.AddComponent<Image>();
         _shipBackdropImg.sprite = null;                        // solid circle via default Unity sprite
         _shipBackdropImg.color  = new Color(0f, 0f, 0f, 0.55f);
+
+        // ── Thruster flame — rendered before (behind) the ship sprite ────────
+        var thrusterGO = new GameObject("ThrusterImage", typeof(RectTransform));
+        thrusterGO.transform.SetParent(_shipNodeGO.transform, false);
+        var thrusterRT             = thrusterGO.GetComponent<RectTransform>();
+        thrusterRT.anchorMin       = new Vector2(0.5f, 0.5f);
+        thrusterRT.anchorMax       = new Vector2(0.5f, 0.5f);
+        thrusterRT.pivot           = new Vector2(0.5f, 0.5f);
+        // Offset below centre — sits at the ship's engine exhaust (rear = -Y in local space)
+        thrusterRT.anchoredPosition = new Vector2(0f, -30f);
+        thrusterRT.sizeDelta        = new Vector2(28f, 28f);
+
+        _thrusterImg           = thrusterGO.AddComponent<Image>();
+        _thrusterImg.sprite    = thrusterSprite;   // null-safe; falls back to white rect
+        _thrusterImg.color     = Color.white;
+        _thrusterImg.preserveAspect = true;
+        _thrusterImg.type      = Image.Type.Simple;
+        _thrusterImg.enabled   = false;            // hidden until flying
 
         // ── Ship sprite ───────────────────────────────────────────────────────
         var spriteGO = new GameObject("ShipImage", typeof(RectTransform));
@@ -751,6 +774,7 @@ public class SystemViewController : MonoBehaviour
         PointOfInterest target, Vector2 fromPos, Vector2 toPos)
     {
         _shipFlying = true;
+        if (_thrusterImg != null) _thrusterImg.enabled = true;
         SetShipBackdropVisible(false);
         SetNavButtonsInteractable(false);
 
@@ -760,6 +784,7 @@ public class SystemViewController : MonoBehaviour
         {
             _shipCurrentPoi = target;
             _shipFlying     = false;
+            if (_thrusterImg != null) _thrusterImg.enabled = false;
             SetShipBackdropVisible(true);
             SetNavButtonsInteractable(true);
             MarkVisited(target);
@@ -767,8 +792,8 @@ public class SystemViewController : MonoBehaviour
             yield break;
         }
 
-        // The raw sprite points LEFT (−X) — add 180° to Atan2 result.
-        float targetAngleDeg = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + 180f;
+        // DGB sprites face UP (+Y). Formula for a +Y-facing sprite: Atan2(-dir.x, dir.y).
+        float targetAngleDeg = Mathf.Atan2(-dir.x, dir.y) * Mathf.Rad2Deg;
         float startAngleDeg  = _shipRT.localEulerAngles.z;
         float deltaAngle     = Mathf.DeltaAngle(startAngleDeg, targetAngleDeg);
 
@@ -844,6 +869,7 @@ public class SystemViewController : MonoBehaviour
         _shipCurrentPoi          = target;
         _shipFlying              = false;
         _flyCoroutine            = null;
+        if (_thrusterImg != null) _thrusterImg.enabled = false;
 
         SetShipBackdropVisible(true);
         SetNavButtonsInteractable(true);
