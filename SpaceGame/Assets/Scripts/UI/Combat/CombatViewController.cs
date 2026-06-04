@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,8 +24,8 @@ using UnityEngine.UI;
 ///   2 enemies → left + right
 ///   3 enemies → left + centre + right
 ///
-///   Each slot's RectTransform sizeDelta is resized at runtime based on
-///   EnemyShipConfig.displaySize (Small ≈ player ship, Medium, Large).
+///   Each slot's RectTransform sizeDelta is set at runtime to match the
+///   sprite's natural pixel dimensions so larger sprites appear larger.
 ///
 ///   Ship rotation angles are baked into the builder (per slot):
 ///     Left   ≈ 235 °  (faces down-right toward the player)
@@ -38,10 +39,30 @@ public class CombatViewController : MonoBehaviour
     // Baked from: reduce previous large slot by 1/3, then scale Medium/Small.
     // -----------------------------------------------------------------------
 
-    private static readonly Vector2 DisplaySizeLarge  = new Vector2(240f, 213f);
-    private static readonly Vector2 DisplaySizeMedium = new Vector2(160f, 142f);
-    // Small ≈ player ship footprint (player slot is ~144 × 178 canvas units)
-    private static readonly Vector2 DisplaySizeSmall  = new Vector2(128f, 114f);
+    // -----------------------------------------------------------------------
+    // Sprite availability — not every color/class combo has an asset.
+    // Update this set if sprites are added or removed from DGB Spaceships/.
+    // -----------------------------------------------------------------------
+
+    private static readonly HashSet<(DGBShipColor, DGBShipClass)> UnavailableCombos = new()
+    {
+        (DGBShipColor.Red, DGBShipClass.Fighter),
+    };
+
+    // Max variant per color/class combo (default 1 if not listed here).
+    private static readonly Dictionary<(DGBShipColor, DGBShipClass), int> MaxVariant = new()
+    {
+        { (DGBShipColor.Blue,  DGBShipClass.Battleship), 2 },
+        { (DGBShipColor.Blue,  DGBShipClass.Corvette),   2 },
+        { (DGBShipColor.Blue,  DGBShipClass.Cruiser),    2 },
+        { (DGBShipColor.Blue,  DGBShipClass.Fighter),    2 },
+        { (DGBShipColor.Green, DGBShipClass.Battleship), 2 },
+        { (DGBShipColor.Green, DGBShipClass.Corvette),   2 },
+        { (DGBShipColor.Green, DGBShipClass.Cruiser),    2 },
+        { (DGBShipColor.Red,   DGBShipClass.Battleship), 2 },
+        { (DGBShipColor.Red,   DGBShipClass.Corvette),   2 },
+        { (DGBShipColor.Red,   DGBShipClass.Cruiser),    2 },
+    };
 
     // -----------------------------------------------------------------------
     // Inspector references — wired by GameSceneSetup
@@ -138,8 +159,14 @@ public class CombatViewController : MonoBehaviour
     {
         if (dgbShipSprites == null) return null;
 
+        if (UnavailableCombos.Contains((color, shipClass)))
+        {
+            Debug.LogWarning($"[CombatViewController] No DGB sprite exists for {color} {shipClass}.");
+            return null;
+        }
+
         var sprite = FindSprite(BuildSpriteName(color, shipClass, variant));
-        // Fall back to variant 1 (the base variant) if the requested one doesn't exist
+        // Fall back to variant 1 if the requested variant doesn't exist
         if (sprite == null && variant != 1)
             sprite = FindSprite(BuildSpriteName(color, shipClass, 1));
 
@@ -165,25 +192,19 @@ public class CombatViewController : MonoBehaviour
     {
         if (config == null) return;
 
-        if (slotRT != null)
-            slotRT.sizeDelta = GetDisplaySize(config.displaySize);
+        var sprite = GetEnemySprite(config.color, config.shipClass, config.variant);
+
+        if (slotRT != null && sprite != null)
+            slotRT.sizeDelta = sprite.rect.size;
 
         if (img != null)
         {
-            var sprite = GetEnemySprite(config.color, config.shipClass, config.variant);
             img.sprite = sprite;
             img.color  = sprite != null ? Color.white : new Color(0.6f, 0.2f, 0.2f, 0.4f);
         }
 
         SetSlotVisible(group, true);
     }
-
-    private static Vector2 GetDisplaySize(CombatShipDisplaySize displaySize) => displaySize switch
-    {
-        CombatShipDisplaySize.Large  => DisplaySizeLarge,
-        CombatShipDisplaySize.Medium => DisplaySizeMedium,
-        _                            => DisplaySizeSmall,
-    };
 
     private static void SetSlotVisible(CanvasGroup group, bool visible)
     {

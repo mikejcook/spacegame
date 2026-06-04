@@ -1,19 +1,4 @@
 /// <summary>
-/// How large the enemy ship appears in the combat arena.
-/// Independent of the ship's class — a Fighter can be shown at Large display
-/// size and a Dreadnaught at Small if the encounter calls for it.
-/// </summary>
-public enum CombatShipDisplaySize
-{
-    /// <summary>Roughly the same footprint as the player ship.</summary>
-    Small,
-    /// <summary>Midpoint between Small and Large.</summary>
-    Medium,
-    /// <summary>Full-size threat — the largest slot.</summary>
-    Large,
-}
-
-/// <summary>
 /// Faction colour of a DGB ship sprite.
 /// Maps to the first token of the filename: "{color}_{class}_{variant}.png".
 /// </summary>
@@ -42,13 +27,14 @@ public enum DGBShipClass
 /// <summary>
 /// Describes a single enemy ship for space combat.
 /// Passed to CombatViewController.StartCombat() to configure each enemy slot.
+/// The slot is sized at runtime to match the sprite's natural pixel dimensions,
+/// so larger sprite textures appear larger in the arena.
 /// </summary>
 [System.Serializable]
 public class EnemyShipConfig
 {
-    public DGBShipColor          color       = DGBShipColor.Red;
-    public DGBShipClass          shipClass   = DGBShipClass.Cruiser;
-    public CombatShipDisplaySize displaySize = CombatShipDisplaySize.Medium;
+    public DGBShipColor color     = DGBShipColor.Red;
+    public DGBShipClass shipClass = DGBShipClass.Cruiser;
 
     /// <summary>
     /// Sprite variant number (1, 2, …). Not all class/colour combos have multiple

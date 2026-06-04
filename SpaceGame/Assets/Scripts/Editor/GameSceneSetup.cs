@@ -1193,9 +1193,9 @@ public static class GameSceneSetup
 
         // ── Enemy ship slots (upper area) ────────────────────────────────
         // Each slot is a CanvasGroup point-anchored at the centre of its screen
-        // third. sizeDelta is set at runtime by CombatViewController based on
-        // CombatShipDisplaySize; the builder seeds it at Large (240×213 canvas
-        // units). The inner Image is pre-rotated to aim at the player ship
+        // third. sizeDelta is set at runtime by CombatViewController to match
+        // the sprite's natural pixel dimensions. The inner Image is pre-rotated
+        // to aim at the player ship
         // (bottom-centre). Angles derived from canvas positions:
         //   Left (cx 0.18)  → atan2(-dx, dy) ≈ 235 ° (down-right)
         //   Centre           → 180 °           (straight down)
@@ -1275,8 +1275,8 @@ public static class GameSceneSetup
     static void BuildEnemySlot(Transform parent, string slotName, string imageName,
                                 Vector2 slotCenter, float imageRotZ)
     {
-        // Slot root — point-anchored at slotCenter, sized to Large by default.
-        // CombatViewController resizes sizeDelta at runtime per CombatShipDisplaySize.
+        // Slot root — point-anchored at slotCenter; CombatViewController sets
+        // sizeDelta at runtime to match the sprite's natural pixel dimensions.
         var slot = MakeUIGO(slotName, parent);
         {
             var rt              = slot.GetComponent<RectTransform>();
