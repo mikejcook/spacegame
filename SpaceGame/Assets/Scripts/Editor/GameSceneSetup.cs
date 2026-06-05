@@ -1245,6 +1245,8 @@ public static class GameSceneSetup
     //   ├─ EnemyLeftSlot / CenterSlot / RightSlot
     //   ├─ PlayerShipImage             (bottom-centre, nose up)
     //   ├─ CombatActionBar             (bottom 96 px strip)
+    //   ├─ CombatLogPanel              (right-anchored, above action bar; rolling attack/repair/enemy log)
+    //   │  └─ CombatLogText            (TMP_Text, updated by CombatViewController.AppendLog)
     //   ├─ ProjectileLayer             (full-stretch, above ships; projectiles spawned here at runtime)
     //   └─ CrosshairRoot               (animated targeting crosshair, drawn last / on top)
     //      ├─ AccentLine               (2 px cyan rule at top)
@@ -1366,10 +1368,11 @@ public static class GameSceneSetup
             go.name = "FireTorpedesButton";
             var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
             if (mb != null) mb.buttonText = "FIRE TORPEDOES";
-            var rt  = go.GetComponent<RectTransform>();
+            // Leave 28 px at the bottom of the container for the torpedo count label.
+            var rt   = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
+            rt.offsetMin = new Vector2(0f, 28f);
             rt.offsetMax = Vector2.zero;
         }
         else
@@ -1379,7 +1382,23 @@ public static class GameSceneSetup
             var lbl = MakeTMP(go.transform, "Label", "FIRE TORPEDOES", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-            Stretch(go);
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(0f, 28f);
+            rt.offsetMax = Vector2.zero;
+        }
+
+        // Torpedo count label — "×8" shown at the bottom of the container.
+        {
+            var countLbl = MakeTMP(torpContainer.transform, "TorpedoCountLabel", "×8", 17, TextSubtle);
+            var rt       = countLbl.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 0f);
+            rt.anchorMax        = new Vector2(1f, 0f);
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 4f);
+            rt.sizeDelta        = new Vector2(0f, 22f);
+            countLbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
 
         // ── Target info panel — centre ────────────────────────────────────
@@ -1489,6 +1508,41 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             Stretch(go);
+        }
+
+        // ── Combat log panel — right side, between right enemy slot and action bar ──
+        //
+        // Anchored to the right edge, bottom-aligned with a gap above the action bar.
+        // SafeAreaInset(_right) mirrors the beam button inset.
+        // CombatViewController.AppendLog() refreshes the TMP_Text child at runtime.
+        var logPanel = MakeImage(combatView.transform, "CombatLogPanel",
+            new Color(HeaderBar.r, HeaderBar.g, HeaderBar.b, 0.82f));
+        {
+            var rt = logPanel.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(1f, 0f);        // right-bottom — set BEFORE anchoredPosition (CLAUDE.md)
+            rt.anchorMin        = new Vector2(1f, 0f);
+            rt.anchorMax        = new Vector2(1f, 0f);
+            rt.anchoredPosition = new Vector2(-ActionBarPad, 170f);  // same right pad as beam button; well above action bar (96) + safe-area expansion
+            rt.sizeDelta        = new Vector2(620f, 170f);            // 620 × 170 canvas units ≈ 5 log lines at 24 pt
+        }
+        {
+            var inset   = logPanel.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_right").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+        {
+            var logTextGO = MakeTMP(logPanel.transform, "CombatLogText", "", 24, TextSubtle);
+            var rt        = logTextGO.GetComponent<RectTransform>();
+            rt.anchorMin  = Vector2.zero;
+            rt.anchorMax  = Vector2.one;
+            rt.offsetMin  = new Vector2(10f, 6f);
+            rt.offsetMax  = new Vector2(-10f, -6f);
+            var tmp                  = logTextGO.GetComponent<TextMeshProUGUI>();
+            tmp.alignment            = TextAlignmentOptions.TopLeft;
+            tmp.enableWordWrapping   = false;
+            tmp.richText             = true;
+            tmp.overflowMode         = TextOverflowModes.Truncate;
         }
 
         // ── Projectile layer — full-stretch, above ships/crosshair ───────
@@ -2064,6 +2118,14 @@ public static class GameSceneSetup
                     torpContainerTf?.GetComponentInChildren<Button>(true);
                 cvcSo.FindProperty("fireBeamWeaponButton").objectReferenceValue =
                     beamContainerTf?.GetComponentInChildren<Button>(true);
+
+                // Torpedo count label
+                cvcSo.FindProperty("torpedoCountText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatActionBar/FireTorpedesContainer/TorpedoCountLabel");
+
+                // Combat log text
+                cvcSo.FindProperty("combatLogText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatLogPanel/CombatLogText");
 
                 // Target info texts
                 cvcSo.FindProperty("targetInfoTitle").objectReferenceValue =

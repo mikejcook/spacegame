@@ -53,6 +53,9 @@ public static class CombatResolver
     /// </summary>
     public const int BeamVsHullDR = 3;
 
+    /// <summary>DC for the engineer's end-of-turn repair check (d20 + Engineering).</summary>
+    public const int RepairDC = 12;
+
     // ── Attack/damage result ──────────────────────────────────────────────────
 
     public struct AttackResult
@@ -69,15 +72,36 @@ public static class CombatResolver
         public bool IsHit;
         /// <summary>Damage before DR.</summary>
         public int  RawDamage;
-        /// <summary>DR applied (0 when shields absorb nothing for beams, or when hull is unarmored vs torpedoes).</summary>
+        /// <summary>DR applied to shields (0 for beams vs shields, TorpedoVsShieldDR for torpedoes vs shields).</summary>
         public int  DR;
-        /// <summary>Damage actually dealt (max(0, RawDamage - DR)).</summary>
+        /// <summary>Damage actually dealt to the primary target (shields or hull).</summary>
         public int  FinalDamage;
         /// <summary>True = shields took the hit; false = hull took it.</summary>
         public bool HitShields;
+        /// <summary>True if this hit zeroed the target's shields (overflow may follow).</summary>
+        public bool ShieldsBroken;
+        /// <summary>Hull damage from overflow when shields were broken (after hull DR).</summary>
+        public int  HullOverflow;
         /// <summary>True = beam weapon; false = torpedo. Used by the view to pick the correct effect.</summary>
         public bool IsBeamAttack;
         /// <summary>Human-readable description for a combat log.</summary>
+        public string Description;
+    }
+
+    // ── Engineer repair result ────────────────────────────────────────────────
+
+    public struct EngineerRepairResult
+    {
+        /// <summary>False when no engineer is aboard — no check attempted.</summary>
+        public bool Attempted;
+        public int  Roll;
+        public int  EngineerSkill;
+        public int  Total;
+        public int  DC;
+        public bool Success;
+        public int  ShieldsRepaired;
+        public int  HullRepaired;
+        /// <summary>Human-readable description for the combat log.</summary>
         public string Description;
     }
 
@@ -131,7 +155,11 @@ public static class CombatResolver
         }
 
         r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
-        ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields);
+
+        bool hadShields = target.ShieldsUp;
+        (_, r.HullOverflow) = ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields,
+                                                  hullDR: r.IsBeamAttack ? BeamVsHullDR : 0);
+        r.ShieldsBroken = hadShields && !target.ShieldsUp;
 
         string where = r.HitShields ? "shields" : "hull";
         r.Description = BuildHitDescription("Beam", where, r);
@@ -145,6 +173,8 @@ public static class CombatResolver
     {
         if (state.PlayerTorpedoTier <= 0)
             return NoWeapon("torpedoes");
+        if (state.PlayerTorpedoCount <= 0)
+            return NoWeapon("torpedoes (none remaining)");
 
         var r = new AttackResult();
 
@@ -183,7 +213,14 @@ public static class CombatResolver
         }
 
         r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
-        ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields);
+
+        // Consume one torpedo before applying damage.
+        state.PlayerTorpedoCount = Mathf.Max(0, state.PlayerTorpedoCount - 1);
+
+        bool hadShields = target.ShieldsUp;
+        (_, r.HullOverflow) = ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields,
+                                                  hullDR: 0);  // torpedoes crack hull — no hull DR
+        r.ShieldsBroken = hadShields && !target.ShieldsUp;
 
         string where = r.HitShields ? "shields" : "hull";
         r.Description = BuildHitDescription("Torpedo", where, r);
@@ -199,7 +236,10 @@ public static class CombatResolver
     /// </summary>
     public static AttackResult EnemyAttack(CombatState state, EnemyCombatState enemy)
     {
-        bool useBeam     = DiceRoller.Roll(2) == 1;
+        // Always use beams while player shields are up — beams strip shields with no DR,
+        // while torpedoes are strongly resisted (DR 10) making them wasteful.
+        // Once shields are down, always use torpedoes to crack the hull.
+        bool useBeam = state.PlayerShieldsUp;
         int  enemyTier   = useBeam ? enemy.Config.BeamTier : enemy.Config.TorpedoTier;
         string weaponName = useBeam ? "beam" : "torpedo";
 
@@ -239,7 +279,11 @@ public static class CombatResolver
         }
 
         r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
-        ApplyDamageToPlayer(state, r.FinalDamage, r.HitShields);
+
+        bool playerHadShields = state.PlayerShieldsUp;
+        int  hullDR           = useBeam ? BeamVsHullDR : 0;
+        (_, r.HullOverflow) = ApplyDamageToPlayer(state, r.FinalDamage, r.HitShields, hullDR);
+        r.ShieldsBroken = playerHadShields && !state.PlayerShieldsUp;
 
         string where = r.HitShields ? "your shields" : "your hull";
         r.Description = BuildHitDescription($"Enemy {weaponName}", where, r);
@@ -251,20 +295,115 @@ public static class CombatResolver
     /// <summary>Tier attack/damage bonus: Mk I = +0, Mk II = +1 … Mk VI = +5.</summary>
     public static int TierBonus(int tier) => Mathf.Max(0, tier - 1);
 
-    private static void ApplyDamageToEnemy(EnemyCombatState target, int damage, bool hitShields)
+    /// <summary>
+    /// Apply damage to an enemy ship.
+    /// If shields are hit and finalDamage exceeds remaining shields, overflow
+    /// (minus hullDR) bleeds through to hull.
+    /// Returns (shieldDamageDealt, hullOverflowDealt).
+    /// </summary>
+    private static (int shieldDmg, int hullOverflow) ApplyDamageToEnemy(
+        EnemyCombatState target, int finalDamage, bool hitShields, int hullDR = 0)
     {
-        if (hitShields)
-            target.CurrentShields = Mathf.Max(0, target.CurrentShields - damage);
-        else
-            target.CurrentHull    = Mathf.Max(0, target.CurrentHull    - damage);
+        if (!hitShields)
+        {
+            // Direct hull hit — finalDamage already has hull DR applied.
+            // Return (0, 0): hull damage is captured in r.FinalDamage, not an overflow.
+            target.CurrentHull = Mathf.Max(0, target.CurrentHull - finalDamage);
+            return (0, 0);
+        }
+
+        int shieldDmg = Mathf.Min(target.CurrentShields, finalDamage);
+        target.CurrentShields = Mathf.Max(0, target.CurrentShields - finalDamage);
+
+        int rawOverflow = finalDamage - shieldDmg;
+        if (rawOverflow <= 0) return (shieldDmg, 0);
+
+        int hullOverflow = Mathf.Max(0, rawOverflow - hullDR);
+        target.CurrentHull = Mathf.Max(0, target.CurrentHull - hullOverflow);
+        return (shieldDmg, hullOverflow);
     }
 
-    private static void ApplyDamageToPlayer(CombatState state, int damage, bool hitShields)
+    /// <summary>
+    /// Apply damage to the player ship.
+    /// If shields are hit and finalDamage exceeds remaining shields, overflow
+    /// (minus hullDR) bleeds through to hull.
+    /// Returns (shieldDamageDealt, hullOverflowDealt).
+    /// </summary>
+    private static (int shieldDmg, int hullOverflow) ApplyDamageToPlayer(
+        CombatState state, int finalDamage, bool hitShields, int hullDR = 0)
     {
-        if (hitShields)
-            state.PlayerCurrentShields = Mathf.Max(0, state.PlayerCurrentShields - damage);
-        else
-            state.PlayerCurrentHull    = Mathf.Max(0, state.PlayerCurrentHull    - damage);
+        if (!hitShields)
+        {
+            // Direct hull hit — finalDamage already has hull DR applied.
+            // Return (0, 0): hull damage is captured in r.FinalDamage, not an overflow.
+            state.PlayerCurrentHull = Mathf.Max(0, state.PlayerCurrentHull - finalDamage);
+            return (0, 0);
+        }
+
+        int shieldDmg = Mathf.Min(state.PlayerCurrentShields, finalDamage);
+        state.PlayerCurrentShields = Mathf.Max(0, state.PlayerCurrentShields - finalDamage);
+
+        int rawOverflow = finalDamage - shieldDmg;
+        if (rawOverflow <= 0) return (shieldDmg, 0);
+
+        int hullOverflow = Mathf.Max(0, rawOverflow - hullDR);
+        state.PlayerCurrentHull = Mathf.Max(0, state.PlayerCurrentHull - hullOverflow);
+        return (shieldDmg, hullOverflow);
+    }
+
+    // ── Engineer repair ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Engineer rolls d20 + Engineering skill vs DC <see cref="RepairDC"/>.
+    /// On success, repairs d6 + (Engineering/2) points — shields first, then hull.
+    /// Call once at the end of the enemy turn (before re-enabling player buttons).
+    /// Returns a fully-populated <see cref="EngineerRepairResult"/>.
+    /// </summary>
+    public static EngineerRepairResult EngineerRepair(CombatState state)
+    {
+        if (state.Engineer == null)
+            return new EngineerRepairResult
+            {
+                Description = "No engineer aboard — no repairs this turn."
+            };
+
+        var r = new EngineerRepairResult { Attempted = true };
+        r.EngineerSkill = state.Engineer.GetSkillRank(Constants.Skills.Engineering);
+        r.Roll          = DiceRoller.D20();
+        r.Total         = r.Roll + r.EngineerSkill;
+        r.DC            = RepairDC;
+
+        if (r.Total < r.DC)
+        {
+            r.Success     = false;
+            r.Description = $"Engineer repair check fails — {r.Total} vs DC {r.DC}.";
+            return r;
+        }
+
+        r.Success = true;
+        int pool  = DiceRoller.D6() + r.EngineerSkill / 2;
+
+        // Repair shields first (if damaged), then hull with any remainder.
+        if (state.PlayerCurrentShields < state.PlayerMaxShields)
+        {
+            r.ShieldsRepaired         = Mathf.Min(pool, state.PlayerMaxShields - state.PlayerCurrentShields);
+            state.PlayerCurrentShields += r.ShieldsRepaired;
+            pool                      -= r.ShieldsRepaired;
+        }
+        if (pool > 0 && state.PlayerCurrentHull < state.PlayerMaxHull)
+        {
+            r.HullRepaired         = Mathf.Min(pool, state.PlayerMaxHull - state.PlayerCurrentHull);
+            state.PlayerCurrentHull += r.HullRepaired;
+        }
+
+        string what = (r.ShieldsRepaired > 0 && r.HullRepaired > 0)
+            ? $"shields +{r.ShieldsRepaired}, hull +{r.HullRepaired}"
+            : r.ShieldsRepaired > 0 ? $"shields +{r.ShieldsRepaired}"
+            : r.HullRepaired    > 0 ? $"hull +{r.HullRepaired}"
+            : "nothing needed repairs";
+
+        r.Description = $"Engineer repairs {what}! (roll {r.Total} vs DC {r.DC})";
+        return r;
     }
 
     private static int GetPlayerWeaponSkill(CombatState state, bool isBeam)
@@ -288,8 +427,10 @@ public static class CombatResolver
 
     private static string BuildHitDescription(string weapon, string where, in AttackResult r)
     {
-        string drPart = r.DR > 0 ? $" − DR {r.DR}" : "";
-        return $"{weapon} hits {where} for {r.FinalDamage}! " +
+        string drPart       = r.DR > 0 ? $" − DR {r.DR}" : "";
+        string overflowPart = r.HullOverflow > 0 ? $" + hull {r.HullOverflow}" : "";
+        string shieldBreak  = r.ShieldsBroken ? " — SHIELDS DOWN!" : "";
+        return $"{weapon} hits {where} for {r.FinalDamage}{overflowPart}!{shieldBreak} " +
                $"(attack {r.AttackerTotal} vs defense {r.DefenderTotal}, " +
                $"raw {r.RawDamage}{drPart})";
     }

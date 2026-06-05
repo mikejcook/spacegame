@@ -33,14 +33,18 @@ using UnityEngine.UI;
 ///     Left   ≈ 235 °  (faces down-right toward the player)
 ///     Centre = 180 °  (faces straight down)
 ///     Right  ≈ 125 °  (faces down-left toward the player)
+///
+/// ── Beam / torpedo origin points ──────────────────────────────────────────
+///
+///   All projectiles and beams originate and terminate at each ship's
+///   "nose" — the world-space position of the sprite's local +Y tip after
+///   rotation.  For the player ship (no rotation) this is the top-centre
+///   of the image; for enemy ships it is their visual bottom (facing the
+///   player) because their sprites are rotated 180° ± slot angle.
+///   See GetNoseWorld(Image img).
 /// </summary>
 public class CombatViewController : MonoBehaviour
 {
-    // -----------------------------------------------------------------------
-    // Display-size constants (canvas units, 1920×990 reference)
-    // Baked from: reduce previous large slot by 1/3, then scale Medium/Small.
-    // -----------------------------------------------------------------------
-
     // -----------------------------------------------------------------------
     // Sprite availability — not every color/class combo has an asset.
     // Update this set if sprites are added or removed from DGB Spaceships/.
@@ -97,6 +101,14 @@ public class CombatViewController : MonoBehaviour
     [SerializeField] private Button fireTorpedesButton;
     [SerializeField] private Button fireBeamWeaponButton;
 
+    [Header("Torpedo Count Label — wired by GameSceneSetup")]
+    [Tooltip("Small label below the Fire Torpedoes button showing remaining count (e.g. ×8).")]
+    [SerializeField] private TMP_Text torpedoCountText;
+
+    [Header("Combat Log — wired by GameSceneSetup")]
+    [Tooltip("TMP_Text inside CombatLogPanel; shows rolling combat events.")]
+    [SerializeField] private TMP_Text combatLogText;
+
     [Header("Target Info Display — wired by GameSceneSetup")]
     [SerializeField] private TMP_Text targetInfoTitle;
     [SerializeField] private TMP_Text targetShieldText;
@@ -138,15 +150,21 @@ public class CombatViewController : MonoBehaviour
     // The slot RectTransform that is currently targeted — updated by SetTarget().
     private RectTransform _currentTargetRT;
 
-    // Maps each slot RectTransform to the EnemyShipConfig it displays, so
-    // SetTarget can update the title label with the correct ship class.
+    // Maps each slot RectTransform to the EnemyShipConfig it displays.
     private readonly Dictionary<RectTransform, EnemyShipConfig> _slotToConfig = new();
 
     // Maps each slot RectTransform to its live EnemyCombatState.
     private readonly Dictionary<RectTransform, EnemyCombatState> _slotToState = new();
 
+    // Maps each slot RectTransform to the Image component for nose-position calculations.
+    private readonly Dictionary<RectTransform, Image> _slotToImage = new();
+
     // Live D20 combat data — set by StartCombat().
     private CombatState _combatState;
+
+    // ── Combat log ────────────────────────────────────────────────────────────
+    private const int CombatLogMaxLines = 5;
+    private readonly Queue<string> _logLines = new(CombatLogMaxLines);
 
     // -----------------------------------------------------------------------
     // Public API
@@ -171,6 +189,7 @@ public class CombatViewController : MonoBehaviour
         fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
 
         RefreshDisplays(100f, 100f, 100f, 100f);
+        RefreshTorpedoCountDisplay();
     }
 
     // Duration constants used when yielding for animations to finish.
@@ -207,13 +226,23 @@ public class CombatViewController : MonoBehaviour
         // Resolve dice immediately (damage is tracked internally).
         var result = CombatResolver.PlayerFireBeam(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
+        AppendLog(FormatPlayerAttack(result));
 
         // Fire the visual and sound.
         PulseCrosshair();
         sfxSource?.PlayOneShot(beamWeaponClip);
         LaunchBeamWeapon();
 
-        // Wait for the animation to finish, then show damage landing.
+        // If the attack hits, spawn an impact flash after the beam's fade-in completes.
+        if (result.IsHit)
+        {
+            StartCoroutine(DelayedHitEffect(
+                CombatBeamEffect.AnimationDuration * 0.25f,  // ~25% through the animation
+                GetEnemyNoseWorld(_currentTargetRT),
+                CombatHitEffect.HitType.Beam));
+        }
+
+        // Wait for the full animation, then apply damage numbers.
         yield return new WaitForSeconds(CombatBeamEffect.AnimationDuration);
         RefreshDisplaysFromState();
         CheckCombatEnd();
@@ -231,12 +260,26 @@ public class CombatViewController : MonoBehaviour
 
         var result = CombatResolver.PlayerFireTorpedo(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
+        AppendLog(FormatPlayerAttack(result));
+
+        // Update torpedo count immediately (resolver decremented it).
+        RefreshTorpedoCountDisplay();
 
         PulseCrosshair();
         sfxSource?.PlayOneShot(torpedoClip);
-        LaunchProjectile(missileSprite, new Vector2(40f, 96f), TorpedoFlightDuration);
+
+        Vector3 startWorld = GetNoseWorld(playerShipImage);
+        Vector3 endWorld   = GetEnemyNoseWorld(_currentTargetRT);
+        LaunchProjectileFromTo(startWorld, endWorld, missileSprite,
+                               new Vector2(40f, 96f), TorpedoFlightDuration);
 
         yield return new WaitForSeconds(TorpedoFlightDuration);
+
+        // Explosion at point of impact.
+        if (result.IsHit)
+            CombatHitEffect.SpawnAt(projectileContainer, endWorld,
+                                    beamGlowSprite, CombatHitEffect.HitType.Explosion);
+
         RefreshDisplaysFromState();
         CheckCombatEnd();
 
@@ -259,20 +302,33 @@ public class CombatViewController : MonoBehaviour
 
             var result = CombatResolver.EnemyAttack(_combatState, enemy);
             Debug.Log($"[Combat] {result.Description}");
+            AppendLog(FormatEnemyAttack(result));
 
-            // Fire the visual and sound; get back how long to wait.
             var slotRT = GetSlotForEnemy(enemy);
             float waitTime = 0f;
             if (slotRT != null && playerShipImage != null)
-                waitTime = LaunchEnemyAttackEffect(slotRT, result.IsBeamAttack);
+                waitTime = LaunchEnemyAttackEffect(slotRT, result.IsBeamAttack, result.IsHit);
 
             yield return new WaitForSeconds(waitTime);
 
-            // Show damage landing after the animation resolves.
             RefreshDisplaysFromState();
             CheckCombatEnd();
 
             if (_combatState.Phase != CombatPhase.PlayerTurn) yield break;
+        }
+
+        // After all enemies have attacked, give the engineer a repair attempt.
+        if (_combatState.Phase == CombatPhase.PlayerTurn && _combatState.Engineer != null)
+        {
+            var repair = CombatResolver.EngineerRepair(_combatState);
+            Debug.Log($"[Combat] {repair.Description}");
+            AppendLog(FormatRepair(repair));
+
+            if (repair.Attempted && repair.Success)
+            {
+                yield return new WaitForSeconds(0.3f);  // brief pause for flavor
+                RefreshDisplaysFromState();
+            }
         }
     }
 
@@ -280,16 +336,16 @@ public class CombatViewController : MonoBehaviour
     /// Spawns the beam or torpedo visual from an enemy slot toward the player ship,
     /// plays the matching sound, and returns the animation duration to wait for.
     /// </summary>
-    private float LaunchEnemyAttackEffect(RectTransform enemySlotRT, bool isBeam)
+    private float LaunchEnemyAttackEffect(RectTransform enemySlotRT, bool isBeam, bool isHit)
     {
         if (projectileContainer == null || playerShipImage == null) return 0f;
 
-        Vector3 fromWorld = enemySlotRT.position;
+        // Origin: nose of the enemy ship (sprite local +Y tip, rotated to face player).
+        Image enemyImg    = GetEnemyImageForSlot(enemySlotRT);
+        Vector3 fromWorld = enemyImg != null ? GetNoseWorld(enemyImg) : enemySlotRT.position;
 
-        // Target the nose (top-centre) of the player ship.
-        var corners = new Vector3[4];
-        playerShipImage.rectTransform.GetWorldCorners(corners);
-        Vector3 toWorld = (corners[1] + corners[2]) * 0.5f;
+        // Target: nose (top-centre) of the player ship.
+        Vector3 toWorld = GetNoseWorld(playerShipImage);
 
         if (isBeam)
         {
@@ -299,6 +355,13 @@ public class CombatViewController : MonoBehaviour
             go.AddComponent<CombatBeamEffect>().Fire(
                 fromWorld, toWorld, beamTexture, beamGlowSprite,
                 tint: CombatBeamEffect.EnemyBeamTint);
+
+            if (isHit)
+                StartCoroutine(DelayedHitEffect(
+                    CombatBeamEffect.AnimationDuration * 0.25f,
+                    toWorld,
+                    CombatHitEffect.HitType.Beam));
+
             return CombatBeamEffect.AnimationDuration;
         }
         else
@@ -306,8 +369,22 @@ public class CombatViewController : MonoBehaviour
             sfxSource?.PlayOneShot(torpedoClip);
             LaunchProjectileFromTo(fromWorld, toWorld, missileSprite,
                                    new Vector2(40f, 96f), TorpedoFlightDuration);
+
+            if (isHit)
+                StartCoroutine(DelayedHitEffect(
+                    TorpedoFlightDuration,
+                    toWorld,
+                    CombatHitEffect.HitType.Explosion));
+
             return TorpedoFlightDuration;
         }
+    }
+
+    /// <summary>Waits delay seconds then spawns a hit effect at worldPos.</summary>
+    private IEnumerator DelayedHitEffect(float delay, Vector3 worldPos, CombatHitEffect.HitType hitType)
+    {
+        yield return new WaitForSeconds(delay);
+        CombatHitEffect.SpawnAt(projectileContainer, worldPos, beamGlowSprite, hitType);
     }
 
     /// <summary>Like LaunchProjectile but takes explicit world positions instead of using _currentTargetRT.</summary>
@@ -331,10 +408,23 @@ public class CombatViewController : MonoBehaviour
         return null;
     }
 
+    /// <summary>Look up the Image component for an enemy slot (used for nose-position calculation).</summary>
+    private Image GetEnemyImageForSlot(RectTransform slotRT)
+    {
+        if (slotRT == null) return null;
+        _slotToImage.TryGetValue(slotRT, out var img);
+        return img;
+    }
+
     private void SetFireButtonsEnabled(bool enabled)
     {
-        if (fireTorpedesButton   != null) fireTorpedesButton.interactable   = enabled;
-        if (fireBeamWeaponButton != null) fireBeamWeaponButton.interactable = enabled;
+        if (fireBeamWeaponButton != null)
+            fireBeamWeaponButton.interactable = enabled;
+
+        // Torpedo button also disabled when out of torpedoes.
+        if (fireTorpedesButton != null)
+            fireTorpedesButton.interactable = enabled &&
+                (_combatState == null || _combatState.PlayerTorpedoCount > 0);
     }
 
     // -----------------------------------------------------------------------
@@ -385,58 +475,139 @@ public class CombatViewController : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
+    // Nose-position helpers
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Returns the world-space "nose" of a ship image — the point at the tip
+    /// of the sprite's local +Y axis after all parent transforms are applied.
+    ///
+    /// Player ship (no rotation)  → top-centre in world space.
+    /// Enemy ship (rotated ≈180°) → visual bottom in world space (facing the player).
+    /// </summary>
+    private static Vector3 GetNoseWorld(Image img)
+    {
+        if (img == null) return Vector3.zero;
+        var rt = img.rectTransform;
+        return rt.TransformPoint(new Vector3(0f, rt.rect.yMax, 0f));
+    }
+
+    /// <summary>Returns the nose position for whatever enemy is in the given slot.</summary>
+    private Vector3 GetEnemyNoseWorld(RectTransform slotRT)
+    {
+        var img = GetEnemyImageForSlot(slotRT);
+        return img != null ? GetNoseWorld(img) : (slotRT != null ? slotRT.position : Vector3.zero);
+    }
+
+    // -----------------------------------------------------------------------
+    // Torpedo count display
+    // -----------------------------------------------------------------------
+
+    private void RefreshTorpedoCountDisplay()
+    {
+        if (torpedoCountText == null) return;
+
+        if (_combatState == null || _combatState.PlayerTorpedoTier <= 0)
+        {
+            torpedoCountText.text = "";
+            return;
+        }
+
+        torpedoCountText.text = $"×{_combatState.PlayerTorpedoCount}";
+    }
+
+    // -----------------------------------------------------------------------
+    // Combat log
+    // -----------------------------------------------------------------------
+
+    // TMP rich-text colours
+    private const string ColPlayer  = "#4DD9FF";   // cyan  — player actions
+    private const string ColEnemy   = "#FF6633";   // orange — enemy actions
+    private const string ColEngineer= "#60FF90";   // green  — engineer repair
+    private const string ColRolls   = "#8AADCC";   // dim blue-grey — roll detail
+
+    /// <summary>
+    /// Append a formatted line to the rolling combat log, capped at
+    /// <see cref="CombatLogMaxLines"/> entries.  Null/empty lines are silently dropped.
+    /// </summary>
+    private void AppendLog(string line)
+    {
+        if (string.IsNullOrEmpty(line) || combatLogText == null) return;
+        if (_logLines.Count >= CombatLogMaxLines) _logLines.Dequeue();
+        _logLines.Enqueue(line);
+        combatLogText.text = string.Join("\n", _logLines);
+    }
+
+    private void ClearLog()
+    {
+        _logLines.Clear();
+        if (combatLogText != null) combatLogText.text = "";
+    }
+
+    // ── Entry formatters ──────────────────────────────────────────────────────
+
+    private static string FormatPlayerAttack(CombatResolver.AttackResult r)
+    {
+        if (r.AttackerRoll == 0) return null;    // no weapon — nothing to log
+        string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
+        string rolls = $"<color={ColRolls}>({r.AttackerTotal}▶{r.DefenderTotal})</color>";
+        if (!r.IsHit)
+            return $"<color={ColPlayer}>YOU</color>  {wpn} miss  {rolls}";
+        string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
+        string shd = r.ShieldsBroken ? " ▼SHD" : "";
+        return $"<color={ColPlayer}>YOU</color>  {wpn} hit {dmg} dmg{shd}  {rolls}";
+    }
+
+    private static string FormatEnemyAttack(CombatResolver.AttackResult r)
+    {
+        if (r.AttackerRoll == 0) return null;
+        string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
+        string rolls = $"<color={ColRolls}>({r.AttackerTotal}▶{r.DefenderTotal})</color>";
+        if (!r.IsHit)
+            return $"<color={ColEnemy}>ENE</color>  {wpn} miss  {rolls}";
+        string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
+        string shd = r.ShieldsBroken ? " ▼SHD" : "";
+        return $"<color={ColEnemy}>ENE</color>  {wpn} hit {dmg} dmg{shd}  {rolls}";
+    }
+
+    private static string FormatRepair(CombatResolver.EngineerRepairResult r)
+    {
+        if (!r.Attempted) return null;
+        string rolls = $"<color={ColRolls}>({r.Total}▶{r.DC})</color>";
+        if (!r.Success)
+            return $"<color={ColEngineer}>ENG</color>  failed  {rolls}";
+        string what;
+        if (r.ShieldsRepaired > 0 && r.HullRepaired > 0)
+            what = $"shlds +{r.ShieldsRepaired} hull +{r.HullRepaired}";
+        else if (r.ShieldsRepaired > 0)
+            what = $"shlds +{r.ShieldsRepaired}";
+        else if (r.HullRepaired > 0)
+            what = $"hull +{r.HullRepaired}";
+        else
+            what = "nothing to repair";
+        return $"<color={ColEngineer}>ENG</color>  {what}  {rolls}";
+    }
+
+    // -----------------------------------------------------------------------
     // Projectile helpers
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// Spawn a projectile that travels from the player ship to the current target.
-    /// Safe to call even when projectileContainer or the sprites are not wired —
-    /// it just skips silently so combat doesn't break on machines without the assets.
-    /// </summary>
-    private void LaunchProjectile(Sprite sprite, Vector2 displaySize, float duration)
-    {
-        if (projectileContainer == null || playerShipImage == null || _currentTargetRT == null)
-            return;
-
-        // Origin: world-space centre of the player ship image.
-        Vector3 startWorld = playerShipImage.transform.position;
-
-        // Destination: world-space centre of the targeted enemy slot.
-        Vector3 endWorld = _currentTargetRT.position;
-
-        // Spawn as a plain RectTransform child of the projectile layer.
-        var go   = new GameObject("Projectile", typeof(RectTransform));
-        go.transform.SetParent(projectileContainer, worldPositionStays: false);
-
-        var proj = go.AddComponent<CombatProjectile>();
-        proj.Launch(startWorld, endWorld, sprite, displaySize, duration);
-    }
-
-    /// <summary>
-    /// Spawn a CombatBeamEffect from the player ship to the current target.
-    /// Beam line uses laser_noise00.png; impact + muzzle glows use glow_round00.png.
+    /// Spawn a CombatBeamEffect from the player ship's nose to the targeted enemy's nose.
     /// </summary>
     private void LaunchBeamWeapon()
     {
         if (projectileContainer == null || playerShipImage == null || _currentTargetRT == null)
             return;
 
-        // Origin: nose = top-centre of the player ship image (sprite faces up).
-        var shipCorners = new Vector3[4];
-        playerShipImage.rectTransform.GetWorldCorners(shipCorners);
-        // corners: [0]=bottom-left  [1]=top-left  [2]=top-right  [3]=bottom-right
-        Vector3 noseWorld = (shipCorners[1] + shipCorners[2]) * 0.5f;
+        Vector3 startWorld = GetNoseWorld(playerShipImage);
+        Vector3 endWorld   = GetEnemyNoseWorld(_currentTargetRT);
 
         var go = new GameObject("BeamEffect", typeof(RectTransform));
         go.transform.SetParent(projectileContainer, worldPositionStays: false);
 
         var effect = go.AddComponent<CombatBeamEffect>();
-        effect.Fire(
-            noseWorld,
-            _currentTargetRT.position,
-            beamTexture,
-            beamGlowSprite
-        );
+        effect.Fire(startWorld, endWorld, beamTexture, beamGlowSprite);
     }
 
     /// <summary>
@@ -462,14 +633,23 @@ public class CombatViewController : MonoBehaviour
         StopAllCoroutines();   // cancel any in-flight turn routine from a previous combat
         _slotToConfig.Clear();
         _slotToState.Clear();
+        _slotToImage.Clear();
         _combatState = null;
         SetFireButtonsEnabled(true);
         if (targetInfoTitle != null) targetInfoTitle.text = "TARGET";
         RefreshDisplays(100f, 100f, 100f, 100f);
+        RefreshTorpedoCountDisplay();
+        ClearLog();
         Debug.Log("[CombatViewController] Combat entered.");
     }
 
-    public void OnCombatExit()   { HideAllEnemySlots(); combatCrosshair?.Hide(); _currentTargetRT = null; Debug.Log("[CombatViewController] Combat exited."); }
+    public void OnCombatExit()
+    {
+        HideAllEnemySlots();
+        combatCrosshair?.Hide();
+        _currentTargetRT = null;
+        Debug.Log("[CombatViewController] Combat exited.");
+    }
 
     /// <summary>Trigger a single crosshair pulse — call when the player fires.</summary>
     public void PulseCrosshair() => combatCrosshair?.Pulse();
@@ -516,6 +696,7 @@ public class CombatViewController : MonoBehaviour
 
         _slotToConfig.Clear();
         _slotToState.Clear();
+        _slotToImage.Clear();
 
         // If a CombatState was set via SetCombatState(), wire enemy states to slots.
         // Index order matches the slot layout: [0]=left/centre, [1]=right, [2]=centre(3-enemy).
@@ -555,6 +736,7 @@ public class CombatViewController : MonoBehaviour
                 break;
         }
 
+        RefreshTorpedoCountDisplay();
         SetTarget(defaultTarget);
     }
 
@@ -616,6 +798,10 @@ public class CombatViewController : MonoBehaviour
             img.sprite = sprite;
             img.color  = sprite != null ? Color.white : new Color(0.6f, 0.2f, 0.2f, 0.4f);
         }
+
+        // Register the image for nose-position lookups.
+        if (slotRT != null && img != null)
+            _slotToImage[slotRT] = img;
 
         SetSlotVisible(group, true);
     }

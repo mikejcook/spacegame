@@ -67,6 +67,8 @@ public class CombatState
     public Character WeaponsOfficer { get; set; }
     /// <summary>Pilot if one is aboard; null otherwise → Captain flies the ship.</summary>
     public Character Pilot          { get; set; }
+    /// <summary>Engineer if one is aboard; null otherwise → no end-of-turn repairs.</summary>
+    public Character Engineer       { get; set; }
 
     // ── Player ship live HP ───────────────────────────────────────────────────
 
@@ -92,6 +94,11 @@ public class CombatState
     public int PlayerBeamTier    { get; set; }
     /// <summary>Torpedo tier (1–6). 0 = not installed.</summary>
     public int PlayerTorpedoTier { get; set; }
+    /// <summary>
+    /// Remaining torpedo shots for this battle.
+    /// Initialised from tier (tier × 4); decremented on each firing; blocks firing at 0.
+    /// </summary>
+    public int PlayerTorpedoCount { get; set; }
 
     // ── Enemy fleet ───────────────────────────────────────────────────────────
 
@@ -123,21 +130,27 @@ public class CombatState
         EquipmentItem    beamWeapon   = null,
         EquipmentItem    torpedoes    = null,
         EquipmentItem    shields      = null,
-        EquipmentItem    armor        = null)
+        EquipmentItem    armor        = null,
+        Character        engineer     = null)
     {
+        int torpedoTier  = torpedoes != null ? (int)torpedoes.Tier : 0;
+        int torpedoCount = torpedoTier > 0 ? torpedoTier * 4 : 0;  // Mk I = 4 shots … Mk VI = 24
+
         var state = new CombatState
         {
             Captain        = captain,
             WeaponsOfficer = weaponsOfficer,
             Pilot          = pilot,
+            Engineer       = engineer,
 
             PlayerMaxShields     = ship.MaxShieldPoints,
             PlayerCurrentShields = ship.ShieldPoints,
             PlayerMaxHull        = ship.MaxHullPoints,
             PlayerCurrentHull    = ship.HullPoints,
 
-            PlayerBeamTier    = beamWeapon  != null ? (int)beamWeapon.Tier  : 0,
-            PlayerTorpedoTier = torpedoes   != null ? (int)torpedoes.Tier   : 0,
+            PlayerBeamTier     = beamWeapon != null ? (int)beamWeapon.Tier : 0,
+            PlayerTorpedoTier  = torpedoTier,
+            PlayerTorpedoCount = torpedoCount,
 
             // DefenseRating on shield equipment boosts defense vs attacks while shields are up.
             // DefenseRating on armor boosts defense when shields are down.

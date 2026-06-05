@@ -1082,15 +1082,16 @@ public class SystemViewController : MonoBehaviour
                 var weaponsOfficer = db?.GetCrewByRole(gm.CurrentSave?.Id ?? 0, Constants.Crew.Roles.WeaponsOfficer);
 
                 var combatState = CombatState.Begin(
-                    ship:          ship,
-                    captain:       gm.PlayerCaptain,
+                    ship:           ship,
+                    captain:        gm.PlayerCaptain,
                     weaponsOfficer: weaponsOfficer,
-                    pilot:         gm.PlayerPilot,
-                    enemies:       enemies,
-                    beamWeapon:    beamItem,
-                    torpedoes:     torpedoItem,
-                    shields:       shieldItem,
-                    armor:         armorItem
+                    pilot:          gm.PlayerPilot,
+                    enemies:        enemies,
+                    beamWeapon:     beamItem,
+                    torpedoes:      torpedoItem,
+                    shields:        shieldItem,
+                    armor:          armorItem,
+                    engineer:       gm.PlayerEngineer
                 );
 
                 combatViewController.SetCombatState(combatState);
