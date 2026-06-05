@@ -109,6 +109,18 @@ public class CombatViewController : MonoBehaviour
     [Tooltip("TMP_Text inside CombatLogPanel; shows rolling combat events.")]
     [SerializeField] private TMP_Text combatLogText;
 
+    [Header("Combat Log — Expanded View")]
+    [Tooltip("Button on CombatLogPanel; tap to open expanded detail log.")]
+    [SerializeField] private Button       combatLogButton;
+    [Tooltip("CanvasGroup on ExpandedLogPanel; shown/hidden to toggle the expanded log.")]
+    [SerializeField] private CanvasGroup  expandedLogCanvasGroup;
+    [Tooltip("TMP_Text inside ExpandedLogScrollRect/Viewport; holds the full-detail log.")]
+    [SerializeField] private TMP_Text     expandedLogText;
+    [Tooltip("ScrollRect inside ExpandedLogPanel; scrolled to bottom on each new entry.")]
+    [SerializeField] private ScrollRect   expandedLogScrollRect;
+    [Tooltip("Button that closes the expanded log.")]
+    [SerializeField] private Button       expandedLogCloseButton;
+
     [Header("Target Info Display — wired by GameSceneSetup")]
     [SerializeField] private TMP_Text targetInfoTitle;
     [SerializeField] private TMP_Text targetShieldText;
@@ -163,8 +175,10 @@ public class CombatViewController : MonoBehaviour
     private CombatState _combatState;
 
     // ── Combat log ────────────────────────────────────────────────────────────
-    private const int CombatLogMaxLines = 5;
-    private readonly Queue<string> _logLines = new(CombatLogMaxLines);
+    private const int CombatLogMaxLines = 4;
+    private readonly Queue<string>  _logLines       = new(CombatLogMaxLines);
+    private readonly List<string>   _detailLogLines = new();
+    private bool                    _expandedLogVisible;
 
     // -----------------------------------------------------------------------
     // Public API
@@ -187,6 +201,27 @@ public class CombatViewController : MonoBehaviour
 
         fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
         fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
+
+        // Resolve expanded-log references at runtime if the builder didn't wire them.
+        // CombatViewController sits on the CombatView root, so all paths start there.
+        if (combatLogButton == null)
+            combatLogButton = transform.Find("CombatLogPanel")?.GetComponent<Button>();
+        if (expandedLogCanvasGroup == null)
+            expandedLogCanvasGroup = transform.Find("ExpandedLogPanel")?.GetComponent<CanvasGroup>();
+        if (expandedLogScrollRect == null)
+            expandedLogScrollRect = transform.Find("ExpandedLogPanel/ExpandedLogScrollRect")
+                                             ?.GetComponent<ScrollRect>();
+        if (expandedLogText == null)
+            expandedLogText = transform.Find("ExpandedLogPanel/ExpandedLogScrollRect/Viewport/ExpandedLogText")
+                                       ?.GetComponent<TMP_Text>();
+        if (expandedLogCloseButton == null)
+            expandedLogCloseButton = transform.Find("ExpandedLogPanel/ExpandedLogHeader/ExpandedLogCloseButton")
+                                              ?.GetComponent<Button>();
+
+        combatLogButton?.onClick.AddListener(ToggleCombatLog);
+        expandedLogCloseButton?.onClick.AddListener(() => SetExpandedLogVisible(false));
+
+        Debug.Log($"[CombatViewController] combatLogButton={combatLogButton}, expandedLogCG={expandedLogCanvasGroup}");
 
         RefreshDisplays(100f, 100f, 100f, 100f);
         RefreshTorpedoCountDisplay();
@@ -227,6 +262,7 @@ public class CombatViewController : MonoBehaviour
         var result = CombatResolver.PlayerFireBeam(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
         AppendLog(FormatPlayerAttack(result));
+        AppendDetailLog($"<color={ColPlayer}>YOU</color>  {result.Description}");
 
         // Fire the visual and sound.
         PulseCrosshair();
@@ -248,7 +284,13 @@ public class CombatViewController : MonoBehaviour
         CheckCombatEnd();
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(PlayerTurnRepairRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+        {
+            yield return new WaitForSeconds(0.6f);
             yield return StartCoroutine(EnemyTurnRoutine());
+        }
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
             SetFireButtonsEnabled(true);
@@ -261,6 +303,7 @@ public class CombatViewController : MonoBehaviour
         var result = CombatResolver.PlayerFireTorpedo(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
         AppendLog(FormatPlayerAttack(result));
+        AppendDetailLog($"<color={ColPlayer}>YOU</color>  {result.Description}");
 
         // Update torpedo count immediately (resolver decremented it).
         RefreshTorpedoCountDisplay();
@@ -284,10 +327,44 @@ public class CombatViewController : MonoBehaviour
         CheckCombatEnd();
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(PlayerTurnRepairRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
+        {
+            yield return new WaitForSeconds(0.6f);
             yield return StartCoroutine(EnemyTurnRoutine());
+        }
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
             SetFireButtonsEnabled(true);
+    }
+
+    // -----------------------------------------------------------------------
+    // Repair coroutine (end of player turn)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// If the player has taken damage and an engineer is aboard, roll a repair
+    /// check and log the result.  Only called after the player's weapon fires.
+    /// </summary>
+    private IEnumerator PlayerTurnRepairRoutine()
+    {
+        if (_combatState?.Engineer == null) yield break;
+
+        bool isDamaged = _combatState.PlayerCurrentShields < _combatState.PlayerMaxShields
+                      || _combatState.PlayerCurrentHull    < _combatState.PlayerMaxHull;
+        if (!isDamaged) yield break;
+
+        var repair = CombatResolver.EngineerRepair(_combatState);
+        Debug.Log($"[Combat] {repair.Description}");
+        AppendLog(FormatRepair(repair));
+        AppendDetailLog($"<color={ColEngineer}>ENG</color>  {repair.Description}");
+
+        if (repair.Attempted && repair.Success)
+        {
+            yield return new WaitForSeconds(0.3f);
+            RefreshDisplaysFromState();
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -303,6 +380,7 @@ public class CombatViewController : MonoBehaviour
             var result = CombatResolver.EnemyAttack(_combatState, enemy);
             Debug.Log($"[Combat] {result.Description}");
             AppendLog(FormatEnemyAttack(result));
+            AppendDetailLog($"<color={ColEnemy}>ENE</color>  {result.Description}");
 
             var slotRT = GetSlotForEnemy(enemy);
             float waitTime = 0f;
@@ -315,20 +393,6 @@ public class CombatViewController : MonoBehaviour
             CheckCombatEnd();
 
             if (_combatState.Phase != CombatPhase.PlayerTurn) yield break;
-        }
-
-        // After all enemies have attacked, give the engineer a repair attempt.
-        if (_combatState.Phase == CombatPhase.PlayerTurn && _combatState.Engineer != null)
-        {
-            var repair = CombatResolver.EngineerRepair(_combatState);
-            Debug.Log($"[Combat] {repair.Description}");
-            AppendLog(FormatRepair(repair));
-
-            if (repair.Attempted && repair.Success)
-            {
-                yield return new WaitForSeconds(0.3f);  // brief pause for flavor
-                RefreshDisplaysFromState();
-            }
         }
     }
 
@@ -541,7 +605,50 @@ public class CombatViewController : MonoBehaviour
     private void ClearLog()
     {
         _logLines.Clear();
-        if (combatLogText != null) combatLogText.text = "";
+        _detailLogLines.Clear();
+        if (combatLogText    != null) combatLogText.text    = "";
+        if (expandedLogText  != null) expandedLogText.text  = "";
+        SetExpandedLogVisible(false);
+    }
+
+    /// <summary>
+    /// Append a full-detail line to the expanded log (no line cap).
+    /// Updates the expanded TMP_Text and scrolls to the bottom if the panel is open.
+    /// </summary>
+    private void AppendDetailLog(string line)
+    {
+        if (string.IsNullOrEmpty(line)) return;
+        _detailLogLines.Add(line);
+        if (expandedLogText == null) return;
+        expandedLogText.text = string.Join("\n", _detailLogLines);
+        if (_expandedLogVisible)
+            StartCoroutine(ScrollExpandedLogToBottom());
+    }
+
+    private IEnumerator ScrollExpandedLogToBottom()
+    {
+        // Wait one frame for ContentSizeFitter to recalculate the content height.
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+        if (expandedLogScrollRect != null)
+            expandedLogScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+    private void ToggleCombatLog()
+    {
+        Debug.Log($"[CombatViewController] ToggleCombatLog → visible={!_expandedLogVisible}, cg={expandedLogCanvasGroup}");
+        SetExpandedLogVisible(!_expandedLogVisible);
+    }
+
+    private void SetExpandedLogVisible(bool visible)
+    {
+        _expandedLogVisible = visible;
+        if (expandedLogCanvasGroup == null) return;
+        expandedLogCanvasGroup.alpha          = visible ? 1f : 0f;
+        expandedLogCanvasGroup.blocksRaycasts = visible;
+        expandedLogCanvasGroup.interactable   = visible;
+        if (visible)
+            StartCoroutine(ScrollExpandedLogToBottom());
     }
 
     // ── Entry formatters ──────────────────────────────────────────────────────
@@ -550,7 +657,7 @@ public class CombatViewController : MonoBehaviour
     {
         if (r.AttackerRoll == 0) return null;    // no weapon — nothing to log
         string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
-        string rolls = $"<color={ColRolls}>({r.AttackerTotal}▶{r.DefenderTotal})</color>";
+        string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
             return $"<color={ColPlayer}>YOU</color>  {wpn} miss  {rolls}";
         string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
@@ -562,7 +669,7 @@ public class CombatViewController : MonoBehaviour
     {
         if (r.AttackerRoll == 0) return null;
         string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
-        string rolls = $"<color={ColRolls}>({r.AttackerTotal}▶{r.DefenderTotal})</color>";
+        string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
             return $"<color={ColEnemy}>ENE</color>  {wpn} miss  {rolls}";
         string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
@@ -573,7 +680,7 @@ public class CombatViewController : MonoBehaviour
     private static string FormatRepair(CombatResolver.EngineerRepairResult r)
     {
         if (!r.Attempted) return null;
-        string rolls = $"<color={ColRolls}>({r.Total}▶{r.DC})</color>";
+        string rolls = $"<color={ColRolls}>({r.Total} vs {r.DC})</color>";
         if (!r.Success)
             return $"<color={ColEngineer}>ENG</color>  failed  {rolls}";
         string what;

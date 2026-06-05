@@ -1248,7 +1248,13 @@ public static class GameSceneSetup
     //   ├─ CombatLogPanel              (right-anchored, above action bar; rolling attack/repair/enemy log)
     //   │  └─ CombatLogText            (TMP_Text, updated by CombatViewController.AppendLog)
     //   ├─ ProjectileLayer             (full-stretch, above ships; projectiles spawned here at runtime)
-    //   └─ CrosshairRoot               (animated targeting crosshair, drawn last / on top)
+    //   ├─ CrosshairRoot               (animated targeting crosshair, drawn last / on top)
+    //   └─ ExpandedLogPanel            (CanvasGroup, hidden; tap CombatLogPanel to open)
+    //      ├─ ExpandedBackground       (semi-transparent Image)
+    //      ├─ ExpandedLogHeader        (52 px top strip — title + close button)
+    //      └─ ExpandedLogScrollRect    (ScrollRect, fills below header)
+    //         └─ Viewport              (RectMask2D)
+    //            └─ ExpandedLogText    (TMP_Text + ContentSizeFitter; full-detail rolling log)
     //      ├─ AccentLine               (2 px cyan rule at top)
     //      ├─ FireTorpedesContainer    (left-anchored, 300 px)
     //      │  └─ FireTorpedesButton    (Shift MainButton — "FIRE TORPEDOES")
@@ -1532,7 +1538,17 @@ public static class GameSceneSetup
             insetSo.ApplyModifiedProperties();
         }
         {
-            var logTextGO = MakeTMP(logPanel.transform, "CombatLogText", "", 24, TextSubtle);
+            // Tap the compact log to open the expanded full-detail view.
+            var btn = logPanel.AddComponent<Button>();
+            var cb  = btn.colors;
+            cb.normalColor      = Color.white;
+            cb.highlightedColor = new Color(1f, 1f, 1f, 0.85f);
+            cb.pressedColor     = new Color(0.75f, 0.75f, 0.75f, 1f);
+            cb.selectedColor    = Color.white;
+            btn.colors          = cb;
+        }
+        {
+            var logTextGO = MakeTMP(logPanel.transform, "CombatLogText", "", 30, TextSubtle);
             var rt        = logTextGO.GetComponent<RectTransform>();
             rt.anchorMin  = Vector2.zero;
             rt.anchorMax  = Vector2.one;
@@ -1592,6 +1608,148 @@ public static class GameSceneSetup
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
         }
+
+        // ── Expanded combat log overlay ──────────────────────────────────────
+        // Tapping CombatLogPanel toggles this panel.  It covers the full combat
+        // arena (above the action bar) and contains a scrollable full-detail log.
+        // Hidden by default via CanvasGroup — no Shift buttons inside so
+        // SetActive(false) would also be safe, but CanvasGroup is consistent.
+        var expandedLogPanel = MakeUIGO("ExpandedLogPanel", combatView.transform);
+        {
+            var rt       = expandedLogPanel.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(16f, 180f);  // 96 px action bar + compact-log height (170) + gap; safe-area adds more at runtime
+            rt.offsetMax = new Vector2(-16f, -8f);
+        }
+        var expandedLogCG          = expandedLogPanel.AddComponent<CanvasGroup>();
+        expandedLogCG.alpha        = 0f;
+        expandedLogCG.blocksRaycasts = false;
+        expandedLogCG.interactable   = false;
+
+        // Safe-area inset — shrink each edge independently so notches/rounded
+        // corners and the home indicator don't clip content.
+        // _shrinkTowardSafeArea: oMin.x += leftPx, oMax.x -= rightPx, oMin.y += bottomPx
+        // — each edge moves inward on its own, with no cross-axis coupling.
+        {
+            var inset   = expandedLogPanel.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue              = true;
+            insetSo.FindProperty("_right").boolValue             = true;
+            insetSo.FindProperty("_bottom").boolValue            = true;
+            insetSo.FindProperty("_shrinkTowardSafeArea").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+
+        // Dark semi-transparent background — same colour as the compact log panel.
+        var expandedBg = MakeImage(expandedLogPanel.transform, "ExpandedBackground",
+            new Color(HeaderBar.r, HeaderBar.g, HeaderBar.b, 0.95f));
+        {
+            var rt       = expandedBg.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        // Header strip — title on the left, close button on the right.
+        var expandedHeader = MakeUIGO("ExpandedLogHeader", expandedLogPanel.transform);
+        {
+            var rt       = expandedHeader.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 1f);          // set pivot BEFORE anchoredPosition
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(0f, -52f);
+            rt.offsetMax = Vector2.zero;
+        }
+
+        var expandedTitleGO = MakeTMP(expandedHeader.transform, "ExpandedLogTitle",
+                                      "COMBAT LOG", 22, TextWhite);
+        {
+            var rt = expandedTitleGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(14f, 0f);
+            rt.offsetMax = new Vector2(-60f, 0f);
+            var tmp = expandedTitleGO.GetComponent<TextMeshProUGUI>();
+            tmp.alignment  = TextAlignmentOptions.Left;
+            tmp.fontStyle  = FontStyles.Bold;
+            tmp.richText   = false;
+        }
+
+        // Close button — plain Button + "×" label (no Shift prefab needed).
+        var closeGO = MakeUIGO("ExpandedLogCloseButton", expandedHeader.transform);
+        {
+            var rt       = closeGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(1f, 0.5f);          // set pivot BEFORE anchoredPosition
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(-52f, 4f);
+            rt.offsetMax = new Vector2(-4f, -4f);
+        }
+        closeGO.AddComponent<Image>().color = new Color(0.25f, 0.25f, 0.3f, 0.9f);
+        closeGO.AddComponent<Button>();
+        var closeLabelGO = MakeTMP(closeGO.transform, "CloseLabel", "X", 22, TextWhite);
+        {
+            var rt       = closeLabelGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            closeLabelGO.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+
+        // ScrollRect — fills everything below the header.
+        var scrollGO = MakeUIGO("ExpandedLogScrollRect", expandedLogPanel.transform);
+        {
+            var rt       = scrollGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(0f, 0f);
+            rt.offsetMax = new Vector2(0f, -52f);   // below header
+        }
+        var scrollRect              = scrollGO.AddComponent<ScrollRect>();
+        scrollRect.horizontal       = false;
+        scrollRect.vertical         = true;
+        scrollRect.scrollSensitivity = 40f;
+        scrollRect.movementType     = ScrollRect.MovementType.Clamped;
+
+        // Viewport — RectMask2D (avoids the Mask+Image.color.clear gotcha from CLAUDE.md).
+        var viewportGO = MakeUIGO("Viewport", scrollGO.transform);
+        {
+            var rt       = viewportGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(12f, 6f);
+            rt.offsetMax = new Vector2(-12f, -6f);
+        }
+        viewportGO.AddComponent<RectMask2D>();
+
+        // ExpandedLogText — the scroll content; auto-sizes height to fit all lines.
+        // anchorMin/Max = top-stretch so it spans full width; ContentSizeFitter
+        // grows the height as text is appended at runtime.
+        var expandedLogTextGO = MakeTMP(viewportGO.transform, "ExpandedLogText", "", 26, TextSubtle);
+        {
+            var rt       = expandedLogTextGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 1f);          // top-centre — set pivot BEFORE anchoredPosition
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(0f, 0f);
+            rt.offsetMax = Vector2.zero;
+            rt.sizeDelta = new Vector2(0f, 0f);
+            var tmp               = expandedLogTextGO.GetComponent<TextMeshProUGUI>();
+            tmp.alignment         = TextAlignmentOptions.TopLeft;
+            tmp.enableWordWrapping = true;
+            tmp.richText          = true;
+            tmp.overflowMode      = TextOverflowModes.Overflow;
+        }
+        var expandedCsf         = expandedLogTextGO.AddComponent<ContentSizeFitter>();
+        expandedCsf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        expandedCsf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+
+        // Wire ScrollRect references.
+        scrollRect.viewport = viewportGO.GetComponent<RectTransform>();
+        scrollRect.content  = expandedLogTextGO.GetComponent<RectTransform>();
 
         return combatView;
     }
@@ -2123,9 +2281,22 @@ public static class GameSceneSetup
                 cvcSo.FindProperty("torpedoCountText").objectReferenceValue =
                     Find<TMP_Text>(combatView, "CombatActionBar/FireTorpedesContainer/TorpedoCountLabel");
 
-                // Combat log text
+                // Combat log text (compact) + tap button
                 cvcSo.FindProperty("combatLogText").objectReferenceValue =
                     Find<TMP_Text>(combatView, "CombatLogPanel/CombatLogText");
+                cvcSo.FindProperty("combatLogButton").objectReferenceValue =
+                    combatView.transform.Find("CombatLogPanel")?.GetComponent<Button>();
+
+                // Expanded log panel
+                var expandedLogTf = combatView.transform.Find("ExpandedLogPanel");
+                cvcSo.FindProperty("expandedLogCanvasGroup").objectReferenceValue =
+                    expandedLogTf?.GetComponent<CanvasGroup>();
+                cvcSo.FindProperty("expandedLogScrollRect").objectReferenceValue =
+                    Find<ScrollRect>(combatView, "ExpandedLogPanel/ExpandedLogScrollRect");
+                cvcSo.FindProperty("expandedLogText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "ExpandedLogPanel/ExpandedLogScrollRect/Viewport/ExpandedLogText");
+                cvcSo.FindProperty("expandedLogCloseButton").objectReferenceValue =
+                    Find<Button>(combatView, "ExpandedLogPanel/ExpandedLogHeader/ExpandedLogCloseButton");
 
                 // Target info texts
                 cvcSo.FindProperty("targetInfoTitle").objectReferenceValue =
