@@ -96,7 +96,7 @@ public static class FeatRegistry
                 Id          = "beam_weapon_specialist",
                 Name        = "Beam Weapon Specialist",
                 Description = "+4 to attack rolls with beam weapons. Beam attacks may ignore 2 points of enemy shielding.",
-                RequiredSkillRanks = new() { [Constants.Skills.Combat] = 3 },
+                RequiredSkillRanks = new() { [Constants.Skills.BeamWeapons] = 3 },
                 RequiredLevel      = 3,
                 AvailableToRoles   = new() { Constants.Crew.Roles.WeaponsOfficer, Constants.Crew.Roles.Captain },
                 EffectType         = "beam_weapon_bonus",
@@ -120,7 +120,7 @@ public static class FeatRegistry
                 Id          = "field_medic",
                 Name        = "Field Medic",
                 Description = "Can treat injuries without a medical bay. +2 to Medicine checks in the field.",
-                RequiredSkillRanks = new() { [Constants.Skills.Medicine] = 3 },
+                RequiredSkillRanks = new() { [Constants.Skills.Science] = 3 },
                 RequiredLevel      = 3,
                 AvailableToRoles   = new() { Constants.Crew.Roles.Doctor, Constants.Crew.Roles.Captain },
                 EffectType         = "field_medicine_bonus",
@@ -132,7 +132,7 @@ public static class FeatRegistry
                 Id          = "xeno_linguist",
                 Name        = "Xeno-Linguist",
                 Description = "+3 to Diplomacy checks with alien species. May attempt first contact without the standard penalty.",
-                RequiredSkillRanks = new() { [Constants.Skills.Diplomacy] = 3, [Constants.Skills.Science] = 2 },
+                RequiredSkillRanks = new() { [Constants.Skills.Command] = 3, [Constants.Skills.Science] = 2 },
                 RequiredLevel      = 4,
                 EffectType         = "diplomacy_alien_bonus",
                 EffectMagnitude    = 3
@@ -143,7 +143,7 @@ public static class FeatRegistry
                 Id          = "veteran_explorer",
                 Name        = "Veteran Explorer",
                 Description = "+2 to Survival and Navigation. Advantage on checks to spot hidden dangers in unexplored environments.",
-                RequiredSkillRanks = new() { [Constants.Skills.Survival] = 3, [Constants.Skills.Navigation] = 2 },
+                RequiredSkillRanks = new() { [Constants.Skills.Science] = 3, [Constants.Skills.Piloting] = 2 },
                 RequiredLevel      = 4,
                 EffectType         = "exploration_bonus",
                 EffectMagnitude    = 2
@@ -154,7 +154,7 @@ public static class FeatRegistry
                 Id          = "systems_hacker",
                 Name        = "Systems Hacker",
                 Description = "+4 to Electronics when interfacing with alien or hostile systems. Can attempt to disable enemy systems mid-combat.",
-                RequiredSkillRanks = new() { [Constants.Skills.Electronics] = 4 },
+                RequiredSkillRanks = new() { [Constants.Skills.Engineering] = 4 },
                 RequiredLevel      = 4,
                 EffectType         = "hacking_bonus",
                 EffectMagnitude    = 4
@@ -175,7 +175,7 @@ public static class FeatRegistry
                 Id          = "quick_draw",
                 Name        = "Quick Draw",
                 Description = "Always acts first in personal combat. +2 to Combat on the opening round.",
-                RequiredSkillRanks = new() { [Constants.Skills.Combat] = 2 },
+                RequiredSkillRanks = new() { [Constants.Skills.BeamWeapons] = 2 },
                 RequiredLevel = 2,
                 EffectType    = "initiative_bonus",
                 EffectMagnitude = 2

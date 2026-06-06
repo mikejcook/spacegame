@@ -86,7 +86,8 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private ShipViewController shipViewController;
 
     [Header("Crew View")]
-    [SerializeField] private GameObject crewViewPanel;
+    [SerializeField] private GameObject      crewViewPanel;
+    [SerializeField] private CrewViewController crewViewController;
 
     [Header("Combat View")]
     [Tooltip("Root CombatView panel — sibling of Body, covers full area below header including NavBar.")]
@@ -118,6 +119,10 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button     poiDetailCloseButton;
     [SerializeField] private Button     poiDetailNavigateButton;
     [SerializeField] private TMP_Text   poiDetailScannerText;
+
+    [Header("Crew Recruitment")]
+    [Tooltip("Recruitment overlay — shown automatically when the ship docks at a functioning space station.")]
+    [SerializeField] private RecruitmentController recruitmentController;
 
     // -----------------------------------------------------------------------
     // Private state
@@ -787,6 +792,8 @@ public class SystemViewController : MonoBehaviour
             SetNavButtonsInteractable(true);
             MarkVisited(target);
             ShowPOIDetail(target);
+            if (target.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
+                StartCoroutine(ShowRecruitmentAfterDelay(target.Name, GetCaptainLevel()));
             yield break;
         }
 
@@ -873,6 +880,47 @@ public class SystemViewController : MonoBehaviour
         SetNavButtonsInteractable(true);
         MarkVisited(target);
         ShowPOIDetail(target);
+
+        // Trigger crew recruitment when arriving at a functioning space station
+        if (target.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
+        {
+            int captainLevel = GetCaptainLevel();
+            StartCoroutine(ShowRecruitmentAfterDelay(target.Name, captainLevel));
+        }
+    }
+
+    private int GetCaptainLevel()
+    {
+        var gm = GameManager.Instance;
+        if (gm?.Database == null || gm.CurrentSave == null) return 1;
+        try
+        {
+            var crew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
+            foreach (var c in crew)
+                if (c.IsPlayerCaptain) return Mathf.Max(1, c.Level);
+        }
+        catch { /* DB not ready */ }
+        return 1;
+    }
+
+    /// <summary>
+    /// One-frame delay so the POI detail panel fully collapses before the crew
+    /// view opens in recruitment mode — avoids same-frame input bleed.
+    /// </summary>
+    private System.Collections.IEnumerator ShowRecruitmentAfterDelay(string stationName, int captainLevel)
+    {
+        yield return null;
+        ShowCrewView();
+        if (crewViewController != null)
+        {
+            // Wire header callback so the CVC can change the nav text when recruitment ends
+            crewViewController.OnHeaderTextChanged = text =>
+            {
+                if (systemNameText != null) systemNameText.text = text;
+            };
+            crewViewController.StartRecruitmentMode(stationName, captainLevel);
+            // systemNameText already set by StartRecruitmentMode via the callback above
+        }
     }
 
     /// <summary>

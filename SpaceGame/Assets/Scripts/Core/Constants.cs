@@ -36,25 +36,22 @@ public static class Constants
 
     public static class Skills
     {
-        public const string Piloting     = "Piloting";
-        public const string Engineering  = "Engineering";
-        public const string Science      = "Science";
-        public const string Medicine     = "Medicine";
-        public const string Combat       = "Combat";
-        public const string Diplomacy    = "Diplomacy";
-        public const string Survival     = "Survival";
-        public const string Navigation   = "Navigation";
-        public const string Electronics  = "Electronics";
-        public const string Command      = "Command";
-        // Weapon-specific skills — used in space combat attack rolls
-        public const string BeamWeapons  = "BeamWeapons";
-        public const string Torpedoes    = "Torpedoes";
+        public const string Command        = "Command";
+        public const string Piloting       = "Piloting";
+        public const string BeamWeapons    = "Beam Weapons";
+        public const string TorpedoWeapons = "Torpedo Weapons";
+        public const string Science        = "Science";
+        public const string Engineering    = "Engineering";
+
+        /// <summary>Skill points granted each time a character gains a level.</summary>
+        public const int PointsPerLevel = 3;
+
+        /// <summary>Maximum rank in any single skill = character level + 1.</summary>
+        public static int MaxRankForLevel(int level) => level + 1;
 
         public static readonly string[] All =
         {
-            Piloting, Engineering, Science, Medicine, Combat,
-            Diplomacy, Survival, Navigation, Electronics, Command,
-            BeamWeapons, Torpedoes
+            Command, Piloting, BeamWeapons, TorpedoWeapons, Science, Engineering
         };
     }
 

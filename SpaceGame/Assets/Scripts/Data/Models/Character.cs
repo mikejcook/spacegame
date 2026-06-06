@@ -39,6 +39,12 @@ public class Character
     public int ExperiencePoints     { get; set; } = 0;
     public int ExperienceToNextLevel { get; set; } = 100;
 
+    /// <summary>
+    /// Unspent skill points available to allocate. Grants
+    /// <see cref="Constants.Skills.PointsPerLevel"/> each level-up.
+    /// </summary>
+    public int AvailableSkillPoints { get; set; } = 0;
+
     // Vitals
     public int MaxHealth     { get; set; } = 10;
     public int CurrentHealth { get; set; } = 10;
@@ -178,18 +184,24 @@ public class Character
         ExperiencePoints += amount;
         while (ExperiencePoints >= ExperienceToNextLevel)
         {
-            ExperiencePoints      -= ExperienceToNextLevel;
-            Level                 += 1;
-            ExperienceToNextLevel  = CalculateXPForLevel(Level + 1);
-            OnLevelUp();
+            ExperiencePoints -= ExperienceToNextLevel;
+            LevelUp();
         }
     }
 
-    private void OnLevelUp()
+    /// <summary>
+    /// Grants one level: increments Level, awards skill points, and increases max health.
+    /// Called automatically by <see cref="GainExperience"/> on each level threshold,
+    /// and may be called directly for constructed characters (e.g. to start at level 3).
+    /// </summary>
+    public void LevelUp()
     {
-        MaxHealth     += 2;
-        CurrentHealth += 2;
-        Debug.Log($"[Character] {Name} reached level {Level}!");
+        Level                  += 1;
+        AvailableSkillPoints   += Constants.Skills.PointsPerLevel;
+        MaxHealth              += 2;
+        CurrentHealth          += 2;
+        ExperienceToNextLevel   = CalculateXPForLevel(Level + 1);
+        Debug.Log($"[Character] {Name} reached level {Level}! (+{Constants.Skills.PointsPerLevel} skill points)");
     }
 
     private static int CalculateXPForLevel(int level) => level * 100;

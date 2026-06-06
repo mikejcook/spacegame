@@ -3,18 +3,24 @@ using UnityEngine;
 
 /// <summary>
 /// Factory for creating Character instances with appropriate starting stats.
-/// Names and genders are generated via NameGenerator. Pass a specific Gender to
-/// override the random pick (e.g. for characters whose gender is fixed by lore).
+///
+/// Skills: Command, Piloting, Beam Weapons, Torpedo Weapons, Science, Engineering.
+///
+/// Allocation rules for procedurally generated crew:
+///   • Total skill points = level × 3 (Constants.Skills.PointsPerLevel).
+///   • No single skill may exceed level + 1 ranks.
+///   • Beam Weapons and Torpedo Weapons tend to go together.
+///   • AvailableSkillPoints is 0 — all points are pre-allocated at creation.
 /// </summary>
 public static class CharacterFactory
 {
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // Starting crew
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Creates the player captain. The full name string is stored as-is in FirstName
-    /// (no last name split). The captain has no gender — pronouns are always second-person.
+    /// Creates the player captain. Name stored entirely in FirstName.
+    /// Gender.None → second-person pronouns everywhere.
     /// </summary>
     public static Character CreateCaptain(string name, string portraitFileName = "")
     {
@@ -35,11 +41,8 @@ public static class CharacterFactory
 
         captain.Skills = new Dictionary<string, int>
         {
-            [Constants.Skills.Command]    = 2,
-            [Constants.Skills.Piloting]   = 1,
-            [Constants.Skills.Combat]     = 1,
-            [Constants.Skills.Navigation] = 1,
-            [Constants.Skills.Diplomacy]  = 1,
+            [Constants.Skills.Command]  = 2,
+            [Constants.Skills.Piloting] = 1,
         };
 
         return captain;
@@ -65,9 +68,8 @@ public static class CharacterFactory
 
         pilot.Skills = new Dictionary<string, int>
         {
-            [Constants.Skills.Piloting]   = 3,
-            [Constants.Skills.Navigation] = 2,
-            [Constants.Skills.Combat]     = 1,
+            [Constants.Skills.Piloting] = 2,
+            [Constants.Skills.Command]  = 1,
         };
 
         return pilot;
@@ -93,80 +95,136 @@ public static class CharacterFactory
 
         engineer.Skills = new Dictionary<string, int>
         {
-            [Constants.Skills.Engineering] = 3,
-            [Constants.Skills.Electronics] = 2,
+            [Constants.Skills.Engineering] = 2,
             [Constants.Skills.Science]     = 1,
         };
 
         return engineer;
     }
 
-    // ---------------------------------------------------------------------------
-    // Procedural recruitment
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Procedural recruitment — used by space stations
+    // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Generate a recruitable crew member for the given role at the given level.
-    /// Used by space stations and random encounters.
+    /// Generates a recruitable crew member for the given role at the given level.
+    /// Skill points = level × PointsPerLevel, capped at level + 1 per skill.
+    /// AvailableSkillPoints is 0 (all pre-allocated).
     /// </summary>
     public static Character CreateRandomCrewMember(string role, int level = 1)
     {
+        level = Mathf.Max(1, level);
         var generated = NameGenerator.Generate();
 
         var crew = new Character
         {
-            FirstName     = generated.firstName,
-            LastName      = generated.lastName,
-            Gender        = generated.gender,
-            Role          = role,
-            Level         = level,
-            MaxHealth     = 8 + (level * 2),
-            CurrentHealth = 8 + (level * 2),
-            Background    = GenerateBackground(role),
-            Homeworld     = GenerateHomeworld(),
+            FirstName            = generated.firstName,
+            LastName             = generated.lastName,
+            Gender               = generated.gender,
+            Role                 = role,
+            Level                = level,
+            MaxHealth            = 8 + (level * 2),
+            CurrentHealth        = 8 + (level * 2),
+            Background           = GenerateBackground(role),
+            Homeworld            = GenerateHomeworld(),
+            AvailableSkillPoints = 0,  // all points pre-spent below
         };
 
-        crew.Skills = GenerateSkillsForRole(role, level);
-
+        crew.Skills = AllocateSkillsForRole(role, level);
         return crew;
     }
 
-    // ---------------------------------------------------------------------------
-    // Internal helpers
-    // ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Skill allocation
+    // -------------------------------------------------------------------------
 
-    private static Dictionary<string, int> GenerateSkillsForRole(string role, int level)
+    /// <summary>
+    /// Distributes level × PointsPerLevel skill points:
+    ///   1. Assign primary and secondary skills based on role (weapons officer gets
+    ///      both Beam Weapons and Torpedo Weapons weighted equally).
+    ///   2. Scatter remaining points randomly, respecting the per-skill cap (level+1).
+    /// </summary>
+    private static Dictionary<string, int> AllocateSkillsForRole(string role, int level)
     {
-        var skills     = new Dictionary<string, int>();
-        int totalPoints = level + 2;
+        int totalPoints = level * Constants.Skills.PointsPerLevel;
+        int cap         = Constants.Skills.MaxRankForLevel(level);
 
-        string primary = role switch
+        var skills = new Dictionary<string, int>();
+        foreach (var s in Constants.Skills.All)
+            skills[s] = 0;
+
+        // Primary and secondary skill for each role
+        string primary, secondary;
+
+        switch (role)
         {
-            Constants.Crew.Roles.Pilot          => Constants.Skills.Piloting,
-            Constants.Crew.Roles.Engineer       => Constants.Skills.Engineering,
-            Constants.Crew.Roles.Scientist      => Constants.Skills.Science,
-            Constants.Crew.Roles.Doctor         => Constants.Skills.Medicine,
-            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.BeamWeapons,
-            Constants.Crew.Roles.Soldier        => Constants.Skills.Combat,
-            _                                   => Constants.Skills.Command
-        };
+            case Constants.Crew.Roles.Pilot:
+                primary   = Constants.Skills.Piloting;
+                secondary = Constants.Skills.Command;
+                break;
+            case Constants.Crew.Roles.Engineer:
+                primary   = Constants.Skills.Engineering;
+                secondary = Constants.Skills.Science;
+                break;
+            case Constants.Crew.Roles.Scientist:
+                primary   = Constants.Skills.Science;
+                secondary = Constants.Skills.Engineering;
+                break;
+            case Constants.Crew.Roles.WeaponsOfficer:
+                primary   = Constants.Skills.BeamWeapons;
+                secondary = Constants.Skills.TorpedoWeapons;
+                break;
+            case Constants.Crew.Roles.Captain:
+            default:
+                primary   = Constants.Skills.Command;
+                secondary = Constants.Skills.Piloting;
+                break;
+        }
 
-        string secondary = role switch
+        // Spend ~50 % on primary, ~30 % on secondary (both capped)
+        int primaryPoints   = Mathf.Min(cap, Mathf.CeilToInt(totalPoints * 0.50f));
+        int secondaryPoints = Mathf.Min(cap, Mathf.CeilToInt(totalPoints * 0.30f));
+
+        skills[primary]   = primaryPoints;
+        skills[secondary] = secondaryPoints;
+        int spent         = primaryPoints + secondaryPoints;
+
+        // Weapons officer bonus: try to equalise the two weapon skills
+        if (role == Constants.Crew.Roles.WeaponsOfficer && spent < totalPoints)
         {
-            Constants.Crew.Roles.Pilot          => Constants.Skills.Navigation,
-            Constants.Crew.Roles.Engineer       => Constants.Skills.Electronics,
-            Constants.Crew.Roles.Scientist      => Constants.Skills.Electronics,
-            Constants.Crew.Roles.Doctor         => Constants.Skills.Science,
-            Constants.Crew.Roles.WeaponsOfficer => Constants.Skills.Torpedoes,
-            Constants.Crew.Roles.Soldier        => Constants.Skills.Survival,
-            _                                   => Constants.Skills.Diplomacy
-        };
+            int torpCap  = cap - skills[Constants.Skills.TorpedoWeapons];
+            int bonus    = Mathf.Min(torpCap, totalPoints - spent);
+            if (bonus > 0)
+            {
+                skills[Constants.Skills.TorpedoWeapons] += bonus;
+                spent += bonus;
+            }
+        }
 
-        skills[primary]   = Mathf.Min(totalPoints,     5);
-        skills[secondary] = Mathf.Min(totalPoints / 2, 3);
+        // Scatter remainder across all skills respecting the cap
+        int attempts = 0;
+        while (spent < totalPoints && attempts < 1000)
+        {
+            attempts++;
+            string pick = Constants.Skills.All[Random.Range(0, Constants.Skills.All.Length)];
+            if (skills[pick] < cap)
+            {
+                skills[pick]++;
+                spent++;
+            }
+        }
 
-        return skills;
+        // Strip zero-rank entries so the UI only shows invested skills
+        var result = new Dictionary<string, int>();
+        foreach (var kv in skills)
+            if (kv.Value > 0) result[kv.Key] = kv.Value;
+
+        return result;
     }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
     private static readonly string[] Homeworlds =
     {
@@ -177,17 +235,13 @@ public static class CharacterFactory
     private static string GenerateHomeworld()
         => Homeworlds[Random.Range(0, Homeworlds.Length)];
 
-    private static string GenerateBackground(string role)
+    private static string GenerateBackground(string role) => role switch
     {
-        return role switch
-        {
-            Constants.Crew.Roles.Pilot          => "Veteran pilot, logs spanning a dozen systems.",
-            Constants.Crew.Roles.Engineer       => "Ship engineer with a knack for coaxing power out of junk.",
-            Constants.Crew.Roles.Scientist      => "Researcher chasing discoveries beyond the frontier.",
-            Constants.Crew.Roles.Doctor         => "Field medic who has patched people up in worse places than this.",
-            Constants.Crew.Roles.WeaponsOfficer => "Former military, expert in ship-to-ship combat.",
-            Constants.Crew.Roles.Soldier        => "Mercenary ground-pounder, good in a fight.",
-            _                                   => "A capable spacer looking for steady work."
-        };
-    }
+        Constants.Crew.Roles.Pilot          => "Veteran pilot, logs spanning a dozen systems.",
+        Constants.Crew.Roles.Engineer       => "Ship engineer with a knack for coaxing power out of junk.",
+        Constants.Crew.Roles.Scientist      => "Researcher chasing discoveries beyond the frontier.",
+        Constants.Crew.Roles.WeaponsOfficer => "Former military, expert in ship-to-ship combat.",
+        Constants.Crew.Roles.Captain        => "Ex-officer who decided command meant more than a rank.",
+        _                                   => "A capable spacer looking for steady work."
+    };
 }

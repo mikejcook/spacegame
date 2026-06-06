@@ -6,34 +6,29 @@ using TMPro;
 /// <summary>
 /// Runtime controller for the Crew View panel.
 ///
-/// ── Layout (built by GameSceneSetup.BuildCrewView) ───────────────────────
+/// ── Normal mode layout ───────────────────────────────────────────────────
 ///
-///   CrewView                       ← this MonoBehaviour's GameObject
+///   CrewView
 ///   ├─ CrewListPanel               ← left 38 % — scrollable crew buttons
-///   │  └─ Scroll View
-///   │     └─ Viewport
-///   │        └─ Content            (VerticalLayoutGroup)
-///   │           ├─ CrewRow_0       ← captain (always first)
-///   │           └─ CrewRow_N…
-///   ├─ Divider
+///   │  └─ Scroll View/Viewport/Content (VerticalLayoutGroup)
 ///   └─ CrewDetailPanel
-///      ├─ PortraitImage            ← 160×160, top-left (pivot 0,1)
-///      ├─ CrewNameText             ← bold 42pt, left of level badge
-///      ├─ LevelText                ← "Level N", top-right badge
-///      ├─ CrewRoleText             ← italic 30pt, below name
-///      ├─ XPLabel                  ← "EXPERIENCE", below role (right of portrait)
-///      ├─ XPBar                    ← Slider (non-interactable), below XP label
-///      ├─ XPText                   ← "N / M XP" overlaid on bar, right-aligned
-///      ├─ SkillsDivider            ← full-width rule below portrait
-///      ├─ SkillsHeader             ← "SKILLS"
-///      └─ SkillsContainer          ← fills remaining height
+///      ├─ PortraitImage  ├─ CrewNameText  ├─ LevelText
+///      ├─ CrewRoleText   ├─ XPLabel       ├─ XPBar  ├─ XPText
+///      ├─ SkillsDivider  ├─ SkillsHeader  └─ SkillsContainer
 ///
-/// References are resolved by name at Start() so the view works even when
-/// SerializedField wiring from the editor build script doesn't survive a
-/// scene save / domain reload.
+/// ── Recruitment mode ─────────────────────────────────────────────────────
+///   Activated by SystemViewController when arriving at a space station.
+///   The left list shows 2–3 generated candidates instead of the ship crew.
+///   The right panel shows the selected candidate's details plus a HIRE button.
+///   Exiting the view (navigating to another tab) ends recruitment mode and
+///   restores the normal crew display on next open.
 /// </summary>
 public class CrewViewController : MonoBehaviour
 {
+    // ── Wired by GameSceneSetup ──────────────────────────────────────────────
+
+    [SerializeField] private LevelUpController levelUpController;
+
     // ── Resolved at Start() — no editor wiring needed ───────────────────────
 
     private Transform  _crewListContent;
@@ -44,6 +39,8 @@ public class CrewViewController : MonoBehaviour
     private Slider     _detailXPBar;
     private TMP_Text   _detailXPText;
     private Transform  _skillsContainer;
+    private GameObject _levelUpButtonGO;
+    private GameObject _hireButtonGO;
 
     // ── Colours (match GameSceneSetup palette) ───────────────────────────────
 
@@ -52,14 +49,28 @@ public class CrewViewController : MonoBehaviour
     private static readonly Color AccentCyan  = new Color(0.30f, 0.85f, 1.00f, 1f);
     private static readonly Color RowSelected = new Color(0.08f, 0.25f, 0.42f, 0.90f);
     private static readonly Color RowNormal   = new Color(0.05f, 0.10f, 0.18f, 0.80f);
+    private static readonly Color RowHired    = new Color(0.04f, 0.18f, 0.10f, 0.80f);
 
     // ── State ────────────────────────────────────────────────────────────────
 
-    private readonly List<Character>  _crew       = new List<Character>();
-    private readonly List<GameObject> _rowButtons = new List<GameObject>();
-    private int                       _selectedIdx = -1;
+    private readonly List<Character>  _crew        = new List<Character>();
+    private readonly List<Character>  _candidates  = new List<Character>();
+    private readonly List<GameObject> _rowButtons  = new List<GameObject>();
+    private readonly HashSet<int>     _hired       = new HashSet<int>();
+    private int                       _selectedIdx  = -1;
     private PortraitLibrary           _portraitLib;
     private bool                      _resolved;
+
+    // ── Recruitment mode ─────────────────────────────────────────────────────
+
+    private bool   _isRecruitmentMode;
+    private string _stationName;
+
+    /// <summary>
+    /// Called when the header text should change.
+    /// SystemViewController wires this to update its systemNameText.
+    /// </summary>
+    public System.Action<string> OnHeaderTextChanged;
 
     // ── Unity lifecycle ──────────────────────────────────────────────────────
 
@@ -70,34 +81,34 @@ public class CrewViewController : MonoBehaviour
 
     private void OnEnable()
     {
-        // ResolveReferences first time if Start() hasn't run yet
-        // (panel is active from the beginning of the scene, which it isn't, but be safe)
         if (!_resolved) ResolveReferences();
         Populate();
     }
 
-    // ── Reference resolution by hierarchy path ───────────────────────────────
+    private void OnDisable()
+    {
+        // Leaving the crew panel always ends recruitment mode silently.
+        // The header is reset by SystemViewController when it hides this panel.
+        _isRecruitmentMode = false;
+        _candidates.Clear();
+        _hired.Clear();
+    }
+
+    // ── Reference resolution ─────────────────────────────────────────────────
 
     private void ResolveReferences()
     {
         _resolved = true;
-
         var t = transform;
 
-        // Crew list content (scroll view content root)
         var contentTf = t.Find("CrewListPanel/Scroll View/Viewport/Content");
         if (contentTf != null)
             _crewListContent = contentTf;
         else
             Debug.LogWarning("[CrewViewController] Could not find CrewListPanel/Scroll View/Viewport/Content");
 
-        // Detail panel children
         var detail = t.Find("CrewDetailPanel");
-        if (detail == null)
-        {
-            Debug.LogWarning("[CrewViewController] Could not find CrewDetailPanel");
-            return;
-        }
+        if (detail == null) { Debug.LogWarning("[CrewViewController] Could not find CrewDetailPanel"); return; }
 
         _detailPortrait  = detail.Find("PortraitImage")?.GetComponent<Image>();
         _detailNameText  = detail.Find("CrewNameText")?.GetComponent<TMP_Text>();
@@ -106,17 +117,23 @@ public class CrewViewController : MonoBehaviour
         _detailXPBar     = detail.Find("XPBar")?.GetComponent<Slider>();
         _detailXPText    = detail.Find("XPText")?.GetComponent<TMP_Text>();
         _skillsContainer = detail.Find("SkillsContainer");
-
-        if (_detailPortrait  == null) Debug.LogWarning("[CrewViewController] PortraitImage not found");
-        if (_detailNameText  == null) Debug.LogWarning("[CrewViewController] CrewNameText not found");
-        if (_detailRoleText  == null) Debug.LogWarning("[CrewViewController] CrewRoleText not found");
-        if (_detailLevelText == null) Debug.LogWarning("[CrewViewController] LevelText not found");
-        if (_detailXPBar     == null) Debug.LogWarning("[CrewViewController] XPBar not found");
-        if (_detailXPText    == null) Debug.LogWarning("[CrewViewController] XPText not found");
-        if (_skillsContainer == null) Debug.LogWarning("[CrewViewController] SkillsContainer not found");
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Activates recruitment mode. Call immediately after showing the crew panel.
+    /// Generates 2–3 candidates and repopulates the list.
+    /// </summary>
+    public void StartRecruitmentMode(string stationName, int captainLevel)
+    {
+        _isRecruitmentMode = true;
+        _stationName       = stationName;
+        _hired.Clear();
+        GenerateCandidates(captainLevel);
+        OnHeaderTextChanged?.Invoke($"{stationName} — Crew Recruitment");
+        Populate();
+    }
 
     public void Populate()
     {
@@ -129,44 +146,83 @@ public class CrewViewController : MonoBehaviour
         if (_portraitLib == null)
             _portraitLib = Resources.Load<PortraitLibrary>("PortraitLibrary");
 
+        if (_isRecruitmentMode)
+            PopulateRecruitment();
+        else
+            PopulateCrew();
+    }
+
+    // ── List population ───────────────────────────────────────────────────────
+
+    private void PopulateCrew()
+    {
         var gm = GameManager.Instance;
-        if (gm?.CurrentSave == null)
-        {
-            ShowEmptyDetail();
-            return;
-        }
+        if (gm?.CurrentSave == null) { ShowEmptyDetail(); return; }
 
         var allCrew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
-        if (allCrew == null || allCrew.Count == 0)
-        {
-            ShowEmptyDetail();
-            return;
-        }
+        if (allCrew == null || allCrew.Count == 0) { ShowEmptyDetail(); return; }
 
-        // Captain first, then others
         foreach (var c in allCrew)
             if (c.IsPlayerCaptain) _crew.Insert(0, c);
             else                   _crew.Add(c);
 
         if (_crewListContent != null)
-        {
             for (int i = 0; i < _crew.Count; i++)
-                BuildCrewRow(_crew[i], i);
-        }
+                BuildListRow(_crew[i], i, hired: false);
 
-        if (_crew.Count > 0)
-            SelectCrew(0);
+        if (_crew.Count > 0) SelectRow(0);
     }
 
-    // ── List row builder ─────────────────────────────────────────────────────
+    private void PopulateRecruitment()
+    {
+        if (_crewListContent != null)
+            for (int i = 0; i < _candidates.Count; i++)
+                BuildListRow(_candidates[i], i, hired: _hired.Contains(i));
 
-    private void BuildCrewRow(Character crew, int index)
+        if (_candidates.Count > 0) SelectRow(0);
+        else ShowEmptyDetail();
+    }
+
+    // ── Candidate generation ──────────────────────────────────────────────────
+
+    private void GenerateCandidates(int captainLevel)
+    {
+        _candidates.Clear();
+
+        string[] roles =
+        {
+            Constants.Crew.Roles.Pilot,
+            Constants.Crew.Roles.Engineer,
+            Constants.Crew.Roles.Scientist,
+            Constants.Crew.Roles.WeaponsOfficer,
+            Constants.Crew.Roles.Captain,
+        };
+
+        // Shuffle roles
+        var shuffled = new List<string>(roles);
+        for (int i = shuffled.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+        }
+
+        int count = Random.Range(2, 4);
+        for (int i = 0; i < count; i++)
+        {
+            int level = Random.Range(1, Mathf.Max(2, captainLevel + 1));
+            _candidates.Add(CharacterFactory.CreateRandomCrewMember(shuffled[i], level));
+        }
+    }
+
+    // ── List row builder ──────────────────────────────────────────────────────
+
+    private void BuildListRow(Character person, int index, bool hired)
     {
         var rowGO = new GameObject($"CrewRow_{index}", typeof(RectTransform));
         rowGO.transform.SetParent(_crewListContent, false);
 
         var rowImg = rowGO.AddComponent<Image>();
-        rowImg.color = RowNormal;
+        rowImg.color = hired ? RowHired : RowNormal;
 
         var le = rowGO.AddComponent<LayoutElement>();
         le.preferredHeight = 90f;
@@ -180,8 +236,8 @@ public class CrewViewController : MonoBehaviour
         colors.pressedColor     = new Color(0.80f, 0.80f, 0.80f, 1f);
         btn.colors = colors;
 
-        int capturedIndex = index;
-        btn.onClick.AddListener(() => SelectCrew(capturedIndex));
+        int captured = index;
+        btn.onClick.AddListener(() => SelectRow(captured));
 
         var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
         hlg.padding                = new RectOffset(10, 10, 8, 8);
@@ -197,7 +253,7 @@ public class CrewViewController : MonoBehaviour
         portraitGO.transform.SetParent(rowGO.transform, false);
         var portraitImg = portraitGO.AddComponent<Image>();
         portraitImg.preserveAspect = true;
-        LoadPortraitInto(portraitImg, crew.PortraitId);
+        LoadPortraitInto(portraitImg, person.PortraitId);
         var portraitLE = portraitGO.AddComponent<LayoutElement>();
         portraitLE.preferredWidth  = 74f;
         portraitLE.preferredHeight = 74f;
@@ -216,24 +272,22 @@ public class CrewViewController : MonoBehaviour
         textVLG.childAlignment         = TextAnchor.MiddleLeft;
         textVLG.spacing                = 4f;
 
-        // Name
         var nameGO  = new GameObject("Name", typeof(RectTransform));
         nameGO.transform.SetParent(textCol.transform, false);
         var nameTMP = nameGO.AddComponent<TextMeshProUGUI>();
-        nameTMP.text             = crew.IsPlayerCaptain ? $"{crew.Name} (You)" : crew.Name;
-        nameTMP.fontSize         = 28f;
-        nameTMP.color            = TextWhite;
-        nameTMP.fontStyle        = FontStyles.Bold;
-        nameTMP.alignment        = TextAlignmentOptions.Left;
+        nameTMP.text               = hired ? $"{person.Name}  ✓" : (person.IsPlayerCaptain ? $"{person.Name} (You)" : person.Name);
+        nameTMP.fontSize           = 28f;
+        nameTMP.color              = hired ? AccentCyan : TextWhite;
+        nameTMP.fontStyle          = FontStyles.Bold;
+        nameTMP.alignment          = TextAlignmentOptions.Left;
         nameTMP.enableWordWrapping = false;
-        nameTMP.overflowMode     = TextOverflowModes.Ellipsis;
+        nameTMP.overflowMode       = TextOverflowModes.Ellipsis;
         nameGO.AddComponent<LayoutElement>().preferredHeight = 36f;
 
-        // Role
         var roleGO  = new GameObject("Role", typeof(RectTransform));
         roleGO.transform.SetParent(textCol.transform, false);
         var roleTMP = roleGO.AddComponent<TextMeshProUGUI>();
-        roleTMP.text      = FormatRole(crew.Role);
+        roleTMP.text      = FormatRole(person.Role);
         roleTMP.fontSize  = 22f;
         roleTMP.color     = AccentCyan;
         roleTMP.alignment = TextAlignmentOptions.Left;
@@ -242,69 +296,78 @@ public class CrewViewController : MonoBehaviour
         _rowButtons.Add(rowGO);
     }
 
-    // ── Selection ────────────────────────────────────────────────────────────
+    // ── Selection ─────────────────────────────────────────────────────────────
 
-    private void SelectCrew(int index)
+    private void SelectRow(int index)
     {
-        if (index < 0 || index >= _crew.Count) return;
+        var list = _isRecruitmentMode ? _candidates : _crew;
+        if (index < 0 || index >= list.Count) return;
 
         if (_selectedIdx >= 0 && _selectedIdx < _rowButtons.Count)
         {
             var prevImg = _rowButtons[_selectedIdx]?.GetComponent<Image>();
-            if (prevImg != null) prevImg.color = RowNormal;
+            if (prevImg != null)
+                prevImg.color = (_isRecruitmentMode && _hired.Contains(_selectedIdx)) ? RowHired : RowNormal;
         }
 
         _selectedIdx = index;
         var selImg = _rowButtons[index]?.GetComponent<Image>();
         if (selImg != null) selImg.color = RowSelected;
 
-        ShowDetail(_crew[index]);
+        ShowDetail(list[index]);
     }
 
-    // ── Detail panel ─────────────────────────────────────────────────────────
+    // ── Detail panel ──────────────────────────────────────────────────────────
 
-    private void ShowDetail(Character crew)
+    private void ShowDetail(Character person)
     {
         if (_detailPortrait != null)
         {
-            LoadPortraitInto(_detailPortrait, crew.PortraitId);
+            LoadPortraitInto(_detailPortrait, person.PortraitId);
             _detailPortrait.preserveAspect = true;
         }
 
-        if (_detailNameText != null)
-            _detailNameText.text = crew.IsPlayerCaptain ? $"{crew.Name} (You)" : crew.Name;
-
-        if (_detailRoleText != null)
-            _detailRoleText.text = FormatRole(crew.Role);
-
+        if (_detailNameText  != null)
+            _detailNameText.text  = person.IsPlayerCaptain ? $"{person.Name} (You)" : person.Name;
+        if (_detailRoleText  != null)
+            _detailRoleText.text  = FormatRole(person.Role);
         if (_detailLevelText != null)
-            _detailLevelText.text = $"Level {crew.Level}";
+            _detailLevelText.text = $"Level {person.Level}";
 
+        // XP row — hidden in recruitment mode (candidates haven't joined yet)
+        bool showXP = !_isRecruitmentMode;
         if (_detailXPBar != null)
         {
-            _detailXPBar.minValue = 0f;
-            _detailXPBar.maxValue = Mathf.Max(1f, crew.ExperienceToNextLevel);
-            _detailXPBar.value    = crew.ExperiencePoints;
+            _detailXPBar.gameObject.SetActive(showXP);
+            if (showXP)
+            {
+                _detailXPBar.minValue = 0f;
+                _detailXPBar.maxValue = Mathf.Max(1f, person.ExperienceToNextLevel);
+                _detailXPBar.value    = person.ExperiencePoints;
+            }
+        }
+        if (_detailXPText != null)
+        {
+            _detailXPText.gameObject.SetActive(showXP);
+            if (showXP)
+                _detailXPText.text = $"{person.ExperiencePoints} / {person.ExperienceToNextLevel} XP";
         }
 
-        if (_detailXPText != null)
-            _detailXPText.text = $"{crew.ExperiencePoints} / {crew.ExperienceToNextLevel} XP";
+        // Find XPLabel sibling too (it's built above XPBar in the hierarchy)
+        var xpLabel = _detailXPBar?.transform.parent?.Find("XPLabel")?.gameObject;
+        if (xpLabel != null) xpLabel.SetActive(showXP);
 
+        // Skills
         if (_skillsContainer != null)
         {
             for (int i = _skillsContainer.childCount - 1; i >= 0; i--)
                 Destroy(_skillsContainer.GetChild(i).gameObject);
 
-            var skills = crew.Skills;
             bool anySkill = false;
             foreach (var skillName in Constants.Skills.All)
             {
-                skills.TryGetValue(skillName, out int rank);
-                if (rank > 0)
-                {
-                    BuildSkillRow(skillName, rank);
-                    anySkill = true;
-                }
+                person.Skills.TryGetValue(skillName, out int rank);
+                if (rank > 0) { BuildSkillRow(skillName, rank); anySkill = true; }
             }
 
             if (!anySkill)
@@ -319,6 +382,175 @@ public class CrewViewController : MonoBehaviour
                 noSkillsGO.AddComponent<LayoutElement>().preferredHeight = 32f;
             }
         }
+
+        if (_isRecruitmentMode)
+            ShowOrHideHireButton(person, _selectedIdx);
+        else
+            ShowOrHideLevelUpButton(person);
+    }
+
+    // ── Hire button (recruitment mode) ────────────────────────────────────────
+
+    private void ShowOrHideHireButton(Character candidate, int index)
+    {
+        // Hide level-up button
+        if (_levelUpButtonGO != null) _levelUpButtonGO.SetActive(false);
+
+        var detail = _skillsContainer?.parent;
+        if (detail == null) return;
+
+        if (_hireButtonGO == null)
+            _hireButtonGO = BuildActionButton(detail, "HireButton",
+                                              new Color(0.08f, 0.38f, 0.22f, 1f),
+                                              new Color(0.12f, 0.55f, 0.32f, 1f),
+                                              new Color(0.04f, 0.22f, 0.12f, 1f));
+
+        _hireButtonGO.SetActive(true);
+
+        bool alreadyHired = _hired.Contains(index);
+        var hireBtn = _hireButtonGO.GetComponent<Button>();
+        var hireLbl = _hireButtonGO.GetComponentInChildren<TextMeshProUGUI>();
+        var hireBg  = _hireButtonGO.GetComponent<Image>();
+
+        if (hireLbl != null) hireLbl.text  = alreadyHired ? "HIRED" : "HIRE";
+        if (hireLbl != null) hireLbl.color = alreadyHired ? AccentCyan : TextWhite;
+        if (hireBg  != null) hireBg.color  = alreadyHired
+            ? new Color(0.04f, 0.14f, 0.10f, 1f)
+            : new Color(0.08f, 0.38f, 0.22f, 1f);
+
+        if (hireBtn != null)
+        {
+            hireBtn.interactable = !alreadyHired;
+            hireBtn.onClick.RemoveAllListeners();
+            if (!alreadyHired)
+            {
+                int capturedIdx = index;
+                var capturedCandidate = candidate;
+                hireBtn.onClick.AddListener(() => OnHireClicked(capturedCandidate, capturedIdx));
+            }
+        }
+    }
+
+    private void OnHireClicked(Character candidate, int index)
+    {
+        var gm = GameManager.Instance;
+        if (gm?.CurrentSave == null) { Debug.LogWarning("[CrewViewController] No save — cannot hire."); return; }
+
+        candidate.SaveGameId = gm.CurrentSave.Id;
+        try
+        {
+            gm.Database.Characters.Insert(candidate);
+            Debug.Log($"[CrewViewController] Hired {candidate.Name} ({candidate.Role} Lv{candidate.Level}).");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[CrewViewController] Hire failed: {e.Message}");
+            return;
+        }
+
+        _hired.Add(index);
+
+        // Update the list row to show hired state
+        if (index < _rowButtons.Count && _rowButtons[index] != null)
+        {
+            var rowImg = _rowButtons[index].GetComponent<Image>();
+            if (rowImg != null) rowImg.color = RowHired;
+
+            var nameTmp = _rowButtons[index].GetComponentInChildren<TextMeshProUGUI>();
+            if (nameTmp != null)
+            {
+                nameTmp.text  = $"{candidate.Name}  ✓";
+                nameTmp.color = AccentCyan;
+            }
+        }
+
+        // Refresh the hire button state
+        ShowOrHideHireButton(candidate, index);
+    }
+
+    // ── Level Up button (normal mode) ─────────────────────────────────────────
+
+    private void ShowOrHideLevelUpButton(Character crew)
+    {
+        // Hide hire button
+        if (_hireButtonGO != null) _hireButtonGO.SetActive(false);
+
+        bool hasPoints = crew.AvailableSkillPoints > 0;
+        var detail = _skillsContainer?.parent;
+        if (detail == null) return;
+
+        if (_levelUpButtonGO == null && hasPoints)
+            _levelUpButtonGO = BuildActionButton(detail, "LevelUpButton",
+                                                 new Color(0.20f, 0.55f, 0.10f, 1f),
+                                                 new Color(0.28f, 0.72f, 0.15f, 1f),
+                                                 new Color(0.10f, 0.32f, 0.06f, 1f));
+
+        if (_levelUpButtonGO != null)
+        {
+            _levelUpButtonGO.SetActive(hasPoints);
+            if (hasPoints)
+            {
+                var lbl = _levelUpButtonGO.GetComponentInChildren<TextMeshProUGUI>();
+                if (lbl != null) lbl.text = $"LEVEL UP  ({crew.AvailableSkillPoints} pts)";
+
+                var btn = _levelUpButtonGO.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveAllListeners();
+                    var captured = crew;
+                    btn.onClick.AddListener(() => OpenLevelUp(captured));
+                }
+            }
+        }
+    }
+
+    private void OpenLevelUp(Character crew)
+    {
+        if (levelUpController == null) { Debug.LogWarning("[CrewViewController] LevelUpController not wired."); return; }
+        levelUpController.OnConfirmed = () => Populate();
+        levelUpController.ShowLevelUp(crew);
+    }
+
+    // ── Shared action button builder ──────────────────────────────────────────
+
+    private static GameObject BuildActionButton(Transform parent, string goName,
+                                                Color bg, Color highlight, Color pressed)
+    {
+        var go = new GameObject(goName, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot     = new Vector2(0.5f, 0f);
+        rt.offsetMin = new Vector2(24f,  16f);
+        rt.offsetMax = new Vector2(-24f, 64f);
+
+        var img = go.AddComponent<Image>();
+        img.color = bg;
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        var c = btn.colors;
+        c.highlightedColor = highlight;
+        c.pressedColor     = pressed;
+        btn.colors = c;
+
+        var lblGO = new GameObject("Label", typeof(RectTransform));
+        lblGO.transform.SetParent(go.transform, false);
+        var lbl = lblGO.AddComponent<TextMeshProUGUI>();
+        lbl.text      = goName;
+        lbl.fontSize  = 26f;
+        lbl.color     = new Color(0.92f, 0.95f, 1f, 1f);
+        lbl.alignment = TextAlignmentOptions.Center;
+        lbl.fontStyle = FontStyles.Bold;
+        var lblRT = lblGO.GetComponent<RectTransform>();
+        lblRT.anchorMin = Vector2.zero;
+        lblRT.anchorMax = Vector2.one;
+        lblRT.offsetMin = Vector2.zero;
+        lblRT.offsetMax = Vector2.zero;
+
+        return go;
     }
 
     private void ShowEmptyDetail()
@@ -330,7 +562,7 @@ public class CrewViewController : MonoBehaviour
         if (_detailXPBar     != null) _detailXPBar.value    = 0f;
     }
 
-    // ── Skill row ────────────────────────────────────────────────────────────
+    // ── Skill row ─────────────────────────────────────────────────────────────
 
     private void BuildSkillRow(string skillName, int rank)
     {
@@ -346,7 +578,6 @@ public class CrewViewController : MonoBehaviour
         hlg.childAlignment         = TextAnchor.MiddleLeft;
         rowGO.AddComponent<LayoutElement>().preferredHeight = 34f;
 
-        // Skill label — fixed-width column so dots align across all rows
         var labelGO  = new GameObject("Label", typeof(RectTransform));
         labelGO.transform.SetParent(rowGO.transform, false);
         var labelTMP = labelGO.AddComponent<TextMeshProUGUI>();
@@ -358,16 +589,14 @@ public class CrewViewController : MonoBehaviour
         labelLE.preferredWidth  = 200f;
         labelLE.preferredHeight = 30f;
 
-        // Rating dots: filled = rank, hollow = rest up to MaxRank
-        const int   MaxRank  = 10;
-        const float DotSize  = 16f;
+        const int   MaxRank = 10;
+        const float DotSize = 16f;
 
         for (int i = 0; i < MaxRank; i++)
         {
             var dotGO  = new GameObject($"Dot_{i}", typeof(RectTransform));
             dotGO.transform.SetParent(rowGO.transform, false);
-            var dotImg = dotGO.AddComponent<Image>();
-            dotImg.color = i < rank
+            dotGO.AddComponent<Image>().color = i < rank
                 ? AccentCyan
                 : new Color(0.25f, 0.35f, 0.45f, 0.70f);
             var dotLE = dotGO.AddComponent<LayoutElement>();
@@ -377,12 +606,11 @@ public class CrewViewController : MonoBehaviour
         }
     }
 
-    // ── Portrait loading ─────────────────────────────────────────────────────
+    // ── Portrait loading ──────────────────────────────────────────────────────
 
     private void LoadPortraitInto(Image img, string portraitId)
     {
         if (img == null) return;
-
         if (_portraitLib != null && !string.IsNullOrEmpty(portraitId))
         {
             int idx = _portraitLib.IndexOf(portraitId);
@@ -391,21 +619,17 @@ public class CrewViewController : MonoBehaviour
                 var tex = _portraitLib.Portraits[idx];
                 if (tex != null)
                 {
-                    img.sprite = Sprite.Create(tex,
-                        new Rect(0, 0, tex.width, tex.height),
-                        new Vector2(0.5f, 0.5f));
+                    img.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
                     img.color  = Color.white;
                     return;
                 }
             }
         }
-
-        // Fallback: cyan square
         img.sprite = null;
         img.color  = AccentCyan;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static string FormatRole(string role) => role switch
     {

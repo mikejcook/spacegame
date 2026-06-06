@@ -98,10 +98,10 @@ public static class DiceRoller
         {
             string skill = checkType switch
             {
-                "attack"     => Constants.Skills.Combat,
+                "attack"     => Constants.Skills.BeamWeapons,
                 "defense"    => Constants.Skills.Piloting,
                 "sensors"    => Constants.Skills.Science,
-                "navigation" => Constants.Skills.Navigation,
+                "navigation" => Constants.Skills.Piloting,
                 _            => Constants.Skills.Command
             };
             crewBonus = operatingCrew.GetSkillRank(skill);

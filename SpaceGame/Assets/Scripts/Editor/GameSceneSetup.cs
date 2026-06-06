@@ -182,7 +182,9 @@ public static class GameSceneSetup
         var poiDetail  = BuildPOIDetailPanel(svcGO.transform);
         // CombatView is a sibling of Body/NavBar so it covers the full area
         // below the header (including the NavBar strip) when active.
-        var combatView = BuildCombatView(svcGO.transform);
+        var combatView      = BuildCombatView(svcGO.transform);
+        var recruitmentPanel = BuildRecruitmentPanel(svcGO.transform);
+        var levelUpPanel     = BuildLevelUpPanel(svcGO.transform);
 
         // ── Wire UIElementSound audio source on all Shift buttons ─────────
         var uiAudio = uiAudioGO.GetComponent<AudioSource>();
@@ -194,7 +196,8 @@ public static class GameSceneSetup
         }
 
         // ── Wire serialised fields ────────────────────────────────────────
-        WireController(controller, bg, header, body, navBar, poiDetail, combatView);
+        WireController(controller, bg, header, body, navBar, poiDetail, combatView,
+                       recruitmentPanel, levelUpPanel);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
@@ -1997,6 +2000,190 @@ public static class GameSceneSetup
     }
 
     // -----------------------------------------------------------------------
+    // Recruitment Panel — full-screen CanvasGroup overlay, sibling of Body
+    // -----------------------------------------------------------------------
+
+    static GameObject BuildRecruitmentPanel(Transform parent)
+    {
+        // Root — stays active; show/hide via CanvasGroup
+        var panel = MakeUIGO("RecruitmentPanel", parent);
+        Stretch(panel);
+        var cg = panel.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+        panel.AddComponent<RecruitmentController>();
+
+        // Scrim — dark semi-transparent backdrop
+        var scrim = MakeImage(panel.transform, "Scrim", Scrim);
+        Stretch(scrim);
+
+        // Card — centred, wide
+        var card = MakeImage(panel.transform, "Card", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(1400f, 560f));
+
+        // Top accent bar
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        // Title
+        var title = MakeTMP(card.transform, "TitleText", "CREW RECRUITMENT", 38, TextWhite);
+        PlaceRect(title, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -52f), v2(-40f, 52f));
+        title.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        title.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        // Station name
+        var stationName = MakeTMP(card.transform, "StationNameText", "[Station Name]", 28, AccentCyan);
+        PlaceRect(stationName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -96f), v2(-40f, 38f));
+        stationName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        stationName.GetComponent<TextMeshProUGUI>().fontStyle  = FontStyles.Italic;
+
+        // Divider
+        var divider = MakeImage(card.transform, "DividerRule", DividerColor);
+        PlaceRect(divider, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -128f), v2(-40f, 2f));
+
+        // Candidates row — horizontal layout group, candidates inserted at runtime
+        var rowGO = MakeUIGO("CandidatesRow", card.transform);
+        PlaceRect(rowGO, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 56f), v2(-32f, -144f));
+        var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing                = 16f;
+        hlg.padding                = new RectOffset(8, 8, 8, 8);
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childAlignment         = TextAnchor.UpperCenter;
+
+        // Close button — bottom-right
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject closeGO;
+        if (btnPrefab != null)
+        {
+            closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            closeGO.name = "CloseButton";
+            var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CLOSE";
+        }
+        else
+        {
+            closeGO = MakeImage(card.transform, "CloseButton", BtnNormal);
+            closeGO.AddComponent<Button>();
+            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        PlaceRect(closeGO, anchor(1f, 0f), anchor(1f, 0f), v2(-102f, 10f), v2(180f, 48f));
+
+        return panel;
+    }
+
+    // -----------------------------------------------------------------------
+    // Level Up Panel — full-screen CanvasGroup overlay, sibling of Body
+    // -----------------------------------------------------------------------
+
+    static GameObject BuildLevelUpPanel(Transform parent)
+    {
+        // Root — stays active; show/hide via CanvasGroup
+        var panel = MakeUIGO("LevelUpPanel", parent);
+        Stretch(panel);
+        var cg = panel.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+        panel.AddComponent<LevelUpController>();
+
+        // Scrim
+        var scrim = MakeImage(panel.transform, "Scrim", Scrim);
+        Stretch(scrim);
+
+        // Card — narrower, taller
+        var card = MakeImage(panel.transform, "Card", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(700f, 680f));
+
+        // Top accent bar
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        // Title
+        var title = MakeTMP(card.transform, "TitleText", "LEVEL UP", 42, TextWhite);
+        PlaceRect(title, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -58f), v2(-40f, 58f));
+        title.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        title.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        // Crew name
+        var crewName = MakeTMP(card.transform, "CrewNameText", "Crew Name", 32, AccentCyan);
+        PlaceRect(crewName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -104f), v2(-40f, 40f));
+        crewName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
+        // Points remaining text
+        var points = MakeTMP(card.transform, "PointsText", "3 skill points to spend", 26,
+                             new Color(1.00f, 0.75f, 0.20f, 1f)); // amber
+        PlaceRect(points, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -142f), v2(-40f, 34f));
+        points.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
+        // Divider
+        var divider = MakeImage(card.transform, "DividerRule", DividerColor);
+        PlaceRect(divider, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -176f), v2(-40f, 2f));
+
+        // Skills container — VLG, rows inserted at runtime by LevelUpController
+        var skillsGO = MakeUIGO("SkillsContainer", card.transform);
+        PlaceRect(skillsGO, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 110f), v2(-40f, -196f));
+        var vlg = skillsGO.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing                = 4f;
+        vlg.padding                = new RectOffset(8, 8, 4, 4);
+        vlg.childControlWidth      = true;
+        vlg.childControlHeight     = false;
+        vlg.childForceExpandWidth  = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childAlignment         = TextAnchor.UpperCenter;
+
+        // Divider 2
+        var divider2 = MakeImage(card.transform, "DividerRule2", DividerColor);
+        PlaceRect(divider2, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 108f), v2(-40f, 2f));
+
+        // Confirm button — bottom left
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject confirmGO;
+        if (btnPrefab != null)
+        {
+            confirmGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            confirmGO.name = "ConfirmButton";
+            var mb = confirmGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CONFIRM";
+        }
+        else
+        {
+            confirmGO = MakeImage(card.transform, "ConfirmButton", BtnNormal);
+            confirmGO.AddComponent<Button>();
+            var lbl = MakeTMP(confirmGO.transform, "Label", "CONFIRM", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        PlaceRect(confirmGO, anchor(0f, 0f), anchor(0f, 0f), v2(20f, 24f), v2(200f, 56f));
+
+        // Cancel button — bottom right
+        GameObject cancelGO;
+        if (btnPrefab != null)
+        {
+            cancelGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            cancelGO.name = "CancelButton";
+            var mb = cancelGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CANCEL";
+        }
+        else
+        {
+            cancelGO = MakeImage(card.transform, "CancelButton", BtnNormal);
+            cancelGO.AddComponent<Button>();
+            var lbl = MakeTMP(cancelGO.transform, "Label", "CANCEL", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        PlaceRect(cancelGO, anchor(1f, 0f), anchor(1f, 0f), v2(-220f, 24f), v2(200f, 56f));
+
+        return panel;
+    }
+
+    // -----------------------------------------------------------------------
     // Serialised field wiring
     // -----------------------------------------------------------------------
 
@@ -2004,7 +2191,8 @@ public static class GameSceneSetup
                                 GameObject background,
                                 GameObject header, GameObject body,
                                 GameObject navBar, GameObject poiDetail,
-                                GameObject combatView)
+                                GameObject combatView,
+                                GameObject recruitmentPanel, GameObject levelUpPanel)
     {
         var so = new SerializedObject(ctrl);
 
@@ -2211,7 +2399,13 @@ public static class GameSceneSetup
         // Crew view
         var crewViewGO = body.transform.Find("CrewView")?.gameObject;
         if (crewViewGO != null)
+        {
             so.FindProperty("crewViewPanel").objectReferenceValue = crewViewGO;
+            var cvcComp = crewViewGO.GetComponent<CrewViewController>();
+            so.FindProperty("crewViewController").objectReferenceValue = cvcComp;
+            if (cvcComp == null)
+                Debug.LogWarning("[GameSceneSetup] CrewViewController component not found on CrewView.");
+        }
         else
             Debug.LogWarning("[GameSceneSetup] CrewView not found under Body.");
 
@@ -2486,6 +2680,74 @@ public static class GameSceneSetup
                 randomDbgTf.GetComponentInChildren<Button>(true);
         else
             Debug.LogWarning("[GameSceneSetup] RandomCombatButton not found in Header.");
+
+        // ── Recruitment panel ─────────────────────────────────────────────
+        if (recruitmentPanel != null)
+        {
+            var rc = recruitmentPanel.GetComponent<RecruitmentController>();
+            so.FindProperty("recruitmentController").objectReferenceValue = rc;
+
+            if (rc != null)
+            {
+                var rcSo = new SerializedObject(rc);
+                rcSo.FindProperty("panelCanvasGroup").objectReferenceValue =
+                    recruitmentPanel.GetComponent<CanvasGroup>();
+                rcSo.FindProperty("stationNameText").objectReferenceValue =
+                    Find<TMP_Text>(recruitmentPanel, "Card/StationNameText");
+                rcSo.FindProperty("candidatesRow").objectReferenceValue =
+                    recruitmentPanel.transform.Find("Card/CandidatesRow");
+                var closeRecruitTf = recruitmentPanel.transform.Find("Card/CloseButton");
+                rcSo.FindProperty("closeButton").objectReferenceValue =
+                    closeRecruitTf?.GetComponentInChildren<Button>(true);
+                rcSo.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning("[GameSceneSetup] RecruitmentController not found on RecruitmentPanel.");
+        }
+        else Debug.LogWarning("[GameSceneSetup] RecruitmentPanel is null.");
+
+        // ── Level Up panel ────────────────────────────────────────────────
+        if (levelUpPanel != null)
+        {
+            var luc = levelUpPanel.GetComponent<LevelUpController>();
+
+            if (luc != null)
+            {
+                var lucSo = new SerializedObject(luc);
+                lucSo.FindProperty("panelCanvasGroup").objectReferenceValue =
+                    levelUpPanel.GetComponent<CanvasGroup>();
+                lucSo.FindProperty("crewNameText").objectReferenceValue =
+                    Find<TMP_Text>(levelUpPanel, "Card/CrewNameText");
+                lucSo.FindProperty("pointsText").objectReferenceValue =
+                    Find<TMP_Text>(levelUpPanel, "Card/PointsText");
+                lucSo.FindProperty("skillsContainer").objectReferenceValue =
+                    levelUpPanel.transform.Find("Card/SkillsContainer");
+                var confirmTf = levelUpPanel.transform.Find("Card/ConfirmButton");
+                lucSo.FindProperty("confirmButton").objectReferenceValue =
+                    confirmTf?.GetComponentInChildren<Button>(true);
+                var cancelTf = levelUpPanel.transform.Find("Card/CancelButton");
+                lucSo.FindProperty("cancelButton").objectReferenceValue =
+                    cancelTf?.GetComponentInChildren<Button>(true);
+                lucSo.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning("[GameSceneSetup] LevelUpController not found on LevelUpPanel.");
+
+            // Wire LevelUpController onto CrewViewController (found inside body/CrewView)
+            var crewViewGO2 = body.transform.Find("CrewView")?.gameObject;
+            if (crewViewGO2 != null)
+            {
+                var cvc = crewViewGO2.GetComponent<CrewViewController>();
+                if (cvc != null)
+                {
+                    var cvcSo2 = new SerializedObject(cvc);
+                    cvcSo2.FindProperty("levelUpController").objectReferenceValue =
+                        levelUpPanel.GetComponent<LevelUpController>();
+                    cvcSo2.ApplyModifiedProperties();
+                }
+                else Debug.LogWarning("[GameSceneSetup] CrewViewController not found on CrewView.");
+            }
+            else Debug.LogWarning("[GameSceneSetup] CrewView not found under Body (level-up wiring).");
+        }
+        else Debug.LogWarning("[GameSceneSetup] LevelUpPanel is null.");
 
         so.ApplyModifiedProperties();
     }
