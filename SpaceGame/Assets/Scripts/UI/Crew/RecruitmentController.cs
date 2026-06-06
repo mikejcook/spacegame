@@ -98,14 +98,15 @@ public class RecruitmentController : MonoBehaviour
 
         int count = Random.Range(2, 4); // 2 or 3
 
-        // Roles available for recruitment
+        // Specialties used to shape skill distribution for recruitable candidates
         string[] roles =
         {
             Constants.Crew.Roles.Pilot,
             Constants.Crew.Roles.Engineer,
             Constants.Crew.Roles.Scientist,
-            Constants.Crew.Roles.WeaponsOfficer,
-            Constants.Crew.Roles.Captain,
+            Constants.Crew.Roles.Gunner,
+            Constants.Crew.Roles.Doctor,
+            Constants.Crew.Roles.Soldier,
         };
 
         // Pick 'count' distinct roles at random
@@ -400,11 +401,14 @@ public class RecruitmentController : MonoBehaviour
 
     private static string FormatRole(string role) => role switch
     {
-        Constants.Crew.Roles.Captain        => "Captain",
-        Constants.Crew.Roles.Pilot          => "Pilot",
-        Constants.Crew.Roles.Engineer       => "Engineer",
-        Constants.Crew.Roles.Scientist      => "Scientist",
-        Constants.Crew.Roles.WeaponsOfficer => "Weapons Officer",
-        _                                   => role,
+        Constants.Crew.Roles.Captain   => "Captain",
+        Constants.Crew.Roles.Pilot     => "Pilot",
+        Constants.Crew.Roles.Engineer  => "Engineer",
+        Constants.Crew.Roles.Scientist => "Scientist",
+        Constants.Crew.Roles.Gunner    => "Gunner",
+        Constants.Crew.Roles.Doctor    => "Doctor",
+        Constants.Crew.Roles.Soldier   => "Soldier",
+        _ when string.IsNullOrEmpty(role) => "Unassigned",
+        _                              => role,
     };
 }

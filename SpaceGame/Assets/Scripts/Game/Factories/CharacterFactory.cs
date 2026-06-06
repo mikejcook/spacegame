@@ -4,12 +4,13 @@ using UnityEngine;
 /// <summary>
 /// Factory for creating Character instances with appropriate starting stats.
 ///
-/// Skills: Command, Piloting, Beam Weapons, Torpedo Weapons, Science, Engineering.
+/// Skills: Athletics, Combat, Command, Engineering, Gunnery, Medicine, Perception, Piloting, Science.
 ///
 /// Allocation rules for procedurally generated crew:
 ///   • Total skill points = level × 3 (Constants.Skills.PointsPerLevel).
 ///   • No single skill may exceed level + 1 ranks.
-///   • Beam Weapons and Torpedo Weapons tend to go together.
+///   • Recruited crew have Role = "" (unassigned) — the role parameter is used only
+///     to guide skill distribution, not stored on the character.
 ///   • AvailableSkillPoints is 0 — all points are pre-allocated at creation.
 /// </summary>
 public static class CharacterFactory
@@ -43,6 +44,7 @@ public static class CharacterFactory
         {
             [Constants.Skills.Command]  = 2,
             [Constants.Skills.Piloting] = 1,
+            [Constants.Skills.Gunnery]  = 1,
         };
 
         return captain;
@@ -68,8 +70,9 @@ public static class CharacterFactory
 
         pilot.Skills = new Dictionary<string, int>
         {
-            [Constants.Skills.Piloting] = 2,
-            [Constants.Skills.Command]  = 1,
+            [Constants.Skills.Piloting]   = 2,
+            [Constants.Skills.Command]    = 1,
+            [Constants.Skills.Perception] = 1,
         };
 
         return pilot;
@@ -97,6 +100,7 @@ public static class CharacterFactory
         {
             [Constants.Skills.Engineering] = 2,
             [Constants.Skills.Science]     = 1,
+            [Constants.Skills.Perception]  = 1,
         };
 
         return engineer;
@@ -107,11 +111,13 @@ public static class CharacterFactory
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Generates a recruitable crew member for the given role at the given level.
+    /// Generates a recruitable crew member.
+    /// The <paramref name="specialty"/> guides skill allocation but is NOT stored
+    /// as the character's Role — recruited crew are unassigned (Role = "").
     /// Skill points = level × PointsPerLevel, capped at level + 1 per skill.
     /// AvailableSkillPoints is 0 (all pre-allocated).
     /// </summary>
-    public static Character CreateRandomCrewMember(string role, int level = 1)
+    public static Character CreateRandomCrewMember(string specialty, int level = 1)
     {
         level = Mathf.Max(1, level);
         var generated = NameGenerator.Generate();
@@ -121,16 +127,16 @@ public static class CharacterFactory
             FirstName            = generated.firstName,
             LastName             = generated.lastName,
             Gender               = generated.gender,
-            Role                 = role,
+            Role                 = "",   // unassigned — player places them via Assignments screen
             Level                = level,
             MaxHealth            = 8 + (level * 2),
             CurrentHealth        = 8 + (level * 2),
-            Background           = GenerateBackground(role),
+            Background           = GenerateBackground(specialty),
             Homeworld            = GenerateHomeworld(),
-            AvailableSkillPoints = 0,  // all points pre-spent below
+            AvailableSkillPoints = 0,
         };
 
-        crew.Skills = AllocateSkillsForRole(role, level);
+        crew.Skills = AllocateSkillsForRole(specialty, level);
         return crew;
     }
 
@@ -139,12 +145,10 @@ public static class CharacterFactory
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Distributes level × PointsPerLevel skill points:
-    ///   1. Assign primary and secondary skills based on role (weapons officer gets
-    ///      both Beam Weapons and Torpedo Weapons weighted equally).
-    ///   2. Scatter remaining points randomly, respecting the per-skill cap (level+1).
+    /// Distributes level × PointsPerLevel skill points guided by a specialty string.
+    /// ~50 % goes to the primary skill, ~30 % to the secondary; remainder scatters randomly.
     /// </summary>
-    private static Dictionary<string, int> AllocateSkillsForRole(string role, int level)
+    private static Dictionary<string, int> AllocateSkillsForRole(string specialty, int level)
     {
         int totalPoints = level * Constants.Skills.PointsPerLevel;
         int cap         = Constants.Skills.MaxRankForLevel(level);
@@ -153,14 +157,12 @@ public static class CharacterFactory
         foreach (var s in Constants.Skills.All)
             skills[s] = 0;
 
-        // Primary and secondary skill for each role
         string primary, secondary;
-
-        switch (role)
+        switch (specialty)
         {
             case Constants.Crew.Roles.Pilot:
                 primary   = Constants.Skills.Piloting;
-                secondary = Constants.Skills.Command;
+                secondary = Constants.Skills.Perception;
                 break;
             case Constants.Crew.Roles.Engineer:
                 primary   = Constants.Skills.Engineering;
@@ -170,9 +172,17 @@ public static class CharacterFactory
                 primary   = Constants.Skills.Science;
                 secondary = Constants.Skills.Engineering;
                 break;
-            case Constants.Crew.Roles.WeaponsOfficer:
-                primary   = Constants.Skills.BeamWeapons;
-                secondary = Constants.Skills.TorpedoWeapons;
+            case Constants.Crew.Roles.Gunner:
+                primary   = Constants.Skills.Gunnery;
+                secondary = Constants.Skills.Combat;
+                break;
+            case Constants.Crew.Roles.Doctor:
+                primary   = Constants.Skills.Medicine;
+                secondary = Constants.Skills.Science;
+                break;
+            case Constants.Crew.Roles.Soldier:
+                primary   = Constants.Skills.Combat;
+                secondary = Constants.Skills.Athletics;
                 break;
             case Constants.Crew.Roles.Captain:
             default:
@@ -181,44 +191,25 @@ public static class CharacterFactory
                 break;
         }
 
-        // Spend ~50 % on primary, ~30 % on secondary (both capped)
         int primaryPoints   = Mathf.Min(cap, Mathf.CeilToInt(totalPoints * 0.50f));
         int secondaryPoints = Mathf.Min(cap, Mathf.CeilToInt(totalPoints * 0.30f));
-
         skills[primary]   = primaryPoints;
         skills[secondary] = secondaryPoints;
         int spent         = primaryPoints + secondaryPoints;
 
-        // Weapons officer bonus: try to equalise the two weapon skills
-        if (role == Constants.Crew.Roles.WeaponsOfficer && spent < totalPoints)
-        {
-            int torpCap  = cap - skills[Constants.Skills.TorpedoWeapons];
-            int bonus    = Mathf.Min(torpCap, totalPoints - spent);
-            if (bonus > 0)
-            {
-                skills[Constants.Skills.TorpedoWeapons] += bonus;
-                spent += bonus;
-            }
-        }
-
-        // Scatter remainder across all skills respecting the cap
+        // Scatter remainder
         int attempts = 0;
         while (spent < totalPoints && attempts < 1000)
         {
             attempts++;
             string pick = Constants.Skills.All[Random.Range(0, Constants.Skills.All.Length)];
-            if (skills[pick] < cap)
-            {
-                skills[pick]++;
-                spent++;
-            }
+            if (skills[pick] < cap) { skills[pick]++; spent++; }
         }
 
-        // Strip zero-rank entries so the UI only shows invested skills
+        // Strip zeros so the UI only shows invested skills
         var result = new Dictionary<string, int>();
         foreach (var kv in skills)
             if (kv.Value > 0) result[kv.Key] = kv.Value;
-
         return result;
     }
 
@@ -235,13 +226,15 @@ public static class CharacterFactory
     private static string GenerateHomeworld()
         => Homeworlds[Random.Range(0, Homeworlds.Length)];
 
-    private static string GenerateBackground(string role) => role switch
+    private static string GenerateBackground(string specialty) => specialty switch
     {
-        Constants.Crew.Roles.Pilot          => "Veteran pilot, logs spanning a dozen systems.",
-        Constants.Crew.Roles.Engineer       => "Ship engineer with a knack for coaxing power out of junk.",
-        Constants.Crew.Roles.Scientist      => "Researcher chasing discoveries beyond the frontier.",
-        Constants.Crew.Roles.WeaponsOfficer => "Former military, expert in ship-to-ship combat.",
-        Constants.Crew.Roles.Captain        => "Ex-officer who decided command meant more than a rank.",
-        _                                   => "A capable spacer looking for steady work."
+        Constants.Crew.Roles.Pilot      => "Veteran pilot, logs spanning a dozen systems.",
+        Constants.Crew.Roles.Engineer   => "Ship engineer with a knack for coaxing power out of junk.",
+        Constants.Crew.Roles.Scientist  => "Researcher chasing discoveries beyond the frontier.",
+        Constants.Crew.Roles.Gunner     => "Former military, expert in ship-to-ship weapons.",
+        Constants.Crew.Roles.Doctor     => "Field medic who has patched up crews in the worst conditions.",
+        Constants.Crew.Roles.Soldier    => "Hardened veteran looking for a crew worth fighting for.",
+        Constants.Crew.Roles.Captain    => "Ex-officer who decided command meant more than a rank.",
+        _                               => "A capable spacer looking for steady work."
     };
 }

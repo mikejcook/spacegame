@@ -96,9 +96,9 @@ public static class FeatRegistry
                 Id          = "beam_weapon_specialist",
                 Name        = "Beam Weapon Specialist",
                 Description = "+4 to attack rolls with beam weapons. Beam attacks may ignore 2 points of enemy shielding.",
-                RequiredSkillRanks = new() { [Constants.Skills.BeamWeapons] = 3 },
+                RequiredSkillRanks = new() { [Constants.Skills.Gunnery] = 3 },
                 RequiredLevel      = 3,
-                AvailableToRoles   = new() { Constants.Crew.Roles.WeaponsOfficer, Constants.Crew.Roles.Captain },
+                AvailableToRoles   = new() { Constants.Crew.Roles.Gunner, Constants.Crew.Roles.Captain },
                 EffectType         = "beam_weapon_bonus",
                 EffectMagnitude    = 4
             },
@@ -175,7 +175,7 @@ public static class FeatRegistry
                 Id          = "quick_draw",
                 Name        = "Quick Draw",
                 Description = "Always acts first in personal combat. +2 to Combat on the opening round.",
-                RequiredSkillRanks = new() { [Constants.Skills.BeamWeapons] = 2 },
+                RequiredSkillRanks = new() { [Constants.Skills.Combat] = 2 },
                 RequiredLevel = 2,
                 EffectType    = "initiative_bonus",
                 EffectMagnitude = 2

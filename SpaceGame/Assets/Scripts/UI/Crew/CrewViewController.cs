@@ -6,15 +6,17 @@ using TMPro;
 /// <summary>
 /// Runtime controller for the Crew View panel.
 ///
-/// ── Normal mode layout ───────────────────────────────────────────────────
+/// ── Tab layout ────────────────────────────────────────────────────────────
 ///
 ///   CrewView
-///   ├─ CrewListPanel               ← left 38 % — scrollable crew buttons
-///   │  └─ Scroll View/Viewport/Content (VerticalLayoutGroup)
-///   └─ CrewDetailPanel
-///      ├─ PortraitImage  ├─ CrewNameText  ├─ LevelText
-///      ├─ CrewRoleText   ├─ XPLabel       ├─ XPBar  ├─ XPText
-///      ├─ SkillsDivider  ├─ SkillsHeader  └─ SkillsContainer
+///   ├─ CrewTabBar                  ← 52 px strip at top; two tab buttons
+///   │  ├─ CrewListTabButton
+///   │  └─ AssignmentsTabButton
+///   ├─ CrewContent                 ← list + detail (hidden when Assignments tab active)
+///   │  ├─ CrewListPanel            ← left 38 % — scrollable crew buttons
+///   │  ├─ Divider
+///   │  └─ CrewDetailPanel
+///   └─ CrewAssignmentPanel         ← assignment slots view (wired to CrewAssignmentViewController)
 ///
 /// ── Recruitment mode ─────────────────────────────────────────────────────
 ///   Activated by SystemViewController when arriving at a space station.
@@ -27,7 +29,11 @@ public class CrewViewController : MonoBehaviour
 {
     // ── Wired by GameSceneSetup ──────────────────────────────────────────────
 
-    [SerializeField] private LevelUpController levelUpController;
+    [SerializeField] private LevelUpController          levelUpController;
+    [SerializeField] private Button                     crewListTabButton;
+    [SerializeField] private Button                     assignmentsTabButton;
+    [SerializeField] private GameObject                 crewContent;           // list + detail container
+    [SerializeField] private CrewAssignmentViewController assignmentViewController;
 
     // ── Resolved at Start() — no editor wiring needed ───────────────────────
 
@@ -77,6 +83,9 @@ public class CrewViewController : MonoBehaviour
     private void Start()
     {
         ResolveReferences();
+        crewListTabButton?.onClick.AddListener(ShowCrewList);
+        assignmentsTabButton?.onClick.AddListener(ShowAssignments);
+        ShowCrewList();  // default to crew list tab
     }
 
     private void OnEnable()
@@ -99,15 +108,17 @@ public class CrewViewController : MonoBehaviour
     private void ResolveReferences()
     {
         _resolved = true;
-        var t = transform;
+        // Panels now live under CrewContent (a child added by GameSceneSetup for tab switching).
+        // Fall back to searching directly on transform for backwards compatibility.
+        var root = crewContent != null ? crewContent.transform : transform;
 
-        var contentTf = t.Find("CrewListPanel/Scroll View/Viewport/Content");
+        var contentTf = root.Find("CrewListPanel/Scroll View/Viewport/Content");
         if (contentTf != null)
             _crewListContent = contentTf;
         else
             Debug.LogWarning("[CrewViewController] Could not find CrewListPanel/Scroll View/Viewport/Content");
 
-        var detail = t.Find("CrewDetailPanel");
+        var detail = root.Find("CrewDetailPanel");
         if (detail == null) { Debug.LogWarning("[CrewViewController] Could not find CrewDetailPanel"); return; }
 
         _detailPortrait  = detail.Find("PortraitImage")?.GetComponent<Image>();
@@ -133,6 +144,24 @@ public class CrewViewController : MonoBehaviour
         GenerateCandidates(captainLevel);
         OnHeaderTextChanged?.Invoke($"{stationName} — Crew Recruitment");
         Populate();
+    }
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+
+    public void ShowCrewList()
+    {
+        if (crewContent != null)             crewContent.SetActive(true);
+        if (assignmentViewController != null) assignmentViewController.gameObject.SetActive(false);
+    }
+
+    public void ShowAssignments()
+    {
+        if (crewContent != null)             crewContent.SetActive(false);
+        if (assignmentViewController != null)
+        {
+            assignmentViewController.gameObject.SetActive(true);
+            assignmentViewController.Populate();
+        }
     }
 
     public void Populate()
@@ -189,17 +218,18 @@ public class CrewViewController : MonoBehaviour
     {
         _candidates.Clear();
 
-        string[] roles =
+        // Specialties guide skill distribution; generated characters are unassigned (Role = "")
+        string[] specialties =
         {
             Constants.Crew.Roles.Pilot,
             Constants.Crew.Roles.Engineer,
             Constants.Crew.Roles.Scientist,
-            Constants.Crew.Roles.WeaponsOfficer,
-            Constants.Crew.Roles.Captain,
+            Constants.Crew.Roles.Gunner,
+            Constants.Crew.Roles.Doctor,
+            Constants.Crew.Roles.Soldier,
         };
 
-        // Shuffle roles
-        var shuffled = new List<string>(roles);
+        var shuffled = new List<string>(specialties);
         for (int i = shuffled.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
@@ -631,15 +661,16 @@ public class CrewViewController : MonoBehaviour
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static string FormatRole(string role) => role switch
+    public static string FormatRole(string role) => role switch
     {
-        Constants.Crew.Roles.Captain        => "Captain",
-        Constants.Crew.Roles.Pilot          => "Pilot",
-        Constants.Crew.Roles.Engineer       => "Engineer",
-        Constants.Crew.Roles.Scientist      => "Scientist",
-        Constants.Crew.Roles.WeaponsOfficer => "Weapons Officer",
-        Constants.Crew.Roles.Doctor         => "Doctor",
-        Constants.Crew.Roles.Soldier        => "Soldier",
-        _                                   => role,
+        Constants.Crew.Roles.Captain   => "Captain",
+        Constants.Crew.Roles.Pilot     => "Pilot",
+        Constants.Crew.Roles.Engineer  => "Engineer",
+        Constants.Crew.Roles.Scientist => "Scientist",
+        Constants.Crew.Roles.Gunner    => "Gunner",
+        Constants.Crew.Roles.Doctor    => "Doctor",
+        Constants.Crew.Roles.Soldier   => "Soldier",
+        _ when string.IsNullOrEmpty(role) => "Unassigned",
+        _                              => role,
     };
 }

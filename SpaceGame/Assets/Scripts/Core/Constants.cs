@@ -36,12 +36,15 @@ public static class Constants
 
     public static class Skills
     {
-        public const string Command        = "Command";
-        public const string Piloting       = "Piloting";
-        public const string BeamWeapons    = "Beam Weapons";
-        public const string TorpedoWeapons = "Torpedo Weapons";
-        public const string Science        = "Science";
-        public const string Engineering    = "Engineering";
+        public const string Athletics   = "Athletics";
+        public const string Combat      = "Combat";
+        public const string Command     = "Command";
+        public const string Engineering = "Engineering";
+        public const string Gunnery     = "Gunnery";
+        public const string Medicine    = "Medicine";
+        public const string Perception  = "Perception";
+        public const string Piloting    = "Piloting";
+        public const string Science     = "Science";
 
         /// <summary>Skill points granted each time a character gains a level.</summary>
         public const int PointsPerLevel = 3;
@@ -51,7 +54,7 @@ public static class Constants
 
         public static readonly string[] All =
         {
-            Command, Piloting, BeamWeapons, TorpedoWeapons, Science, Engineering
+            Athletics, Combat, Command, Engineering, Gunnery, Medicine, Perception, Piloting, Science
         };
     }
 
@@ -59,14 +62,24 @@ public static class Constants
     {
         public static class Roles
         {
-            public const string Captain        = "Captain";
-            public const string Pilot          = "Pilot";
-            public const string Engineer       = "Engineer";
-            public const string Scientist      = "Scientist";
-            public const string WeaponsOfficer = "WeaponsOfficer";
-            public const string Doctor         = "Doctor";
-            public const string Soldier        = "Soldier";
+            public const string Captain   = "Captain";
+            public const string Pilot     = "Pilot";
+            public const string Engineer  = "Engineer";
+            public const string Scientist = "Scientist";
+            public const string Gunner    = "Gunner";
+            public const string Doctor    = "Doctor";
+            public const string Soldier   = "Soldier";
         }
+
+        /// <summary>
+        /// Ordered assignment slots (excluding Captain, who is always in the centre).
+        /// First three go in the left column, last three in the right column.
+        /// </summary>
+        public static readonly string[] AssignmentSlots =
+        {
+            Roles.Pilot, Roles.Engineer, Roles.Scientist,   // left column
+            Roles.Gunner, Roles.Doctor,  Roles.Soldier,     // right column
+        };
     }
 
     public static class Ship

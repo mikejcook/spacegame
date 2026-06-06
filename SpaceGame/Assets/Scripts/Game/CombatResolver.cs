@@ -408,9 +408,8 @@ public static class CombatResolver
 
     private static int GetPlayerWeaponSkill(CombatState state, bool isBeam)
     {
-        string skillName = isBeam ? Constants.Skills.BeamWeapons : Constants.Skills.TorpedoWeapons;
-        var    officer   = state.WeaponsOfficer ?? state.Captain;
-        return officer?.GetSkillRank(skillName) ?? 0;
+        var gunner = state.Gunner ?? state.Captain;
+        return gunner?.GetSkillRank(Constants.Skills.Gunnery) ?? 0;
     }
 
     private static int GetPlayerPilotSkill(CombatState state)

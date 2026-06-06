@@ -98,7 +98,7 @@ public static class DiceRoller
         {
             string skill = checkType switch
             {
-                "attack"     => Constants.Skills.BeamWeapons,
+                "attack"     => Constants.Skills.Gunnery,
                 "defense"    => Constants.Skills.Piloting,
                 "sensors"    => Constants.Skills.Science,
                 "navigation" => Constants.Skills.Piloting,

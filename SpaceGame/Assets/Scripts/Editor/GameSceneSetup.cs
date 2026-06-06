@@ -1057,6 +1057,27 @@ public static class GameSceneSetup
     }
 
     // ── Crew view — full body area, starts hidden ────────────────────────────
+    //
+    //   CrewView
+    //   ├─ CrewViewBackground
+    //   ├─ CrewTabBar              (52 px top strip — two tab buttons)
+    //   ├─ CrewContent             (crew list + detail; hidden when Assignments tab active)
+    //   │  ├─ CrewListPanel
+    //   │  ├─ Divider
+    //   │  └─ CrewDetailPanel
+    //   └─ CrewAssignmentPanel     (hidden by default; CrewAssignmentViewController)
+    //      ├─ AssignmentBackground
+    //      ├─ LeftSlotColumn       (Pilot / Engineer / Scientist)
+    //      ├─ CaptainSlot          (centre — always filled)
+    //      ├─ RightSlotColumn      (Gunner / Doctor / Soldier)
+    //      └─ AssignmentPickerPanel (CanvasGroup overlay; lists crew for a chosen slot)
+
+    const float TabBarHeight   = 52f;
+    const float SlotWidth      = 140f;
+    const float SlotHeight     = 180f;
+    const float SlotSpacing    = 16f;
+    const float ColX           = 0.12f;   // left column centre (normalised)
+    const float ColXRight      = 0.88f;   // right column centre (normalised)
 
     static GameObject BuildCrewView(Transform parent)
     {
@@ -1069,88 +1090,97 @@ public static class GameSceneSetup
         var bg = MakeImage(crewView.transform, "CrewViewBackground", new Color(0.03f, 0.05f, 0.12f, 1f));
         Stretch(bg);
 
-        // ── Left panel — crew list (38 % width, full height, with padding) ─
-        //   offsetMin.x=0, offsetMax.x = -(1920*0.62)  →  anchor (0,0)-(0.38,1)
-        var listPanel = MakeImage(crewView.transform, "CrewListPanel", new Color(0.04f, 0.07f, 0.13f, 1f));
+        // ── Tab bar — 52 px at the top ───────────────────────────────────
+        var tabBar = MakeImage(crewView.transform, "CrewTabBar", new Color(0.04f, 0.08f, 0.16f, 1f));
+        {
+            var rt = tabBar.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta        = new Vector2(0f, TabBarHeight);
+        }
+
+        var tabBarHLG = tabBar.AddComponent<HorizontalLayoutGroup>();
+        tabBarHLG.childControlWidth      = true;
+        tabBarHLG.childControlHeight     = true;
+        tabBarHLG.childForceExpandWidth  = true;
+        tabBarHLG.childForceExpandHeight = true;
+        tabBarHLG.spacing                = 0f;
+        tabBarHLG.padding                = new RectOffset(0, 0, 0, 0);
+
+        var listTabBtn  = BuildTabButton(tabBar.transform, "CrewListTabButton",  "CREW LIST");
+        var assignTabBtn = BuildTabButton(tabBar.transform, "AssignmentsTabButton", "ASSIGNMENTS");
+
+        // Tab divider line at bottom
+        var tabLine = MakeImage(tabBar.transform, "TabLine", new Color(0.20f, 0.35f, 0.50f, 0.55f));
+        {
+            var rt = tabLine.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.sizeDelta = new Vector2(0f, 2f);
+            rt.anchoredPosition = Vector2.zero;
+        }
+
+        // ── CrewContent — list + detail, sits below tab bar ──────────────
+        var crewContent = MakeUIGO("CrewContent", crewView.transform);
+        {
+            var rt = crewContent.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(0f, 0f);
+            rt.offsetMax = new Vector2(0f, -TabBarHeight);
+        }
+
+        // Left panel — crew list (38 % width)
+        var listPanel = MakeImage(crewContent.transform, "CrewListPanel", new Color(0.04f, 0.07f, 0.13f, 1f));
         PlaceRect(listPanel, anchor(0f, 0f), anchor(0.38f, 1f), v2(0f, 0f), v2(0f, 0f));
 
-        // The panel is pinned to the screen's left edge, so in landscape the notch
-        // overlaps it. SHRINK it away from the notch rather than shifting it: only
-        // the left edge moves inward while the right edge holds at the divider, so
-        // the list/buttons narrow to stop at the start of the detail panel instead
-        // of sliding their right edge into it. Body's inset only covers the bottom
-        // edge, so the left edge must be handled here.
         var listSafeInset   = listPanel.AddComponent<SafeAreaInset>();
         var listSafeInsetSo = new SerializedObject(listSafeInset);
-        listSafeInsetSo.FindProperty("_left").boolValue = true;
+        listSafeInsetSo.FindProperty("_left").boolValue               = true;
         listSafeInsetSo.FindProperty("_shrinkTowardSafeArea").boolValue = true;
         listSafeInsetSo.ApplyModifiedProperties();
 
-        // Scroll View inside the list panel
-        var scrollGO   = MakeUIGO("Scroll View", listPanel.transform);
+        var scrollGO = MakeUIGO("Scroll View", listPanel.transform);
         Stretch(scrollGO);
-
         var sr = scrollGO.AddComponent<ScrollRect>();
-        sr.horizontal         = false;
-        sr.vertical           = true;
-        sr.scrollSensitivity  = 30f;
-        sr.movementType       = ScrollRect.MovementType.Clamped;
+        sr.horizontal = false; sr.vertical = true;
+        sr.scrollSensitivity = 30f;
+        sr.movementType = ScrollRect.MovementType.Clamped;
 
-        // Viewport (RectMask2D clips content)
         var viewport = MakeUIGO("Viewport", scrollGO.transform);
         Stretch(viewport);
         viewport.AddComponent<RectMask2D>();
         sr.viewport = viewport.GetComponent<RectTransform>();
 
-        // Content — VerticalLayoutGroup, grows to fit crew rows
-        var content = MakeUIGO("Content", viewport.transform);
+        var content   = MakeUIGO("Content", viewport.transform);
         var contentRT = content.GetComponent<RectTransform>();
-        contentRT.anchorMin        = new Vector2(0f, 1f);
-        contentRT.anchorMax        = new Vector2(1f, 1f);
-        contentRT.pivot            = new Vector2(0.5f, 1f);
-        contentRT.anchoredPosition = Vector2.zero;
-        contentRT.sizeDelta        = Vector2.zero;
-
+        contentRT.anchorMin = new Vector2(0f, 1f); contentRT.anchorMax = new Vector2(1f, 1f);
+        contentRT.pivot = new Vector2(0.5f, 1f);
+        contentRT.anchoredPosition = Vector2.zero; contentRT.sizeDelta = Vector2.zero;
         var vlg = content.AddComponent<VerticalLayoutGroup>();
-        vlg.padding                = new RectOffset(8, 8, 8, 8);
-        vlg.spacing                = 6f;
-        vlg.childControlWidth      = true;
-        vlg.childControlHeight     = true;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-
+        vlg.padding = new RectOffset(8, 8, 8, 8); vlg.spacing = 6f;
+        vlg.childControlWidth = vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
         var csf = content.AddComponent<ContentSizeFitter>();
         csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
-
         sr.content = contentRT;
 
-        // ── Vertical divider between list and detail ──────────────────────
-        var divider = MakeImage(crewView.transform, "Divider", new Color(0.20f, 0.35f, 0.50f, 0.55f));
+        var divider = MakeImage(crewContent.transform, "Divider", new Color(0.20f, 0.35f, 0.50f, 0.55f));
         PlaceRect(divider, anchor(0.38f, 0f), anchor(0.38f, 1f), v2(0f, 0f), v2(2f, 0f));
 
-        // ── Right panel — crew detail ─────────────────────────────────────
-        var detailPanel = MakeImage(crewView.transform, "CrewDetailPanel", new Color(0.04f, 0.07f, 0.13f, 0.60f));
+        var detailPanel = MakeImage(crewContent.transform, "CrewDetailPanel", new Color(0.04f, 0.07f, 0.13f, 0.60f));
         PlaceRect(detailPanel, anchor(0.38f, 0f), anchor(1f, 1f), v2(4f, 0f), v2(0f, 0f));
 
-        // ── Detail panel layout ───────────────────────────────────────────────
-        //
-        //   Portrait (24,24) 160×160        │ Name (bold, 42pt)    │ Level (32pt, right)
-        //                                   │ Role (italic, 30pt)  │
-        //                                   │ EXPERIENCE (22pt)    │
-        //                                   │ [== XP bar ========] │
-        //   ─────────────────────────────────────────────────────────────────
-        //   SKILLS header
-        //   [skills container fills remaining height]
-
-        // Portrait — top-left, 160×160. Pivot (0,1) so anchoredPosition = top-left corner.
+        // Detail panel internals (identical to before)
         var portrait = MakeImage(detailPanel.transform, "PortraitImage", AccentCyan);
         PlaceRect(portrait, anchor(0f, 1f), anchor(0f, 1f), v2(24f, -24f), v2(160f, 160f));
         portrait.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
         portrait.GetComponent<Image>().preserveAspect = true;
 
-        // Name — top-right area, leaving 200 px on the far right for the level badge.
-        // TopStretch(go, leftInset, topInset, rightInset, height)
         var nameText = MakeTMP(detailPanel.transform, "CrewNameText", "Crew Member", 42, TextWhite);
         TopStretch(nameText, 204f, 24f, 210f, 52f);
         nameText.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Left;
@@ -1158,87 +1188,412 @@ public static class GameSceneSetup
         nameText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         nameText.GetComponent<TextMeshProUGUI>().overflowMode     = TextOverflowModes.Ellipsis;
 
-        // Level badge — top-right corner, same row as the name.
         var levelText = MakeTMP(detailPanel.transform, "LevelText", "Level 1", 28, AccentCyan);
-        {
-            var rt = levelText.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot                   = new Vector2(1f, 1f);
-            rt.anchoredPosition        = new Vector2(-24f, -24f);
-            rt.sizeDelta               = new Vector2(186f, 52f);
-        }
-        levelText.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Right;
-        levelText.GetComponent<TextMeshProUGUI>().fontStyle        = FontStyles.Bold;
+        { var rt = levelText.GetComponent<RectTransform>();
+          rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f); rt.pivot = new Vector2(1f, 1f);
+          rt.anchoredPosition = new Vector2(-24f, -24f); rt.sizeDelta = new Vector2(186f, 52f); }
+        levelText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Right;
+        levelText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
         levelText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
-        // Role — below name, same horizontal span as name.
         var roleText = MakeTMP(detailPanel.transform, "CrewRoleText", "Role", 30, AccentCyan);
         TopStretch(roleText, 204f, 82f, 24f, 36f);
         roleText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
         roleText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
 
-        // XP label — below role, right of portrait.
         var xpLabel = MakeTMP(detailPanel.transform, "XPLabel", "EXPERIENCE", 20, TextSubtle);
         TopStretch(xpLabel, 204f, 124f, 24f, 24f);
         xpLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
 
-        // XP bar — below XP label, fills to portrait bottom.
         var xpBarGO = MakeUIGO("XPBar", detailPanel.transform);
         TopStretch(xpBarGO, 204f, 152f, 24f, 28f);
         var slider = xpBarGO.AddComponent<Slider>();
-        slider.interactable = false;
-        slider.minValue     = 0f;
-        slider.maxValue     = 100f;
-        slider.value        = 0f;
-        slider.direction    = Slider.Direction.LeftToRight;
-
+        slider.interactable = false; slider.minValue = 0f; slider.maxValue = 100f;
+        slider.value = 0f; slider.direction = Slider.Direction.LeftToRight;
         var xpBg = MakeImage(xpBarGO.transform, "Background", new Color(0.12f, 0.20f, 0.32f, 1f));
-        Stretch(xpBg);
-        slider.targetGraphic = xpBg.GetComponent<Image>();
-
+        Stretch(xpBg); slider.targetGraphic = xpBg.GetComponent<Image>();
         var fillArea = MakeUIGO("Fill Area", xpBarGO.transform);
         Stretch(fillArea);
         fillArea.GetComponent<RectTransform>().offsetMin = Vector2.zero;
         fillArea.GetComponent<RectTransform>().offsetMax = Vector2.zero;
-
         var fill = MakeImage(fillArea.transform, "Fill", AccentCyan);
-        Stretch(fill);
-        slider.fillRect = fill.GetComponent<RectTransform>();
+        Stretch(fill); slider.fillRect = fill.GetComponent<RectTransform>();
 
-        // XP numbers — overlaid on the bar, right-aligned.
         var xpText = MakeTMP(detailPanel.transform, "XPText", "0 / 100 XP", 18, TextSubtle);
         TopStretch(xpText, 204f, 152f, 24f, 28f);
         xpText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Right;
 
-        // Skill section divider — full width, just below portrait bottom.
         var skillDivider = MakeImage(detailPanel.transform, "SkillsDivider", new Color(0.20f, 0.35f, 0.50f, 0.55f));
         TopStretch(skillDivider, 24f, 196f, 24f, 2f);
 
-        // Skills header.
         var skillsHeader = MakeTMP(detailPanel.transform, "SkillsHeader", "SKILLS", 22, TextSubtle);
         TopStretch(skillsHeader, 24f, 202f, 24f, 28f);
         skillsHeader.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
 
-        // Skills container — VerticalLayoutGroup, fills remaining height below header.
         var skillsContainer = MakeUIGO("SkillsContainer", detailPanel.transform);
-        {
-            var rt      = skillsContainer.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(24f, 16f);
-            rt.offsetMax = new Vector2(-24f, -234f);
-        }
+        { var rt = skillsContainer.GetComponent<RectTransform>();
+          rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+          rt.offsetMin = new Vector2(24f, 16f); rt.offsetMax = new Vector2(-24f, -234f); }
         var skillsVLG = skillsContainer.AddComponent<VerticalLayoutGroup>();
-        skillsVLG.padding                = new RectOffset(0, 0, 0, 0);
-        skillsVLG.spacing                = 6f;
-        skillsVLG.childControlWidth      = true;
-        skillsVLG.childControlHeight     = true;
-        skillsVLG.childForceExpandWidth  = true;
-        skillsVLG.childForceExpandHeight = false;
-        skillsVLG.childAlignment         = TextAnchor.UpperLeft;
+        skillsVLG.spacing = 6f; skillsVLG.childControlWidth = skillsVLG.childControlHeight = true;
+        skillsVLG.childForceExpandWidth = true; skillsVLG.childForceExpandHeight = false;
+        skillsVLG.childAlignment = TextAnchor.UpperLeft;
+
+        // ── CrewAssignmentPanel — sits below tab bar, starts hidden ───────
+        var assignPanel = BuildCrewAssignmentPanel(crewView.transform);
 
         // ── Wire CrewViewController serialised fields ──────────────────────
+        var cvc   = crewView.GetComponent<CrewViewController>();
+        var cvcSo = new SerializedObject(cvc);
+        cvcSo.FindProperty("crewListTabButton").objectReferenceValue   = listTabBtn.GetComponent<Button>();
+        cvcSo.FindProperty("assignmentsTabButton").objectReferenceValue = assignTabBtn.GetComponent<Button>();
+        cvcSo.FindProperty("crewContent").objectReferenceValue         = crewContent;
+        var cavc = assignPanel.GetComponent<CrewAssignmentViewController>();
+        cvcSo.FindProperty("assignmentViewController").objectReferenceValue = cavc;
+        cvcSo.ApplyModifiedProperties();
+
         return crewView;
+    }
+
+    // ── Tab button helper ────────────────────────────────────────────────────
+
+    static GameObject BuildTabButton(Transform parent, string goName, string label)
+    {
+        var go  = new GameObject(goName, typeof(RectTransform));
+        go.transform.SetParent(parent, false);
+
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.04f, 0.08f, 0.16f, 1f);
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        var cols = btn.colors;
+        cols.normalColor      = Color.white;
+        cols.highlightedColor = new Color(1.3f, 1.3f, 1.3f, 1f);
+        cols.pressedColor     = new Color(0.75f, 0.75f, 0.75f, 1f);
+        btn.colors = cols;
+
+        var lblGO  = new GameObject("Label", typeof(RectTransform));
+        lblGO.transform.SetParent(go.transform, false);
+        var lblTMP = lblGO.AddComponent<TextMeshProUGUI>();
+        lblTMP.text      = label;
+        lblTMP.fontSize  = 24f;
+        lblTMP.color     = new Color(0.60f, 0.72f, 0.85f, 1f);  // TextSubtle
+        lblTMP.alignment = TextAlignmentOptions.Center;
+        lblTMP.fontStyle = FontStyles.Bold;
+        var lblRT = lblGO.GetComponent<RectTransform>();
+        lblRT.anchorMin = Vector2.zero; lblRT.anchorMax = Vector2.one;
+        lblRT.offsetMin = lblRT.offsetMax = Vector2.zero;
+
+        go.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        return go;
+    }
+
+    // ── Crew assignment panel ────────────────────────────────────────────────
+    //
+    //  Layout mirrors ShipView: 3 slots left, captain centre, 3 slots right.
+    //  Slot positions (normalised x): left col 0.12, centre 0.50, right col 0.88.
+    //  Three slots per column, evenly spaced vertically.
+
+    static GameObject BuildCrewAssignmentPanel(Transform parent)
+    {
+        const float TabH  = TabBarHeight;
+        const float SW    = SlotWidth;
+        const float SH    = SlotHeight;
+        const float CapSz = 200f;  // captain portrait diameter
+
+        var panel = MakeUIGO("CrewAssignmentPanel", parent);
+        {
+            var rt = panel.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(0f, 0f);
+            rt.offsetMax = new Vector2(0f, -TabH);
+        }
+        var cavc = panel.AddComponent<CrewAssignmentViewController>();
+        panel.SetActive(false);  // hidden by default; shown when Assignments tab tapped
+
+        var panelSo = new SerializedObject(cavc);
+
+        // Background
+        var panelBg = MakeImage(panel.transform, "AssignmentBackground", new Color(0.03f, 0.05f, 0.12f, 1f));
+        Stretch(panelBg);
+
+        // ── Captain slot — centre ─────────────────────────────────────────
+        var captainSlotGO = BuildAssignmentSlot(panel.transform, "CaptainSlot",
+            Constants.Crew.Roles.Captain, CapSz, CapSz, isInteractable: false);
+        {
+            var rt = captainSlotGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(CapSz, CapSz + 60f);   // +60 for label + name
+        }
+        WireAssignmentSlot(panelSo, "captainSlot", captainSlotGO, Constants.Crew.Roles.Captain);
+
+        // ── Left column — Pilot, Engineer, Scientist ──────────────────────
+        // Panel height ≈ 842 cu (no safe area) or ~686 cu (iPhone w/ home indicator,
+        // because Body shrinks via SafeAreaInset). SlotHeight = 180.
+        // With {0.84, 0.50, 0.16}: spacing = 0.34 × 686 = 233 cu — 53 cu clearance.
+        // Top slot top-edge: 0.84×686+90 = 667 < 686 ✓. Bottom slot bottom: 16 cu > 0 ✓.
+        string[] leftRoles  = { Constants.Crew.Roles.Pilot, Constants.Crew.Roles.Engineer, Constants.Crew.Roles.Scientist };
+        float[]  leftYNorm  = { 0.84f, 0.50f, 0.16f };
+
+        for (int i = 0; i < leftRoles.Length; i++)
+        {
+            var slotGO = BuildAssignmentSlot(panel.transform, $"Slot_{leftRoles[i]}",
+                leftRoles[i], SW, SH, isInteractable: true);
+            {
+                var rt = slotGO.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(ColX, leftYNorm[i]);
+                rt.pivot     = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(SW, SH);
+            }
+            WireAssignmentSlotArray(panelSo, "assignmentSlots", i, slotGO, leftRoles[i]);
+        }
+
+        // ── Right column — Gunner, Doctor, Soldier ────────────────────────
+        string[] rightRoles = { Constants.Crew.Roles.Gunner, Constants.Crew.Roles.Doctor, Constants.Crew.Roles.Soldier };
+        float[]  rightYNorm = { 0.84f, 0.50f, 0.16f };
+
+        for (int i = 0; i < rightRoles.Length; i++)
+        {
+            var slotGO = BuildAssignmentSlot(panel.transform, $"Slot_{rightRoles[i]}",
+                rightRoles[i], SW, SH, isInteractable: true);
+            {
+                var rt = slotGO.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = new Vector2(ColXRight, rightYNorm[i]);
+                rt.pivot     = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(SW, SH);
+            }
+            WireAssignmentSlotArray(panelSo, "assignmentSlots", 3 + i, slotGO, rightRoles[i]);
+        }
+
+        // ── Assignment picker panel (modal card overlay) ──────────────────
+        var picker = BuildAssignmentPickerPanel(panel.transform);
+        panelSo.FindProperty("pickerPanel").objectReferenceValue        = picker;
+        var pickerContent = picker.transform.Find("Card/PickerScrollView/Viewport/Content");
+        if (pickerContent != null)
+            panelSo.FindProperty("pickerContent").objectReferenceValue  = pickerContent;
+        var pickerLabel = picker.transform.Find("Card/RoleLabel")?.GetComponent<TextMeshProUGUI>();
+        if (pickerLabel != null)
+            panelSo.FindProperty("pickerRoleLabel").objectReferenceValue = pickerLabel;
+        var pickerClose = picker.transform.Find("Card/CloseButton")?.GetComponentInChildren<Button>(true);
+        if (pickerClose != null)
+            panelSo.FindProperty("pickerCloseButton").objectReferenceValue = pickerClose;
+
+        panelSo.ApplyModifiedProperties();
+        return panel;
+    }
+
+    // Builds a single assignment slot: role label at top, portrait circle, name at bottom.
+    static GameObject BuildAssignmentSlot(Transform parent, string goName, string role,
+                                          float w, float h, bool isInteractable)
+    {
+        var slotGO = MakeUIGO(goName, parent);
+
+        // Slot background
+        var bgImg  = slotGO.AddComponent<Image>();
+        bgImg.color = new Color(0.05f, 0.10f, 0.18f, 0.85f);
+
+        if (isInteractable)
+        {
+            var btn = slotGO.AddComponent<Button>();
+            btn.targetGraphic = bgImg;
+            var cols = btn.colors;
+            cols.normalColor      = Color.white;
+            cols.highlightedColor = new Color(1.25f, 1.25f, 1.25f, 1f);
+            cols.pressedColor     = new Color(0.80f, 0.80f, 0.80f, 1f);
+            btn.colors = cols;
+        }
+
+        // Role label — top, centred
+        const float LabelH = 24f;
+        const float PortraitInset = 8f;
+        const float NameH = 26f;
+        // Cap portrait so label + portrait + name always fits inside the slot height.
+        float portraitSize = Mathf.Min(w - PortraitInset * 2f, h - LabelH - NameH - 12f);
+
+        var roleLabelGO  = MakeTMP(slotGO.transform, "RoleLabel",
+            CrewViewController.FormatRole(role).ToUpper(), 18, new Color(0.60f, 0.72f, 0.85f, 1f));
+        {
+            var rt = roleLabelGO.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -4f);
+            rt.sizeDelta        = new Vector2(0f, LabelH);
+        }
+        roleLabelGO.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Center;
+        roleLabelGO.GetComponent<TextMeshProUGUI>().fontStyle        = FontStyles.Bold;
+        roleLabelGO.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
+        // Portrait — centred in remaining space
+        var portraitGO  = MakeImage(slotGO.transform, "PortraitImage", new Color(0.12f, 0.18f, 0.28f, 1f));
+        portraitGO.GetComponent<Image>().preserveAspect = true;
+        {
+            var rt = portraitGO.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, (NameH - LabelH) * 0.5f);
+            rt.sizeDelta        = new Vector2(portraitSize, portraitSize);
+        }
+
+        // Name — bottom, centred
+        var nameGO  = MakeTMP(slotGO.transform, "NameText", "— VACANT —", 18,
+            new Color(0.35f, 0.40f, 0.50f, 1f));
+        {
+            var rt = nameGO.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 0f);
+            rt.anchorMax        = new Vector2(1f, 0f);
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 6f);
+            rt.sizeDelta        = new Vector2(0f, NameH);
+        }
+        nameGO.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Center;
+        nameGO.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+        nameGO.GetComponent<TextMeshProUGUI>().overflowMode     = TextOverflowModes.Ellipsis;
+
+        return slotGO;
+    }
+
+    // Wires the captainSlot SerializedObject field.
+    static void WireAssignmentSlot(SerializedObject so, string fieldName, GameObject slotGO, string role)
+    {
+        var prop = so.FindProperty(fieldName);
+        prop.FindPropertyRelative("role").stringValue                          = role;
+        prop.FindPropertyRelative("root").objectReferenceValue                 = slotGO;
+        prop.FindPropertyRelative("portrait").objectReferenceValue             = slotGO.transform.Find("PortraitImage")?.GetComponent<Image>();
+        prop.FindPropertyRelative("nameText").objectReferenceValue             = slotGO.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
+        prop.FindPropertyRelative("button").objectReferenceValue               = slotGO.GetComponent<Button>();
+    }
+
+    // Wires one element of the assignmentSlots array.
+    static void WireAssignmentSlotArray(SerializedObject so, string arrayField, int index,
+                                        GameObject slotGO, string role)
+    {
+        var arrayProp = so.FindProperty(arrayField);
+        while (arrayProp.arraySize <= index) arrayProp.InsertArrayElementAtIndex(arrayProp.arraySize);
+        var elem = arrayProp.GetArrayElementAtIndex(index);
+        elem.FindPropertyRelative("role").stringValue          = role;
+        elem.FindPropertyRelative("root").objectReferenceValue = slotGO;
+        elem.FindPropertyRelative("portrait").objectReferenceValue =
+            slotGO.transform.Find("PortraitImage")?.GetComponent<Image>();
+        elem.FindPropertyRelative("nameText").objectReferenceValue =
+            slotGO.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
+        elem.FindPropertyRelative("button").objectReferenceValue =
+            slotGO.GetComponent<Button>();
+    }
+
+    // Builds the crew picker overlay that appears when a slot is tapped.
+    static GameObject BuildAssignmentPickerPanel(Transform parent)
+    {
+        // Root: CanvasGroup so Shift MainButton animators stay continuously bound.
+        // Never call SetActive on this — show/hide via CanvasGroup alpha only.
+        var picker = MakeUIGO("AssignmentPickerPanel", parent);
+        Stretch(picker);
+        var pickerCG = picker.AddComponent<CanvasGroup>();
+        pickerCG.alpha          = 0f;
+        pickerCG.blocksRaycasts = false;
+        pickerCG.interactable   = false;
+
+        // Scrim — dark backdrop behind the card
+        var scrim = MakeImage(picker.transform, "Scrim", Scrim);
+        Stretch(scrim);
+
+        // Card — centred modal panel (matches POI Detail / Level Up style)
+        var card = MakeImage(picker.transform, "Card", PanelBg);
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(700f, 580f));
+
+        // Top cyan accent bar
+        var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
+        PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        // "ASSIGN" title
+        var titleGO = MakeTMP(card.transform, "TitleText", "ASSIGN", 38, TextWhite);
+        PlaceRect(titleGO, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -32f), v2(-60f, 52f));
+        titleGO.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        titleGO.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        // Role label — updated at runtime to show the slot's role name
+        var roleLabel = MakeTMP(card.transform, "RoleLabel", "CREW MEMBER", 26, AccentCyan);
+        PlaceRect(roleLabel, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -82f), v2(-60f, 34f));
+        roleLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        roleLabel.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
+
+        // Divider rule
+        var rule = MakeImage(card.transform, "DividerRule", DividerColor);
+        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -118f), v2(-40f, 2f));
+
+        // ScrollRect for crew list — fills the middle of the card
+        var scrollGO = MakeUIGO("PickerScrollView", card.transform);
+        {
+            var rt       = scrollGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(20f, 80f);    // 80 px above close button
+            rt.offsetMax = new Vector2(-20f, -122f); // 122 px below top (below rule)
+        }
+        var sr = scrollGO.AddComponent<ScrollRect>();
+        sr.horizontal        = false;
+        sr.vertical          = true;
+        sr.scrollSensitivity = 30f;
+        sr.movementType      = ScrollRect.MovementType.Clamped;
+
+        var viewport = MakeUIGO("Viewport", scrollGO.transform);
+        Stretch(viewport);
+        viewport.AddComponent<RectMask2D>();
+        sr.viewport = viewport.GetComponent<RectTransform>();
+
+        var content   = MakeUIGO("Content", viewport.transform);
+        var contentRT = content.GetComponent<RectTransform>();
+        contentRT.anchorMin        = new Vector2(0f, 1f);
+        contentRT.anchorMax        = new Vector2(1f, 1f);
+        contentRT.pivot            = new Vector2(0.5f, 1f);
+        contentRT.anchoredPosition = Vector2.zero;
+        contentRT.sizeDelta        = Vector2.zero;
+        var vlg = content.AddComponent<VerticalLayoutGroup>();
+        vlg.padding               = new RectOffset(0, 0, 8, 8);
+        vlg.spacing               = 6f;
+        vlg.childControlWidth     = vlg.childControlHeight     = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        var csf = content.AddComponent<ContentSizeFitter>();
+        csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+        sr.content = contentRT;
+
+        // CLOSE button — Shift MainButton, centred at bottom of card
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject closeGO;
+        if (btnPrefab != null)
+        {
+            closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            closeGO.name = "CloseButton";
+            var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CLOSE";
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] Shift MainButton prefab not found — using plain close button.");
+            closeGO = MakeImage(card.transform, "CloseButton", BtnNormal);
+            closeGO.AddComponent<Button>();
+            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt              = closeGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 16f);
+            rt.sizeDelta        = new Vector2(220f, 52f);
+        }
+
+        return picker;
     }
 
     // ── Combat view — full body area, starts hidden ──────────────────────────

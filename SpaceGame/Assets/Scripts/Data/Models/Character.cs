@@ -37,7 +37,7 @@ public class Character
     // Progression
     public int Level                { get; set; } = 1;
     public int ExperiencePoints     { get; set; } = 0;
-    public int ExperienceToNextLevel { get; set; } = 100;
+    public int ExperienceToNextLevel { get; set; } = 300; // XP to reach level 2
 
     /// <summary>
     /// Unspent skill points available to allocate. Grants
@@ -204,5 +204,20 @@ public class Character
         Debug.Log($"[Character] {Name} reached level {Level}! (+{Constants.Skills.PointsPerLevel} skill points)");
     }
 
-    private static int CalculateXPForLevel(int level) => level * 100;
+    // XP required to reach the given level
+    private static int CalculateXPForLevel(int level) => level switch
+    {
+        2  => 300,
+        3  => 600,
+        4  => 1_800,
+        5  => 3_800,
+        6  => 6_500,
+        7  => 8_000,
+        8  => 9_000,
+        9  => 12_000,
+        10 => 14_000,
+        11 => 20_000,
+        12 => 24_000,
+        _  => 24_000 + (level - 12) * 4_000,  // +4,000 per level beyond 12
+    };
 }

@@ -252,6 +252,35 @@ public class SystemViewController : MonoBehaviour
         HidePOIDetail();
 
         var gm = GameManager.Instance;
+
+#if UNITY_EDITOR
+        // Debug convenience: opening GameScene directly skips MainMenu entirely,
+        // so GameManager never gets created. Spin one up on the fly so the scene
+        // is testable without any manual setup steps.
+        if (gm == null)
+        {
+            Debug.LogWarning("[SystemViewController] [Debug] GameManager not found — " +
+                             "creating one for editor testing.");
+            // DatabaseManager must be a child BEFORE GameManager.Awake fires
+            // (Awake calls InitializeManagers → GetComponentInChildren<DatabaseManager>).
+            var gmGO = new UnityEngine.GameObject("GameManager");
+            var dbGO = new UnityEngine.GameObject("DatabaseManager");
+            dbGO.transform.SetParent(gmGO.transform);
+            dbGO.AddComponent<DatabaseManager>();          // child exists first
+            gmGO.AddComponent<GameManager>();              // Awake fires here, finds DB
+            gm = GameManager.Instance;
+        }
+
+        if (gm != null && gm.CurrentSave == null)
+        {
+            var portraitLib     = Resources.Load<PortraitLibrary>("PortraitLibrary");
+            var debugPortrait   = portraitLib != null ? portraitLib.RandomFileName() : string.Empty;
+            Debug.LogWarning("[SystemViewController] [Debug] No active game detected — " +
+                             $"auto-creating debug game (captain: Player, ship: Horizon, portrait: {debugPortrait}).");
+            gm.PrepareNewGame("Player", "Horizon", debugPortrait);
+        }
+#endif
+
         if (gm == null)
         {
             Debug.LogWarning("[SystemViewController] GameManager not found — showing placeholder.");
@@ -1126,13 +1155,13 @@ public class SystemViewController : MonoBehaviour
                 var shieldItem  = GetSlotItem(Constants.Ship.EquipmentSlots.Shields);
                 var armorItem   = GetSlotItem(Constants.Ship.EquipmentSlots.Armor);
 
-                // No WeaponsOfficer in starting crew — captain mans the guns as fallback.
-                var weaponsOfficer = db?.GetCrewByRole(gm.CurrentSave?.Id ?? 0, Constants.Crew.Roles.WeaponsOfficer);
+                // Gunner slot — captain mans the guns as fallback if unassigned.
+                var gunner = db?.GetCrewByRole(gm.CurrentSave?.Id ?? 0, Constants.Crew.Roles.Gunner);
 
                 var combatState = CombatState.Begin(
-                    ship:           ship,
-                    captain:        gm.PlayerCaptain,
-                    weaponsOfficer: weaponsOfficer,
+                    ship:    ship,
+                    captain: gm.PlayerCaptain,
+                    gunner:  gunner,
                     pilot:          gm.PlayerPilot,
                     enemies:        enemies,
                     beamWeapon:     beamItem,

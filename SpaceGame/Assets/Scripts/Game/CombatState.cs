@@ -63,8 +63,8 @@ public class CombatState
     // The resolver falls back to Captain when a specialist slot is empty.
 
     public Character Captain        { get; set; }
-    /// <summary>WeaponsOfficer if one is aboard; null otherwise → Captain fires the guns.</summary>
-    public Character WeaponsOfficer { get; set; }
+    /// <summary>Gunner if one is aboard; null otherwise → Captain fires the guns.</summary>
+    public Character Gunner { get; set; }
     /// <summary>Pilot if one is aboard; null otherwise → Captain flies the ship.</summary>
     public Character Pilot          { get; set; }
     /// <summary>Engineer if one is aboard; null otherwise → no end-of-turn repairs.</summary>
@@ -124,7 +124,7 @@ public class CombatState
     public static CombatState Begin(
         Ship             ship,
         Character        captain,
-        Character        weaponsOfficer,
+        Character        gunner,
         Character        pilot,
         EnemyShipConfig[] enemies,
         EquipmentItem    beamWeapon   = null,
@@ -138,8 +138,8 @@ public class CombatState
 
         var state = new CombatState
         {
-            Captain        = captain,
-            WeaponsOfficer = weaponsOfficer,
+            Captain = captain,
+            Gunner  = gunner,
             Pilot          = pilot,
             Engineer       = engineer,
 
