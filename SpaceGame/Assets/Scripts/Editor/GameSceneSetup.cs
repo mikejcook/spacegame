@@ -1112,7 +1112,7 @@ public static class GameSceneSetup
         var listTabBtn  = BuildTabButton(tabBar.transform, "CrewListTabButton",  "CREW LIST");
         var assignTabBtn = BuildTabButton(tabBar.transform, "AssignmentsTabButton", "ASSIGNMENTS");
 
-        // Tab divider line at bottom
+        // Tab divider line at bottom — ignoreLayout so it doesn't consume a slot in the HLG
         var tabLine = MakeImage(tabBar.transform, "TabLine", new Color(0.20f, 0.35f, 0.50f, 0.55f));
         {
             var rt = tabLine.GetComponent<RectTransform>();
@@ -1122,6 +1122,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(0f, 2f);
             rt.anchoredPosition = Vector2.zero;
         }
+        tabLine.AddComponent<LayoutElement>().ignoreLayout = true;
 
         // ── CrewContent — list + detail, sits below tab bar ──────────────
         var crewContent = MakeUIGO("CrewContent", crewView.transform);
