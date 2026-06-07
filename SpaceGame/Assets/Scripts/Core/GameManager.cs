@@ -42,9 +42,6 @@ public class GameManager : MonoBehaviour
     // -----------------------------------------------------------------------
     public SaveGame  CurrentSave    { get; private set; }
     public Ship      PlayerShip     { get; private set; }
-    public Character PlayerCaptain  { get; private set; }
-    public Character PlayerPilot    { get; private set; }
-    public Character PlayerEngineer { get; private set; }
 
     /// <summary>
     /// True after PrepareNewGame until the player has spent their first-level skill points.
@@ -116,27 +113,27 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[GameManager] Save record created (Id={CurrentSave.Id}).");
 
             // Create starting captain (with chosen portrait)
-            PlayerCaptain            = CharacterFactory.CreateCaptain(captainName, portraitFileName);
-            PlayerCaptain.SaveGameId = CurrentSave.Id;
-            Database.Characters.Insert(PlayerCaptain);
-            CurrentSave.CaptainId    = PlayerCaptain.Id;
+            var captain            = CharacterFactory.CreateCaptain(captainName, portraitFileName);
+            captain.SaveGameId     = CurrentSave.Id;
+            Database.Characters.Insert(captain);
+            CurrentSave.CaptainId  = captain.Id;
 
             // Load portrait library and track used portraits to avoid duplicates
             var portraitLibrary = Resources.Load<PortraitLibrary>("PortraitLibrary");
             var usedPortraits   = new System.Collections.Generic.HashSet<string>();
-            if (!string.IsNullOrEmpty(PlayerCaptain.PortraitId))
-                usedPortraits.Add(PlayerCaptain.PortraitId);
+            if (!string.IsNullOrEmpty(captain.PortraitId))
+                usedPortraits.Add(captain.PortraitId);
 
             // Create starting pilot and engineer with gender-appropriate, non-duplicate portraits
-            PlayerPilot    = CharacterFactory.CreateStartingPilot(portraitLibrary, usedPortraits);
-            if (!string.IsNullOrEmpty(PlayerPilot.PortraitId))
-                usedPortraits.Add(PlayerPilot.PortraitId);
-            PlayerEngineer = CharacterFactory.CreateStartingEngineer(portraitLibrary, usedPortraits);
-            PlayerPilot.SaveGameId    = CurrentSave.Id;
-            PlayerEngineer.SaveGameId = CurrentSave.Id;
-            Database.Characters.Insert(PlayerPilot);
-            Database.Characters.Insert(PlayerEngineer);
-            Debug.Log($"[GameManager] Crew created: {PlayerPilot.Name}, {PlayerEngineer.Name}.");
+            var pilot    = CharacterFactory.CreateStartingPilot(portraitLibrary, usedPortraits);
+            if (!string.IsNullOrEmpty(pilot.PortraitId))
+                usedPortraits.Add(pilot.PortraitId);
+            var engineer = CharacterFactory.CreateStartingEngineer(portraitLibrary, usedPortraits);
+            pilot.SaveGameId    = CurrentSave.Id;
+            engineer.SaveGameId = CurrentSave.Id;
+            Database.Characters.Insert(pilot);
+            Database.Characters.Insert(engineer);
+            Debug.Log($"[GameManager] Crew created: {pilot.Name}, {engineer.Name}.");
 
             // Create starting ship
             PlayerShip            = Ship.CreateStartingShip(shipName);
@@ -368,10 +365,7 @@ public class GameManager : MonoBehaviour
         SetState(GameState.Loading);
 
         CurrentSave     = Database.SaveGames.Get(saveId);
-        PlayerCaptain   = Database.Characters.Get(CurrentSave.CaptainId);
         PlayerShip      = Database.Ships.Get(CurrentSave.ShipId);
-        PlayerPilot     = Database.GetCrewByRole(CurrentSave.Id, Constants.Crew.Roles.Pilot);
-        PlayerEngineer  = Database.GetCrewByRole(CurrentSave.Id, Constants.Crew.Roles.Engineer);
 
         LoadGameScene();
     }
@@ -384,7 +378,8 @@ public class GameManager : MonoBehaviour
         CurrentSave.LastSavedAt = System.DateTime.Now;
         Database.SaveGames.Update(CurrentSave);
         Database.Ships.Update(PlayerShip);
-        Database.Characters.Update(PlayerCaptain);
+        var captain = Database.Characters.Get(CurrentSave.CaptainId);
+        if (captain != null) Database.Characters.Update(captain);
 
         Debug.Log("[GameManager] Game saved.");
     }

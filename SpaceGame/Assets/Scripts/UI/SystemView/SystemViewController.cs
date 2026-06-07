@@ -282,7 +282,7 @@ public class SystemViewController : MonoBehaviour
 
             // Debug: skip first-launch UI — auto-apply recommended captain skills.
             gm.AcknowledgeFirstLaunch();
-            var debugCaptain = gm.PlayerCaptain;
+            var debugCaptain = gm.Database?.Characters.Get(gm.CurrentSave.CaptainId);
             if (debugCaptain != null && debugCaptain.AvailableSkillPoints > 0)
             {
                 // Skills is a computed property (get deserialises, set serialises) —
@@ -325,11 +325,9 @@ public class SystemViewController : MonoBehaviour
         yield return null;   // one frame so the crew panel is fully visible
 
         var gm      = GameManager.Instance;
-        var captain = gm?.PlayerCaptain;
-
-        // Re-read from DB in case PrepareNewGame wrote updated data after we cached it.
-        if (captain != null && gm?.Database != null)
-            captain = gm.Database.Characters.Get(captain.Id);
+        var captain = gm?.CurrentSave != null
+            ? gm.Database?.Characters.Get(gm.CurrentSave.CaptainId)
+            : null;
 
         if (captain == null || captain.AvailableSkillPoints <= 0)
         {
@@ -1160,6 +1158,9 @@ public class SystemViewController : MonoBehaviour
         if (shipViewPanel   != null) shipViewPanel.SetActive(false);
         if (systemNameText  != null) systemNameText.text = "Crew";
         if (crewViewPanel   != null) crewViewPanel.SetActive(true);
+        // If we were in recruitment mode, the panel may already be active so OnEnable
+        // won't fire — explicitly exit recruitment mode to repopulate with actual crew.
+        crewViewController?.ExitRecruitmentMode();
     }
 
     // -----------------------------------------------------------------------
@@ -1236,20 +1237,19 @@ public class SystemViewController : MonoBehaviour
                 var shieldItem  = GetSlotItem(Constants.Ship.EquipmentSlots.Shields);
                 var armorItem   = GetSlotItem(Constants.Ship.EquipmentSlots.Armor);
 
-                // Gunner slot — captain mans the guns as fallback if unassigned.
-                var gunner = db?.GetCrewByRole(gm.CurrentSave?.Id ?? 0, Constants.Crew.Roles.Gunner);
+                var saveId = gm.CurrentSave?.Id ?? 0;
 
                 var combatState = CombatState.Begin(
-                    ship:    ship,
-                    captain: gm.PlayerCaptain,
-                    gunner:  gunner,
-                    pilot:          gm.PlayerPilot,
-                    enemies:        enemies,
-                    beamWeapon:     beamItem,
-                    torpedoes:      torpedoItem,
-                    shields:        shieldItem,
-                    armor:          armorItem,
-                    engineer:       gm.PlayerEngineer
+                    ship:       ship,
+                    captain:    gm.Database?.Characters.Get(gm.CurrentSave.CaptainId),
+                    gunner:     db?.GetCrewByRole(saveId, Constants.Crew.Roles.Gunner),
+                    pilot:      db?.GetCrewByRole(saveId, Constants.Crew.Roles.Pilot),
+                    enemies:    enemies,
+                    beamWeapon: beamItem,
+                    torpedoes:  torpedoItem,
+                    shields:    shieldItem,
+                    armor:      armorItem,
+                    engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer)
                 );
 
                 combatViewController.SetCombatState(combatState);

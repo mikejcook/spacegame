@@ -85,10 +85,6 @@ public class RecruitmentController : MonoBehaviour
         var gm = GameManager.Instance;
         if (gm?.CurrentSave == null) return used;
 
-        // Captain
-        if (gm.PlayerCaptain != null && !string.IsNullOrEmpty(gm.PlayerCaptain.PortraitId))
-            used.Add(gm.PlayerCaptain.PortraitId);
-
         // All hired crew for this save
         var crew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
         if (crew != null)

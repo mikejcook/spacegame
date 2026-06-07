@@ -96,7 +96,7 @@ public class CrewAssignmentViewController : MonoBehaviour
         if (gm?.CurrentSave == null) return;
 
         // Captain slot — always the player captain
-        PopulateCaptainSlot(gm.PlayerCaptain);
+        PopulateCaptainSlot(gm.Database?.Characters.Get(gm.CurrentSave.CaptainId));
 
         // Assignment slots
         for (int i = 0; i < assignmentSlots.Length; i++)

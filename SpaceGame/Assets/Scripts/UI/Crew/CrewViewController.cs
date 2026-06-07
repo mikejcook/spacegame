@@ -135,6 +135,19 @@ public class CrewViewController : MonoBehaviour
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Exits recruitment mode and repopulates with the normal crew list.
+    /// Safe to call when not in recruitment mode (no-op).
+    /// </summary>
+    public void ExitRecruitmentMode()
+    {
+        if (!_isRecruitmentMode) return;
+        _isRecruitmentMode = false;
+        _candidates.Clear();
+        _hired.Clear();
+        Populate();
+    }
+
+    /// <summary>
     /// Activates recruitment mode. Loads persisted recruits for this station if they
     /// are still fresh; otherwise clears them and generates a new pool.
     /// </summary>
@@ -307,9 +320,6 @@ public class CrewViewController : MonoBehaviour
 
         gm = gm ?? GameManager.Instance;
         if (gm?.CurrentSave == null) return used;
-
-        if (gm.PlayerCaptain != null && !string.IsNullOrEmpty(gm.PlayerCaptain.PortraitId))
-            used.Add(gm.PlayerCaptain.PortraitId);
 
         var crew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
         if (crew != null)

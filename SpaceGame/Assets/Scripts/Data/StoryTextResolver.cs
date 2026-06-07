@@ -85,9 +85,9 @@ public static class StoryTextResolver
 
         var character = parts[1] switch
         {
-            "Captain"  => GameManager.Instance?.PlayerCaptain,
-            "Pilot"    => GameManager.Instance?.PlayerPilot,
-            "Engineer" => GameManager.Instance?.PlayerEngineer,
+            "Captain"  => GameManager.Instance?.Database?.GetCrewByRole(GameManager.Instance.CurrentSave.Id, Constants.Crew.Roles.Captain),
+            "Pilot"    => GameManager.Instance?.Database?.GetCrewByRole(GameManager.Instance.CurrentSave.Id, Constants.Crew.Roles.Pilot),
+            "Engineer" => GameManager.Instance?.Database?.GetCrewByRole(GameManager.Instance.CurrentSave.Id, Constants.Crew.Roles.Engineer),
             _          => null
         };
 
