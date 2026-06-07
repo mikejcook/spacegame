@@ -14,21 +14,20 @@ using TMPro;
 ///
 ///   LevelUpPanel              ← CanvasGroup (alpha=0 when hidden)
 ///     Scrim                   ← full-screen dark overlay
-///     Card
-///       TopBar                ← thin cyan strip
+///     Card                    ← 1400×490, wide to host two skill columns
+///       TopBar                ← thin cyan accent strip
 ///       TitleText             ← "LEVEL UP"
-///       CrewNameText          ← character name
-///       PointsText            ← "X skill points to spend"
+///       CrewNameText          ← character name (italic, cyan)
+///       PointsText            ← "X skill points to spend" (amber)
 ///       DividerRule
-///       SkillsContainer       ← VLG, one SkillRow per skill
-///         SkillRow
-///           SkillLabel
-///           MinusButton
-///           RankText          ← "N / cap"
-///           PlusButton
+///       ColumnsArea           ← HLG (two equal columns)
+///         SkillsContainer     ← VLG, skills 0-4 (Athletics…Gunnery)
+///           SkillRow          ← HLG (Label | PanelBtn− | RankText | PanelBtn+ | Dots)
+///         SkillsContainerRight← VLG, skills 5-8 (Medicine…Science)
+///           SkillRow          ← same structure
 ///       DividerRule2
-///       ConfirmButton
-///       CancelButton
+///       CancelButton          ← centred-left (pivot-first placed)
+///       ConfirmButton         ← centred-right (only interactable when 0 points left)
 ///
 /// ── Rules enforced ───────────────────────────────────────────────────────────
 ///   • Each skill is capped at character.Level + 1.
@@ -43,7 +42,11 @@ public class LevelUpController : MonoBehaviour
     [SerializeField] private CanvasGroup panelCanvasGroup;
     [SerializeField] private TMP_Text    crewNameText;
     [SerializeField] private TMP_Text    pointsText;
-    [SerializeField] private Transform   skillsContainer;
+    [SerializeField] private Transform   skillsContainer;       // left column (skills 0-4)
+    [SerializeField] private Transform   skillsContainerRight;  // right column (skills 5-8)
+    [SerializeField] private GameObject  skillBtnPrefab;        // Shift Squad Member Button prefab
+    [SerializeField] private Sprite      plusIcon;              // icon_plus sprite
+    [SerializeField] private Sprite      minusIcon;             // icon_minus sprite
     [SerializeField] private Button      confirmButton;
     [SerializeField] private Button      cancelButton;
 
@@ -53,8 +56,6 @@ public class LevelUpController : MonoBehaviour
     private static readonly Color TextSubtle  = new Color(0.60f, 0.72f, 0.85f, 1f);
     private static readonly Color AccentCyan  = new Color(0.30f, 0.85f, 1.00f, 1f);
     private static readonly Color AccentAmber = new Color(1.00f, 0.75f, 0.20f, 1f);
-    private static readonly Color BtnGreen    = new Color(0.08f, 0.38f, 0.22f, 1f);
-    private static readonly Color BtnRed      = new Color(0.38f, 0.08f, 0.08f, 1f);
 
     // ── State ─────────────────────────────────────────────────────────────────
 
@@ -113,37 +114,50 @@ public class LevelUpController : MonoBehaviour
 
         if (skillsContainer == null) return;
 
-        foreach (var skillName in Constants.Skills.All)
-            _rowUIs.Add(BuildRow(skillName));
+        var all   = Constants.Skills.All;
+        int split = (all.Length + 1) / 2; // ceil-half → left column gets the larger share
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            var container = (i < split) ? skillsContainer : (skillsContainerRight ?? skillsContainer);
+            _rowUIs.Add(BuildRow(all[i], container));
+        }
     }
 
-    private SkillRowUI BuildRow(string skillName)
+    private SkillRowUI BuildRow(string skillName, Transform container)
     {
         var rowGO = new GameObject($"Row_{skillName}", typeof(RectTransform));
-        rowGO.transform.SetParent(skillsContainer, false);
+        rowGO.transform.SetParent(container, false);
+        // Column VLG has childControlHeight=false, so we must set sizeDelta.y explicitly.
+        // Width will be overridden by the VLG (childControlWidth=true), so x doesn't matter.
+        rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 46f);
 
         var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing                = 10f;
-        hlg.childControlWidth      = false;
+        hlg.spacing                = 8f;
+        hlg.childControlWidth      = true;   // read LayoutElement.preferredWidth
         hlg.childControlHeight     = true;
-        hlg.childForceExpandWidth  = false;
-        hlg.childForceExpandHeight = true;
+        hlg.childForceExpandWidth  = false;  // respect preferred widths, don't bloat
+        hlg.childForceExpandHeight = true;   // children fill row height
         hlg.childAlignment         = TextAnchor.MiddleLeft;
-        rowGO.AddComponent<LayoutElement>().preferredHeight = 48f;
+        var rowLE = rowGO.AddComponent<LayoutElement>();
+        rowLE.preferredHeight = 46f;
+        rowLE.flexibleHeight  = 0f;
 
         // Skill label
         var labelGO = new GameObject("Label", typeof(RectTransform));
         labelGO.transform.SetParent(rowGO.transform, false);
         var labelTMP = labelGO.AddComponent<TextMeshProUGUI>();
         labelTMP.text      = skillName;
-        labelTMP.fontSize  = 26f;
+        labelTMP.fontSize  = 24f;
         labelTMP.color     = TextSubtle;
         labelTMP.alignment = TextAlignmentOptions.Left;
-        labelGO.AddComponent<LayoutElement>().preferredWidth = 220f;
+        var labelLE = labelGO.AddComponent<LayoutElement>();
+        labelLE.preferredWidth = 155f;
+        labelLE.flexibleWidth  = 0f;
 
-        // Minus button
-        var minusGO  = MakeSmallButton(rowGO.transform, "MinusButton", "−", BtnRed);
-        var minusBtn = minusGO.GetComponent<Button>();
+        // Minus button — Shift Squad Member Button prefab if available, fallback plain button
+        var minusGO  = MakeSkillButton(rowGO.transform, "MinusButton", minusIcon);
+        var minusBtn = minusGO.GetComponentInChildren<Button>(true);
 
         // Rank text — "N / cap"
         int cap     = Constants.Skills.MaxRankForLevel(_character.Level);
@@ -151,40 +165,16 @@ public class LevelUpController : MonoBehaviour
         rankGO.transform.SetParent(rowGO.transform, false);
         var rankTMP = rankGO.AddComponent<TextMeshProUGUI>();
         rankTMP.text      = $"0 / {cap}";
-        rankTMP.fontSize  = 26f;
+        rankTMP.fontSize  = 20f;
         rankTMP.color     = AccentCyan;
         rankTMP.alignment = TextAlignmentOptions.Center;
-        rankGO.AddComponent<LayoutElement>().preferredWidth = 80f;
+        var rankLE = rankGO.AddComponent<LayoutElement>();
+        rankLE.preferredWidth = 58f;
+        rankLE.flexibleWidth  = 0f;
 
         // Plus button
-        var plusGO  = MakeSmallButton(rowGO.transform, "PlusButton", "+", BtnGreen);
-        var plusBtn = plusGO.GetComponent<Button>();
-
-        // Dot row — visual representation of current rank
-        var dotsGO = new GameObject("Dots", typeof(RectTransform));
-        dotsGO.transform.SetParent(rowGO.transform, false);
-        var dotsHLG = dotsGO.AddComponent<HorizontalLayoutGroup>();
-        dotsHLG.spacing                = 4f;
-        dotsHLG.childControlWidth      = false;
-        dotsHLG.childControlHeight     = false;
-        dotsHLG.childForceExpandWidth  = false;
-        dotsHLG.childForceExpandHeight = false;
-        dotsHLG.childAlignment         = TextAnchor.MiddleLeft;
-        dotsGO.AddComponent<LayoutElement>().preferredWidth = 160f;
-
-        var dotImages = new Image[cap];
-        for (int i = 0; i < cap; i++)
-        {
-            var dotGO = new GameObject($"Dot_{i}", typeof(RectTransform));
-            dotGO.transform.SetParent(dotsGO.transform, false);
-            var dotImg = dotGO.AddComponent<Image>();
-            dotImg.color = new Color(0.25f, 0.35f, 0.45f, 0.70f);
-            var le = dotGO.AddComponent<LayoutElement>();
-            le.preferredWidth  = 16f;
-            le.preferredHeight = 16f;
-            le.flexibleWidth   = 0f;
-            dotImages[i] = dotImg;
-        }
+        var plusGO  = MakeSkillButton(rowGO.transform, "PlusButton", plusIcon);
+        var plusBtn = plusGO.GetComponentInChildren<Button>(true);
 
         var row = new SkillRowUI
         {
@@ -193,46 +183,110 @@ public class LevelUpController : MonoBehaviour
             rankText  = rankTMP,
             minusBtn  = minusBtn,
             plusBtn   = plusBtn,
-            dotImages = dotImages,
         };
 
         string captured = skillName;
-        minusBtn.onClick.AddListener(() => AdjustSkill(captured, -1));
-        plusBtn.onClick.AddListener(()  => AdjustSkill(captured, +1));
+        if (minusBtn != null) minusBtn.onClick.AddListener(() => AdjustSkill(captured, -1));
+        if (plusBtn  != null) plusBtn.onClick.AddListener(()  => AdjustSkill(captured, +1));
 
         return row;
     }
 
-    private static GameObject MakeSmallButton(Transform parent, string name, string label, Color bg)
+    /// <summary>
+    /// Creates a small skill +/− button using the Shift Squad Member Button prefab when
+    /// available (wired by GameSceneSetup). The Squad Member Button uses a plain Unity
+    /// Button on the root with Normal / Highlighted / Pressed animation states, each
+    /// containing an "Icon" child Image. We set the icon sprite on all three so the
+    /// correct art shows across every animation state. The "Profile Picture" child is
+    /// hidden since we only want the icon.
+    ///
+    /// Also handles the older Panel Button prefab gracefully: if the wired prefab has a
+    /// MainPanelButton component, its default "TITLE" buttonText is cleared and the
+    /// root-level "Text" child is hidden before the icon is applied.
+    ///
+    /// Falls back to a plain styled button when no prefab is set.
+    /// </summary>
+    private GameObject MakeSkillButton(Transform parent, string goName, Sprite icon)
     {
-        var go  = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
+        GameObject go;
 
-        var img = go.AddComponent<Image>();
-        img.color = bg;
+        if (skillBtnPrefab != null)
+        {
+            go      = Instantiate(skillBtnPrefab, parent);
+            go.name = goName;
 
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
-        var c = btn.colors;
-        c.highlightedColor = Color.Lerp(bg, Color.white, 0.25f);
-        c.pressedColor     = Color.Lerp(bg, Color.black, 0.25f);
-        btn.colors = c;
+            // ── Squad Member Button path ──────────────────────────────────
+            // Hide the "Profile Picture" overlay — we want an icon button,
+            // not a portrait/squad-member picker.
+            var profilePic = go.transform.Find("Profile Picture");
+            if (profilePic != null) profilePic.gameObject.SetActive(false);
 
-        go.AddComponent<LayoutElement>().preferredWidth  = 44f;
-        go.AddComponent<LayoutElement>().preferredHeight = 44f;
+            // ── Panel Button fallback path ────────────────────────────────
+            // If the prefab has MainPanelButton (older wiring), clear its
+            // default "TITLE" text so it doesn't appear over the icon.
+            var mpb = go.GetComponent<Michsky.UI.Shift.MainPanelButton>();
+            if (mpb != null)
+            {
+                go.SetActive(false);
+                mpb.buttonText = "";    // prevents OnEnable stamping "TITLE"
+                mpb.hasIcon    = true;  // keep icon layout
+                go.SetActive(true);
+                // Also hide the dedicated root-level "Text" child Panel Button carries.
+                var textChild = go.transform.Find("Text");
+                if (textChild != null) textChild.gameObject.SetActive(false);
+            }
 
-        var lblGO = new GameObject("Label", typeof(RectTransform));
-        lblGO.transform.SetParent(go.transform, false);
-        var lblTMP = lblGO.AddComponent<TextMeshProUGUI>();
-        lblTMP.text      = label;
-        lblTMP.fontSize  = 28f;
-        lblTMP.color     = new Color(0.92f, 0.95f, 1f, 1f);
-        lblTMP.alignment = TextAlignmentOptions.Center;
-        var lblRT = lblGO.GetComponent<RectTransform>();
-        lblRT.anchorMin = Vector2.zero;
-        lblRT.anchorMax = Vector2.one;
-        lblRT.offsetMin = Vector2.zero;
-        lblRT.offsetMax = Vector2.zero;
+            // ── Icon sprites (both button types) ─────────────────────────
+            // Normal / Highlighted / Pressed each contain a child named "Icon"
+            // with an Image. Set the sprite on all three states so the icon
+            // appears correctly regardless of animation state.
+            if (icon != null)
+            {
+                foreach (string stateName in new[] { "Normal", "Highlighted", "Pressed" })
+                {
+                    var stateT = go.transform.Find(stateName);
+                    if (stateT == null) continue;
+                    var iconT = stateT.Find("Icon");
+                    if (iconT == null) continue;
+                    var img = iconT.GetComponent<Image>();
+                    if (img != null)
+                    {
+                        img.sprite         = icon;
+                        img.preserveAspect = true;
+                        img.color          = Color.white;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Fallback — plain Image + Button with TMP label
+            string label = (icon == plusIcon) ? "+" : "−";
+            go = new GameObject(goName, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>();
+            img.color = new Color(0.10f, 0.28f, 0.46f, 1f);
+            go.AddComponent<Button>().targetGraphic = img;
+            var lblGO  = new GameObject("Label", typeof(RectTransform));
+            lblGO.transform.SetParent(go.transform, false);
+            var lbl    = lblGO.AddComponent<TextMeshProUGUI>();
+            lbl.text      = label;
+            lbl.fontSize  = 26f;
+            lbl.color     = TextWhite;
+            lbl.alignment = TextAlignmentOptions.Center;
+            var lblRT      = lblGO.GetComponent<RectTransform>();
+            lblRT.anchorMin = Vector2.zero;
+            lblRT.anchorMax = Vector2.one;
+            lblRT.offsetMin = lblRT.offsetMax = Vector2.zero;
+        }
+
+        // The Squad Member Button prefab is 60×60 and has no LayoutElement by default.
+        // Pin preferred size and lock flexibleWidth so the row HLG doesn't bloat it.
+        var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
+        le.preferredWidth  = 46f;
+        le.preferredHeight = 46f;
+        le.flexibleWidth   = 0f;
+        le.flexibleHeight  = 0f;
 
         return go;
     }
@@ -290,18 +344,6 @@ public class LevelUpController : MonoBehaviour
 
             if (row.plusBtn != null)
                 row.plusBtn.interactable = _pointsLeft > 0 && rank < cap;
-
-            // Refresh dots
-            for (int i = 0; i < row.dotImages.Length; i++)
-            {
-                if (row.dotImages[i] == null) continue;
-                if (i < rank)
-                    row.dotImages[i].color = AccentCyan;
-                else if (i < baseline)
-                    row.dotImages[i].color = new Color(0.15f, 0.40f, 0.55f, 0.80f); // dim existing
-                else
-                    row.dotImages[i].color = new Color(0.25f, 0.35f, 0.45f, 0.70f); // empty
-            }
         }
 
         if (confirmButton != null)
@@ -371,6 +413,5 @@ public class LevelUpController : MonoBehaviour
         public TMP_Text   rankText;
         public Button     minusBtn;
         public Button     plusBtn;
-        public Image[]    dotImages;
     }
 }

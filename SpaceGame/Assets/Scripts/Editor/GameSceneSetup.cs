@@ -75,6 +75,12 @@ public static class GameSceneSetup
 
     const string MainBtnPrefabPath =
         "Assets/Shift - Complete Sci-Fi UI/Prefabs/Button/Main Button.prefab";
+    const string PanelBtnPrefabPath =
+        "Assets/Shift - Complete Sci-Fi UI/Prefabs/Button/Panel Button.prefab";
+    const string SquadMemberBtnPrefabPath =
+        "Assets/Shift - Complete Sci-Fi UI/Prefabs/Button/Squad Member Button.prefab";
+    const string PlusIconPath  = "Assets/UI/Icons/icon_plus.png";
+    const string MinusIconPath = "Assets/UI/Icons/icon_minus.png";
 
     // -----------------------------------------------------------------------
     // Entry point
@@ -2483,7 +2489,9 @@ public static class GameSceneSetup
 
     static GameObject BuildLevelUpPanel(Transform parent)
     {
-        // Root — stays active; show/hide via CanvasGroup
+        // Root — stays active; show/hide via CanvasGroup.
+        // Never call SetActive(false) — contains Shift buttons whose Animators must
+        // remain continuously bound to avoid the stuck-highlight bug.
         var panel = MakeUIGO("LevelUpPanel", parent);
         Stretch(panel);
         var cg = panel.AddComponent<CanvasGroup>();
@@ -2492,80 +2500,93 @@ public static class GameSceneSetup
         cg.interactable   = false;
         panel.AddComponent<LevelUpController>();
 
-        // Scrim
+        // Scrim — dark semi-transparent backdrop
         var scrim = MakeImage(panel.transform, "Scrim", Scrim);
         Stretch(scrim);
 
-        // Card — narrower, taller
+        // Card — wide (2× the single-column version) to host two skill columns side-by-side
         var card = MakeImage(panel.transform, "Card", PanelBg);
-        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(700f, 680f));
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(1400f, 490f));
 
-        // Top accent bar
+        // Top cyan accent bar
         var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
         PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
 
-        // Title
+        // "LEVEL UP" title
         var title = MakeTMP(card.transform, "TitleText", "LEVEL UP", 42, TextWhite);
-        PlaceRect(title, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -58f), v2(-40f, 58f));
+        PlaceRect(title, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -32f), v2(-60f, 52f));
         title.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         title.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        // Crew name
-        var crewName = MakeTMP(card.transform, "CrewNameText", "Crew Name", 32, AccentCyan);
-        PlaceRect(crewName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -104f), v2(-40f, 40f));
+        // Crew name — updated at runtime
+        var crewName = MakeTMP(card.transform, "CrewNameText", "Crew Name", 28, AccentCyan);
+        PlaceRect(crewName, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -82f), v2(-60f, 36f));
         crewName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        crewName.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Italic;
 
-        // Points remaining text
-        var points = MakeTMP(card.transform, "PointsText", "3 skill points to spend", 26,
-                             new Color(1.00f, 0.75f, 0.20f, 1f)); // amber
-        PlaceRect(points, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -142f), v2(-40f, 34f));
+        // Points remaining — updated at runtime; amber when points > 0, subtle when 0
+        var points = MakeTMP(card.transform, "PointsText", "3 skill points to spend", 24,
+                             new Color(1.00f, 0.75f, 0.20f, 1f));
+        PlaceRect(points, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -116f), v2(-60f, 30f));
         points.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
-        // Divider
+        // Divider below header
         var divider = MakeImage(card.transform, "DividerRule", DividerColor);
-        PlaceRect(divider, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -176f), v2(-40f, 2f));
+        PlaceRect(divider, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -148f), v2(-40f, 2f));
 
-        // Skills container — VLG, rows inserted at runtime by LevelUpController
-        var skillsGO = MakeUIGO("SkillsContainer", card.transform);
-        PlaceRect(skillsGO, anchor(0f, 0f), anchor(1f, 1f), v2(0f, 110f), v2(-40f, -196f));
-        var vlg = skillsGO.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing                = 4f;
-        vlg.padding                = new RectOffset(8, 8, 4, 4);
-        vlg.childControlWidth      = true;
-        vlg.childControlHeight     = false;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childAlignment         = TextAnchor.UpperCenter;
+        // ── Two-column skills area ────────────────────────────────────────────
+        // ColumnsArea: HLG, fills the middle between dividers.
+        // Left column gets skills 0-4, right column gets skills 5-8.
+        // No ScrollRect needed — 5 rows × 46px fits comfortably in the available height.
+        var columnsGO = MakeUIGO("ColumnsArea", card.transform);
+        {
+            var rt       = columnsGO.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(20f, 82f);    // 82px above bottom buttons
+            rt.offsetMax = new Vector2(-20f, -152f); // 152px below card top (below divider)
+        }
+        var hlg = columnsGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing                = 20f;
+        hlg.padding                = new RectOffset(0, 0, 0, 0);
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandHeight = true;
 
-        // Divider 2
+        // Left column VLG — SkillsContainer (rows 0-4)
+        var leftCol = MakeUIGO("SkillsContainer", columnsGO.transform);
+        var leftVLG = leftCol.AddComponent<VerticalLayoutGroup>();
+        leftVLG.padding                = new RectOffset(4, 4, 4, 4);
+        leftVLG.spacing                = 4f;
+        leftVLG.childControlWidth      = true;
+        leftVLG.childControlHeight     = false;
+        leftVLG.childForceExpandWidth  = true;
+        leftVLG.childForceExpandHeight = false;
+        leftVLG.childAlignment         = TextAnchor.UpperLeft;
+
+        // Right column VLG — SkillsContainerRight (rows 5-8)
+        var rightCol = MakeUIGO("SkillsContainerRight", columnsGO.transform);
+        var rightVLG = rightCol.AddComponent<VerticalLayoutGroup>();
+        rightVLG.padding                = new RectOffset(4, 4, 4, 4);
+        rightVLG.spacing                = 4f;
+        rightVLG.childControlWidth      = true;
+        rightVLG.childControlHeight     = false;
+        rightVLG.childForceExpandWidth  = true;
+        rightVLG.childForceExpandHeight = false;
+        rightVLG.childAlignment         = TextAnchor.UpperLeft;
+
+        // Divider above buttons
         var divider2 = MakeImage(card.transform, "DividerRule2", DividerColor);
-        PlaceRect(divider2, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 108f), v2(-40f, 2f));
+        PlaceRect(divider2, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 80f), v2(-40f, 2f));
 
-        // Confirm button — bottom left
-        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
-        GameObject confirmGO;
-        if (btnPrefab != null)
-        {
-            confirmGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
-            confirmGO.name = "ConfirmButton";
-            var mb = confirmGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CONFIRM";
-        }
-        else
-        {
-            confirmGO = MakeImage(card.transform, "ConfirmButton", BtnNormal);
-            confirmGO.AddComponent<Button>();
-            var lbl = MakeTMP(confirmGO.transform, "Label", "CONFIRM", 22, TextWhite);
-            Stretch(lbl);
-            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-        }
-        PlaceRect(confirmGO, anchor(0f, 0f), anchor(0f, 0f), v2(20f, 24f), v2(200f, 56f));
+        // CANCEL and CONFIRM buttons — centred pair at card bottom (pivot-first placement)
+        var mainBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
 
-        // Cancel button — bottom right
         GameObject cancelGO;
-        if (btnPrefab != null)
+        if (mainBtnPrefab != null)
         {
-            cancelGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            cancelGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
             cancelGO.name = "CancelButton";
             var mb = cancelGO.GetComponent<Michsky.UI.Shift.MainButton>();
             if (mb != null) mb.buttonText = "CANCEL";
@@ -2578,7 +2599,65 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
-        PlaceRect(cancelGO, anchor(1f, 0f), anchor(1f, 0f), v2(-220f, 24f), v2(200f, 56f));
+        {
+            var rt              = cancelGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(-120f, 14f);
+            rt.sizeDelta        = new Vector2(210f, 52f);
+        }
+
+        GameObject confirmGO;
+        if (mainBtnPrefab != null)
+        {
+            confirmGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
+            confirmGO.name = "ConfirmButton";
+            var mb = confirmGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "CONFIRM";
+        }
+        else
+        {
+            confirmGO = MakeImage(card.transform, "ConfirmButton", BtnNormal);
+            confirmGO.AddComponent<Button>();
+            var lbl = MakeTMP(confirmGO.transform, "Label", "CONFIRM", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt              = confirmGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(120f, 14f);
+            rt.sizeDelta        = new Vector2(210f, 52f);
+        }
+
+        // Wire the Squad Member Button prefab + icon sprites onto LevelUpController.
+        // These are used at runtime to build each skill row's +/- buttons.
+        var squadBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SquadMemberBtnPrefabPath);
+        if (squadBtnPrefab == null)
+            Debug.LogWarning("[GameSceneSetup] Squad Member Button prefab not found — skill +/- will use plain buttons.");
+        else
+            Debug.Log($"[GameSceneSetup] Wiring skill buttons: {squadBtnPrefab.name}");
+
+        // Force-import the icon PNGs if Unity hasn't processed them yet.
+        AssetDatabase.ImportAsset(PlusIconPath,  ImportAssetOptions.ForceSynchronousImport);
+        AssetDatabase.ImportAsset(MinusIconPath, ImportAssetOptions.ForceSynchronousImport);
+
+        var plusSprite  = AssetDatabase.LoadAssetAtPath<Sprite>(PlusIconPath);
+        var minusSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MinusIconPath);
+        if (plusSprite  == null) Debug.LogWarning("[GameSceneSetup] icon_plus.png not found at " + PlusIconPath);
+        if (minusSprite == null) Debug.LogWarning("[GameSceneSetup] icon_minus.png not found at " + MinusIconPath);
+        else Debug.Log($"[GameSceneSetup] Icon sprites loaded: {plusSprite?.name}, {minusSprite?.name}");
+
+        var lucComp = panel.GetComponent<LevelUpController>();
+        if (lucComp != null)
+        {
+            var lucSo = new SerializedObject(lucComp);
+            lucSo.FindProperty("skillBtnPrefab").objectReferenceValue = squadBtnPrefab;
+            lucSo.FindProperty("plusIcon").objectReferenceValue       = plusSprite;
+            lucSo.FindProperty("minusIcon").objectReferenceValue      = minusSprite;
+            lucSo.ApplyModifiedProperties();
+        }
 
         return panel;
     }
@@ -3136,7 +3215,11 @@ public static class GameSceneSetup
                 lucSo.FindProperty("pointsText").objectReferenceValue =
                     Find<TMP_Text>(levelUpPanel, "Card/PointsText");
                 lucSo.FindProperty("skillsContainer").objectReferenceValue =
-                    levelUpPanel.transform.Find("Card/SkillsContainer");
+                    levelUpPanel.transform.Find("Card/ColumnsArea/SkillsContainer");
+                lucSo.FindProperty("skillsContainerRight").objectReferenceValue =
+                    levelUpPanel.transform.Find("Card/ColumnsArea/SkillsContainerRight");
+                lucSo.FindProperty("skillBtnPrefab").objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<GameObject>(PanelBtnPrefabPath);
                 var confirmTf = levelUpPanel.transform.Find("Card/ConfirmButton");
                 lucSo.FindProperty("confirmButton").objectReferenceValue =
                     confirmTf?.GetComponentInChildren<Button>(true);
