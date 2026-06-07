@@ -40,12 +40,10 @@ public static class CharacterFactory
             PortraitId      = string.IsNullOrEmpty(portraitFileName) ? "male_1.png" : portraitFileName
         };
 
-        captain.Skills = new Dictionary<string, int>
-        {
-            [Constants.Skills.Command]  = 2,
-            [Constants.Skills.Piloting] = 1,
-            [Constants.Skills.Gunnery]  = 1,
-        };
+        // Captain starts with no pre-allocated skills — the player spends 3 points
+        // in the first-launch level-up screen (Recommended: +2 Command, +1 Perception).
+        captain.Skills               = new Dictionary<string, int>();
+        captain.AvailableSkillPoints = Constants.Skills.PointsPerLevel;
 
         return captain;
     }

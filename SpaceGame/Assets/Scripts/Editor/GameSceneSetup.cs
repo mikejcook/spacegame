@@ -2506,14 +2506,14 @@ public static class GameSceneSetup
 
         // Card — wide (2× the single-column version) to host two skill columns side-by-side
         var card = MakeImage(panel.transform, "Card", PanelBg);
-        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(1400f, 490f));
+        PlaceRect(card, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(1400f, 580f));
 
         // Top cyan accent bar
         var topBar = MakeImage(card.transform, "TopBar", AccentCyan);
         PlaceRect(topBar, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
 
         // "LEVEL UP" title
-        var title = MakeTMP(card.transform, "TitleText", "LEVEL UP", 42, TextWhite);
+        var title = MakeTMP(card.transform, "TitleText", "Level Up", 42, TextWhite);
         PlaceRect(title, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -32f), v2(-60f, 52f));
         title.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         title.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
@@ -2543,7 +2543,7 @@ public static class GameSceneSetup
             var rt       = columnsGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(20f, 82f);    // 82px above bottom buttons
+            rt.offsetMin = new Vector2(20f, 148f);   // 148px above bottom (82 buttons + 58 recommended + 8 gap)
             rt.offsetMax = new Vector2(-20f, -152f); // 152px below card top (below divider)
         }
         var hlg = columnsGO.AddComponent<HorizontalLayoutGroup>();
@@ -2658,6 +2658,34 @@ public static class GameSceneSetup
             rt.anchoredPosition = new Vector2(120f, 14f);
             rt.sizeDelta        = new Vector2(210f, 52f);
         }
+
+        // RECOMMENDED button — centred between Cancel and Confirm; only shown for
+        // the level-1 captain first-launch screen. Hidden by default; LevelUpController
+        // activates it when showing a locked level-up (first-launch captain only).
+        GameObject recommendedGO;
+        if (mainBtnPrefab != null)
+        {
+            recommendedGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
+            recommendedGO.name = "RecommendedButton";
+            var mb = recommendedGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "RECOMMENDED";
+        }
+        else
+        {
+            recommendedGO = MakeImage(card.transform, "RecommendedButton", new Color(0.10f, 0.35f, 0.55f, 1f));
+            recommendedGO.AddComponent<Button>();
+            var lbl = MakeTMP(recommendedGO.transform, "Label", "RECOMMENDED", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt              = recommendedGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 86f);   // above DividerRule2 (which sits at y=80)
+            rt.sizeDelta        = new Vector2(280f, 52f);
+        }
+        recommendedGO.SetActive(false);   // hidden until LevelUpController enables it
 
         // Skill rows + their +/- buttons are built statically above; LevelUpController
         // binds to them by name at runtime. Container/CanvasGroup/confirm/cancel
@@ -3344,6 +3372,9 @@ public static class GameSceneSetup
                 var cancelTf = levelUpPanel.transform.Find("Card/CancelButton");
                 lucSo.FindProperty("cancelButton").objectReferenceValue =
                     cancelTf?.GetComponentInChildren<Button>(true);
+                var recommendedTf = levelUpPanel.transform.Find("Card/RecommendedButton");
+                lucSo.FindProperty("recommendedButton").objectReferenceValue =
+                    recommendedTf?.GetComponentInChildren<Button>(true);
                 lucSo.ApplyModifiedProperties();
             }
             else Debug.LogWarning("[GameSceneSetup] LevelUpController not found on LevelUpPanel.");

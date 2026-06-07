@@ -705,6 +705,27 @@ public class CrewViewController : MonoBehaviour
         levelUpController.ShowLevelUp(crew);
     }
 
+    /// <summary>
+    /// Opens the level-up panel in locked mode (Cancel disabled) for the captain's first
+    /// level-up at game start. <paramref name="onComplete"/> is invoked after Confirm.
+    /// </summary>
+    public void OpenCaptainLevelUpForFirstLaunch(Character captain, System.Action onComplete)
+    {
+        if (levelUpController == null)
+        {
+            Debug.LogWarning("[CrewViewController] LevelUpController not wired — skipping first-launch level-up.");
+            onComplete?.Invoke();
+            return;
+        }
+
+        levelUpController.OnConfirmed = () =>
+        {
+            Populate();           // refresh crew list so the arrow clears
+            onComplete?.Invoke();
+        };
+        levelUpController.ShowLevelUpLocked(captain);
+    }
+
     // ── Shared action button builder ──────────────────────────────────────────
 
     private static GameObject BuildActionButton(Transform parent, string goName,

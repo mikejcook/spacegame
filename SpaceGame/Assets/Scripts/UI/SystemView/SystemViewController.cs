@@ -279,6 +279,21 @@ public class SystemViewController : MonoBehaviour
             Debug.LogWarning("[SystemViewController] [Debug] No active game detected — " +
                              $"auto-creating debug game (captain: Player, ship: Horizon, portrait: {debugPortrait}).");
             gm.PrepareNewGame("Player", "Horizon", debugPortrait);
+
+            // Debug: skip first-launch UI — auto-apply recommended captain skills.
+            gm.AcknowledgeFirstLaunch();
+            var debugCaptain = gm.PlayerCaptain;
+            if (debugCaptain != null && debugCaptain.AvailableSkillPoints > 0)
+            {
+                // Skills is a computed property (get deserialises, set serialises) —
+                // mutating the returned dict does nothing. Assign the whole dict back.
+                var skills = debugCaptain.Skills;
+                skills[Constants.Skills.Command]    = 2;
+                skills[Constants.Skills.Perception] = 1;
+                debugCaptain.Skills               = skills;
+                debugCaptain.AvailableSkillPoints = 0;
+                try { gm.Database?.Characters.Update(debugCaptain); } catch { }
+            }
         }
 #endif
 
@@ -290,6 +305,47 @@ public class SystemViewController : MonoBehaviour
         }
 
         PopulateFromGameManager(gm);
+
+        // First launch: take the player straight to the crew view with the captain
+        // level-up popup so they spend their 3 starting skill points before playing.
+        if (gm.IsFirstLaunch)
+        {
+            gm.AcknowledgeFirstLaunch();
+            StartCoroutine(ShowFirstLaunchFlow());
+        }
+    }
+
+    /// <summary>
+    /// After a new game begins, routes the player to the crew view and immediately
+    /// opens the locked captain level-up panel. On confirm, switches to system view.
+    /// </summary>
+    private System.Collections.IEnumerator ShowFirstLaunchFlow()
+    {
+        ShowCrewView();
+        yield return null;   // one frame so the crew panel is fully visible
+
+        var gm      = GameManager.Instance;
+        var captain = gm?.PlayerCaptain;
+
+        // Re-read from DB in case PrepareNewGame wrote updated data after we cached it.
+        if (captain != null && gm?.Database != null)
+            captain = gm.Database.Characters.Get(captain.Id);
+
+        if (captain == null || captain.AvailableSkillPoints <= 0)
+        {
+            Debug.LogWarning("[SystemViewController] First-launch captain has no skill points — skipping to system view.");
+            ShowSystemView();
+            yield break;
+        }
+
+        if (crewViewController == null)
+        {
+            Debug.LogWarning("[SystemViewController] crewViewController not wired — skipping first-launch level-up.");
+            ShowSystemView();
+            yield break;
+        }
+
+        crewViewController.OpenCaptainLevelUpForFirstLaunch(captain, () => ShowSystemView());
     }
 
     // -----------------------------------------------------------------------

@@ -54,6 +54,7 @@ public class LevelUpController : MonoBehaviour
     [SerializeField] private Transform   skillsContainerRight;  // right column (skills 5-8)
     [SerializeField] private Button      confirmButton;
     [SerializeField] private Button      cancelButton;
+    [SerializeField] private Button      recommendedButton;     // built by GameSceneSetup; shown only for level-1 captain
 
     // ── Colours ───────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ public class LevelUpController : MonoBehaviour
     private int                          _pointsLeft;
     private readonly List<SkillRowUI>    _rowUIs = new List<SkillRowUI>();
     private bool                         _rowsBound;
+    private bool                         _cancelLocked; // when true, Cancel is disabled and cannot be pressed
 
     /// <summary>Fired after Confirm saves the character. Caller should refresh its view.</summary>
     public System.Action OnConfirmed;
@@ -75,8 +77,9 @@ public class LevelUpController : MonoBehaviour
 
     private void Start()
     {
-        if (confirmButton != null) confirmButton.onClick.AddListener(OnConfirmClicked);
-        if (cancelButton  != null) cancelButton.onClick.AddListener(OnCancelClicked);
+        if (confirmButton    != null) confirmButton.onClick.AddListener(OnConfirmClicked);
+        if (cancelButton     != null) cancelButton.onClick.AddListener(OnCancelClicked);
+        if (recommendedButton != null) recommendedButton.onClick.AddListener(OnRecommendedClicked);
         BindSkillRows();
         Hide();
     }
@@ -86,6 +89,21 @@ public class LevelUpController : MonoBehaviour
     /// <summary>Opens the level-up panel for the given character.</summary>
     public void ShowLevelUp(Character character)
     {
+        ShowLevelUpInternal(character, cancelLocked: false);
+    }
+
+    /// <summary>
+    /// Opens the level-up panel with Cancel disabled — the player must spend all
+    /// skill points and confirm before proceeding. Also shows the Recommended button
+    /// when <paramref name="character"/> is the player captain at level 1.
+    /// </summary>
+    public void ShowLevelUpLocked(Character character)
+    {
+        ShowLevelUpInternal(character, cancelLocked: true);
+    }
+
+    private void ShowLevelUpInternal(Character character, bool cancelLocked)
+    {
         if (character == null || character.AvailableSkillPoints <= 0)
         {
             Debug.LogWarning("[LevelUpController] ShowLevelUp called with no skill points available.");
@@ -94,9 +112,10 @@ public class LevelUpController : MonoBehaviour
 
         if (!_rowsBound) BindSkillRows();   // safety: bind on first use if Start hasn't run
 
-        _character  = character;
-        _pending    = new Dictionary<string, int>(character.Skills);
-        _pointsLeft = character.AvailableSkillPoints;
+        _character    = character;
+        _cancelLocked = cancelLocked;
+        _pending      = new Dictionary<string, int>(character.Skills);
+        _pointsLeft   = character.AvailableSkillPoints;
 
         // Ensure every skill has an entry
         foreach (var s in Constants.Skills.All)
@@ -105,8 +124,52 @@ public class LevelUpController : MonoBehaviour
         if (crewNameText != null)
             crewNameText.text = character.Name;
 
+        // Recommended button: only for level-1 captain in locked mode
+        bool showRecommended = cancelLocked && character.IsPlayerCaptain && character.Level == 1;
+        if (recommendedButton != null)
+            recommendedButton.gameObject.SetActive(showRecommended);
+
+        // Cancel button: disabled when locked
+        if (cancelButton != null)
+            cancelButton.interactable = !cancelLocked;
+
         RefreshUI();
         Show();
+    }
+
+    // ── Recommended allocation ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Applies the recommended first-level captain build: +2 Command, +1 Perception.
+    /// Replaces any pending edits.
+    /// </summary>
+    private void OnRecommendedClicked()
+    {
+        if (_character == null || _pending == null) return;
+
+        // Reset pending to character's baseline then apply recommendation
+        foreach (var s in Constants.Skills.All)
+            _pending[s] = _character.Skills.TryGetValue(s, out int b) ? b : 0;
+        _pointsLeft = _character.AvailableSkillPoints;
+
+        int cap = Constants.Skills.MaxRankForLevel(_character.Level);
+
+        void Assign(string skill, int amount)
+        {
+            int current  = _pending.TryGetValue(skill, out int v) ? v : 0;
+            int baseline = _character.Skills.TryGetValue(skill, out int b) ? b : 0;
+            int toAdd    = Mathf.Min(amount, Mathf.Min(_pointsLeft, cap - current));
+            if (toAdd > 0)
+            {
+                _pending[skill] = current + toAdd;
+                _pointsLeft    -= toAdd;
+            }
+        }
+
+        Assign(Constants.Skills.Command,    2);
+        Assign(Constants.Skills.Perception, 1);
+
+        RefreshUI();
     }
 
     // ── Skill rows ────────────────────────────────────────────────────────────
@@ -270,6 +333,12 @@ public class LevelUpController : MonoBehaviour
         panelCanvasGroup.alpha          = 0f;
         panelCanvasGroup.blocksRaycasts = false;
         panelCanvasGroup.interactable   = false;
+
+        // Restore cancel interactability and hide recommended button so re-opens
+        // by normal crew-view flow work exactly as before.
+        _cancelLocked = false;
+        if (cancelButton     != null) cancelButton.interactable = true;
+        if (recommendedButton != null) recommendedButton.gameObject.SetActive(false);
     }
 
     // ── Inner types ───────────────────────────────────────────────────────────

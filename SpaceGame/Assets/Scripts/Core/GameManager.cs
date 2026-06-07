@@ -46,6 +46,16 @@ public class GameManager : MonoBehaviour
     public Character PlayerPilot    { get; private set; }
     public Character PlayerEngineer { get; private set; }
 
+    /// <summary>
+    /// True after PrepareNewGame until the player has spent their first-level skill points.
+    /// SystemViewController checks this on Start() to show the captain level-up screen
+    /// before entering the system view.
+    /// </summary>
+    public bool IsFirstLaunch { get; private set; }
+
+    /// <summary>Called by SystemViewController after the first-launch level-up is complete.</summary>
+    public void AcknowledgeFirstLaunch() => IsFirstLaunch = false;
+
     // -----------------------------------------------------------------------
     // Unity lifecycle
     // -----------------------------------------------------------------------
@@ -280,6 +290,7 @@ public class GameManager : MonoBehaviour
             }
 
             Database.SaveGames.Update(CurrentSave);
+            IsFirstLaunch = true;
             Debug.Log("[GameManager] PrepareNewGame complete.");
         }
         catch (System.Exception e)
