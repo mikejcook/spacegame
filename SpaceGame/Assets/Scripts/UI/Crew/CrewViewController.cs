@@ -265,20 +265,7 @@ public class CrewViewController : MonoBehaviour
         }
 
         // Portrait pool: exclude portraits already used by hired crew and captain.
-        var usedPortraits      = CollectUsedPortraits(gm);
-        var availablePortraits = new List<string>();
-        if (_portraitLib != null && _portraitLib.IsValid)
-        {
-            foreach (var fn in _portraitLib.FileNames)
-                if (!usedPortraits.Contains(fn))
-                    availablePortraits.Add(fn);
-
-            for (int i = availablePortraits.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (availablePortraits[i], availablePortraits[j]) = (availablePortraits[j], availablePortraits[i]);
-            }
-        }
+        var usedPortraits = CollectUsedPortraits(gm);
 
         int count = Random.Range(2, 4);
         for (int i = 0; i < count; i++)
@@ -286,10 +273,13 @@ public class CrewViewController : MonoBehaviour
             int level     = Random.Range(1, Mathf.Max(2, captainLevel + 1));
             var candidate = CharacterFactory.CreateRandomCrewMember(shuffled[i], level);
 
-            if (availablePortraits.Count > 0)
+            // Assign a gender-appropriate portrait not already used by hired crew or
+            // earlier candidates in this batch.
+            if (_portraitLib != null && _portraitLib.IsValid)
             {
-                candidate.PortraitId = availablePortraits[0];
-                availablePortraits.RemoveAt(0);
+                candidate.PortraitId = _portraitLib.RandomFileNameForGender(candidate.Gender, usedPortraits);
+                if (!string.IsNullOrEmpty(candidate.PortraitId))
+                    usedPortraits.Add(candidate.PortraitId);
             }
 
             // Persist as a station recruit; Id is assigned by the DB after Insert.
@@ -734,12 +724,13 @@ public class CrewViewController : MonoBehaviour
         var go = new GameObject(goName, typeof(RectTransform));
         go.transform.SetParent(parent, false);
 
+        // Mirror the LevelUpButton position: top-right anchor, same size.
+        // LevelUpButton: anchor/pivot (1,1), anchoredPosition (-218,-24), sizeDelta (130,44).
         var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0f, 0f);
-        rt.anchorMax = new Vector2(1f, 0f);
-        rt.pivot     = new Vector2(0.5f, 0f);
-        rt.offsetMin = new Vector2(24f,  16f);
-        rt.offsetMax = new Vector2(-24f, 64f);
+        rt.anchorMin        = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot            = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-218f, -24f);
+        rt.sizeDelta        = new Vector2(130f, 44f);
 
         var img = go.AddComponent<Image>();
         img.color = bg;
@@ -755,7 +746,7 @@ public class CrewViewController : MonoBehaviour
         lblGO.transform.SetParent(go.transform, false);
         var lbl = lblGO.AddComponent<TextMeshProUGUI>();
         lbl.text      = goName;
-        lbl.fontSize  = 26f;
+        lbl.fontSize  = 20f;
         lbl.color     = new Color(0.92f, 0.95f, 1f, 1f);
         lbl.alignment = TextAlignmentOptions.Center;
         lbl.fontStyle = FontStyles.Bold;

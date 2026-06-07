@@ -48,7 +48,7 @@ public static class CharacterFactory
         return captain;
     }
 
-    public static Character CreateStartingPilot()
+    public static Character CreateStartingPilot(PortraitLibrary portraits = null, HashSet<string> usedPortraits = null)
     {
         var generated = NameGenerator.Generate();
 
@@ -61,7 +61,9 @@ public static class CharacterFactory
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
-            PortraitId    = "male_5.png",
+            PortraitId    = portraits != null
+                                ? portraits.RandomFileNameForGender(generated.gender, usedPortraits)
+                                : (generated.gender == Gender.Female ? "female_5.png" : "male_5.png"),
             Background    = "Former colonial courier pilot, fast and reckless.",
             Homeworld     = GenerateHomeworld(),
         };
@@ -69,14 +71,13 @@ public static class CharacterFactory
         pilot.Skills = new Dictionary<string, int>
         {
             [Constants.Skills.Piloting]   = 2,
-            [Constants.Skills.Command]    = 1,
-            [Constants.Skills.Perception] = 1,
+            [Constants.Skills.Perception] = 1
         };
 
         return pilot;
     }
 
-    public static Character CreateStartingEngineer()
+    public static Character CreateStartingEngineer(PortraitLibrary portraits = null, HashSet<string> usedPortraits = null)
     {
         var generated = NameGenerator.Generate();
 
@@ -89,7 +90,9 @@ public static class CharacterFactory
             Level         = 1,
             MaxHealth     = 10,
             CurrentHealth = 10,
-            PortraitId    = "female_6.png",
+            PortraitId    = portraits != null
+                                ? portraits.RandomFileNameForGender(generated.gender, usedPortraits)
+                                : (generated.gender == Gender.Female ? "female_6.png" : "male_6.png"),
             Background    = "Self-taught ship mechanic who can fix anything with duct tape and spite.",
             Homeworld     = GenerateHomeworld(),
         };
@@ -97,8 +100,7 @@ public static class CharacterFactory
         engineer.Skills = new Dictionary<string, int>
         {
             [Constants.Skills.Engineering] = 2,
-            [Constants.Skills.Science]     = 1,
-            [Constants.Skills.Perception]  = 1,
+            [Constants.Skills.Science]     = 1
         };
 
         return engineer;
@@ -115,7 +117,8 @@ public static class CharacterFactory
     /// Skill points = level × PointsPerLevel, capped at level + 1 per skill.
     /// AvailableSkillPoints is 0 (all pre-allocated).
     /// </summary>
-    public static Character CreateRandomCrewMember(string specialty, int level = 1)
+    public static Character CreateRandomCrewMember(string specialty, int level = 1,
+        PortraitLibrary portraits = null, HashSet<string> usedPortraits = null)
     {
         level = Mathf.Max(1, level);
         var generated = NameGenerator.Generate();
@@ -132,6 +135,9 @@ public static class CharacterFactory
             Background           = GenerateBackground(specialty),
             Homeworld            = GenerateHomeworld(),
             AvailableSkillPoints = 0,
+            PortraitId           = portraits != null
+                                       ? portraits.RandomFileNameForGender(generated.gender, usedPortraits)
+                                       : (generated.gender == Gender.Female ? "female_1.png" : "male_1.png"),
         };
 
         crew.Skills = AllocateSkillsForRole(specialty, level);

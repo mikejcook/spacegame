@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -44,5 +45,59 @@ public class PortraitLibrary : ScriptableObject
         for (int i = 0; i < FileNames.Length; i++)
             if (FileNames[i] == fileName) return i;
         return -1;
+    }
+
+    /// <summary>
+    /// Returns a random portrait filename that matches <paramref name="gender"/> and
+    /// is not already in <paramref name="usedFileNames"/>.
+    ///
+    /// Gender matching:
+    ///   Male   → filenames starting with "male_"
+    ///   Female → filenames starting with "female_"
+    ///   NonBinary / None → any filename
+    ///
+    /// Falls back to any unused portrait if no gender-matched one is available,
+    /// then to any portrait at all if every portrait is already used.
+    /// </summary>
+    public string RandomFileNameForGender(Gender gender, HashSet<string> usedFileNames = null)
+    {
+        if (!IsValid) return string.Empty;
+        usedFileNames ??= new HashSet<string>();
+
+        string prefix = gender == Gender.Male   ? "male_"
+                      : gender == Gender.Female ? "female_"
+                      : null;   // NonBinary / None → any portrait
+
+        // Build candidate list: gender-matched and unused
+        var candidates = new List<string>();
+        foreach (var fn in FileNames)
+        {
+            if (usedFileNames.Contains(fn)) continue;
+            if (prefix == null || fn.StartsWith(prefix))
+                candidates.Add(fn);
+        }
+
+        if (candidates.Count > 0)
+            return candidates[Random.Range(0, candidates.Count)];
+
+        // Fallback 1: any unused portrait (ignoring gender)
+        var anyUnused = new List<string>();
+        foreach (var fn in FileNames)
+            if (!usedFileNames.Contains(fn))
+                anyUnused.Add(fn);
+
+        if (anyUnused.Count > 0)
+            return anyUnused[Random.Range(0, anyUnused.Count)];
+
+        // Fallback 2: pool exhausted — just pick gender-matched (allow duplicates)
+        var genderMatched = new List<string>();
+        foreach (var fn in FileNames)
+            if (prefix == null || fn.StartsWith(prefix))
+                genderMatched.Add(fn);
+
+        if (genderMatched.Count > 0)
+            return genderMatched[Random.Range(0, genderMatched.Count)];
+
+        return FileNames[Random.Range(0, FileNames.Length)];
     }
 }

@@ -121,9 +121,17 @@ public class GameManager : MonoBehaviour
             Database.Characters.Insert(PlayerCaptain);
             CurrentSave.CaptainId    = PlayerCaptain.Id;
 
-            // Create starting pilot and engineer
-            PlayerPilot               = CharacterFactory.CreateStartingPilot();
-            PlayerEngineer            = CharacterFactory.CreateStartingEngineer();
+            // Load portrait library and track used portraits to avoid duplicates
+            var portraitLibrary = Resources.Load<PortraitLibrary>("PortraitLibrary");
+            var usedPortraits   = new System.Collections.Generic.HashSet<string>();
+            if (!string.IsNullOrEmpty(PlayerCaptain.PortraitId))
+                usedPortraits.Add(PlayerCaptain.PortraitId);
+
+            // Create starting pilot and engineer with gender-appropriate, non-duplicate portraits
+            PlayerPilot    = CharacterFactory.CreateStartingPilot(portraitLibrary, usedPortraits);
+            if (!string.IsNullOrEmpty(PlayerPilot.PortraitId))
+                usedPortraits.Add(PlayerPilot.PortraitId);
+            PlayerEngineer = CharacterFactory.CreateStartingEngineer(portraitLibrary, usedPortraits);
             PlayerPilot.SaveGameId    = CurrentSave.Id;
             PlayerEngineer.SaveGameId = CurrentSave.Id;
             Database.Characters.Insert(PlayerPilot);
