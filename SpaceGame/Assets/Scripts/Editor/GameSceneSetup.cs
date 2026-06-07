@@ -2576,6 +2576,34 @@ public static class GameSceneSetup
         rightVLG.childForceExpandHeight = false;
         rightVLG.childAlignment         = TextAnchor.UpperLeft;
 
+        // ── Skill rows (built statically) ─────────────────────────────────────
+        // The +/- buttons are built here, at scene-build time, rather than being
+        // instantiated at runtime. Freshly-instantiated Shift buttons hit the
+        // Animator playable-binding race (see CLAUDE.md) and never settle to their
+        // visible Normal rest frame. Built into the scene, their Animators bind at
+        // scene load and settle correctly — exactly like the CANCEL/CONFIRM
+        // MainButtons in this same panel. LevelUpController binds to these rows by
+        // name ("Row_<skill>") at runtime and only updates their values.
+        var squadBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SquadMemberBtnPrefabPath);
+        if (squadBtnPrefab == null)
+            Debug.LogWarning("[GameSceneSetup] Squad Member Button prefab not found — skill +/- will use plain buttons.");
+
+        // Force-import the icon PNGs if Unity hasn't processed them yet.
+        AssetDatabase.ImportAsset(PlusIconPath,  ImportAssetOptions.ForceSynchronousImport);
+        AssetDatabase.ImportAsset(MinusIconPath, ImportAssetOptions.ForceSynchronousImport);
+        var plusSprite  = AssetDatabase.LoadAssetAtPath<Sprite>(PlusIconPath);
+        var minusSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MinusIconPath);
+        if (plusSprite  == null) Debug.LogWarning("[GameSceneSetup] icon_plus.png not found at " + PlusIconPath);
+        if (minusSprite == null) Debug.LogWarning("[GameSceneSetup] icon_minus.png not found at " + MinusIconPath);
+
+        var allSkills = Constants.Skills.All;
+        int skillSplit = (allSkills.Length + 1) / 2; // left column gets the larger share
+        for (int i = 0; i < allSkills.Length; i++)
+        {
+            var col = (i < skillSplit) ? leftCol.transform : rightCol.transform;
+            BuildSkillRowStatic(allSkills[i], col, squadBtnPrefab, plusSprite, minusSprite);
+        }
+
         // Divider above buttons
         var divider2 = MakeImage(card.transform, "DividerRule2", DividerColor);
         PlaceRect(divider2, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 80f), v2(-40f, 2f));
@@ -2631,35 +2659,127 @@ public static class GameSceneSetup
             rt.sizeDelta        = new Vector2(210f, 52f);
         }
 
-        // Wire the Squad Member Button prefab + icon sprites onto LevelUpController.
-        // These are used at runtime to build each skill row's +/- buttons.
-        var squadBtnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SquadMemberBtnPrefabPath);
-        if (squadBtnPrefab == null)
-            Debug.LogWarning("[GameSceneSetup] Squad Member Button prefab not found — skill +/- will use plain buttons.");
-        else
-            Debug.Log($"[GameSceneSetup] Wiring skill buttons: {squadBtnPrefab.name}");
+        // Skill rows + their +/- buttons are built statically above; LevelUpController
+        // binds to them by name at runtime. Container/CanvasGroup/confirm/cancel
+        // references are wired in WireController.
+        return panel;
+    }
 
-        // Force-import the icon PNGs if Unity hasn't processed them yet.
-        AssetDatabase.ImportAsset(PlusIconPath,  ImportAssetOptions.ForceSynchronousImport);
-        AssetDatabase.ImportAsset(MinusIconPath, ImportAssetOptions.ForceSynchronousImport);
+    // -----------------------------------------------------------------------
+    // Level-up skill rows (static build)
+    // -----------------------------------------------------------------------
 
-        var plusSprite  = AssetDatabase.LoadAssetAtPath<Sprite>(PlusIconPath);
-        var minusSprite = AssetDatabase.LoadAssetAtPath<Sprite>(MinusIconPath);
-        if (plusSprite  == null) Debug.LogWarning("[GameSceneSetup] icon_plus.png not found at " + PlusIconPath);
-        if (minusSprite == null) Debug.LogWarning("[GameSceneSetup] icon_minus.png not found at " + MinusIconPath);
-        else Debug.Log($"[GameSceneSetup] Icon sprites loaded: {plusSprite?.name}, {minusSprite?.name}");
+    /// <summary>
+    /// Builds one skill row: Label | MinusButton | RankText | PlusButton, parented under
+    /// the given column container. Mirrors the layout LevelUpController used to build at
+    /// runtime, but baked into the scene so the Shift button Animators bind at load and
+    /// rest correctly. The row is named "Row_&lt;skill&gt;" so the controller can find it.
+    /// </summary>
+    static void BuildSkillRowStatic(string skillName, Transform container,
+                                    GameObject squadBtnPrefab, Sprite plusSprite, Sprite minusSprite)
+    {
+        var rowGO = MakeUIGO($"Row_{skillName}", container);
+        // Column VLG has childControlHeight=false, so set height explicitly. Width is
+        // overridden by the VLG (childControlWidth=true), so x doesn't matter.
+        rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 60f);
 
-        var lucComp = panel.GetComponent<LevelUpController>();
-        if (lucComp != null)
+        var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing                = 8f;
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = false;  // respect preferred widths, don't bloat
+        hlg.childForceExpandHeight = true;   // children fill row height
+        hlg.childAlignment         = TextAnchor.MiddleLeft;
+        var rowLE = rowGO.AddComponent<LayoutElement>();
+        rowLE.preferredHeight = 60f;
+        rowLE.flexibleHeight  = 0f;
+
+        // Skill label
+        var labelGO  = MakeTMP(rowGO.transform, "Label", skillName, 24, TextSubtle);
+        labelGO.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        var labelLE  = labelGO.AddComponent<LayoutElement>();
+        labelLE.preferredWidth = 155f;
+        labelLE.flexibleWidth  = 0f;
+
+        // Minus button (Shift Squad Member Button prefab, minus icon)
+        MakeSkillButtonStatic(rowGO.transform, "MinusButton", squadBtnPrefab, minusSprite);
+
+        // Rank text — "N / cap" (placeholder; LevelUpController fills it at runtime)
+        var rankGO  = MakeTMP(rowGO.transform, "RankText", "0 / 2", 20, AccentCyan);
+        rankGO.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        var rankLE  = rankGO.AddComponent<LayoutElement>();
+        rankLE.preferredWidth = 58f;
+        rankLE.flexibleWidth  = 0f;
+
+        // Plus button (Shift Squad Member Button prefab, plus icon)
+        MakeSkillButtonStatic(rowGO.transform, "PlusButton", squadBtnPrefab, plusSprite);
+    }
+
+    /// <summary>
+    /// Instantiates a small Shift Squad Member Button as a skill +/- button, hides its
+    /// Profile Picture and Border Glow, and stamps the icon sprite on all three animation
+    /// states. The Animator is left enabled and untouched — built into the scene it binds
+    /// at load and rests at the visible Normal frame. Falls back to a plain styled button
+    /// when the prefab is missing.
+    /// </summary>
+    static GameObject MakeSkillButtonStatic(Transform parent, string goName,
+                                            GameObject squadBtnPrefab, Sprite icon)
+    {
+        GameObject go;
+
+        if (squadBtnPrefab != null)
         {
-            var lucSo = new SerializedObject(lucComp);
-            lucSo.FindProperty("skillBtnPrefab").objectReferenceValue = squadBtnPrefab;
-            lucSo.FindProperty("plusIcon").objectReferenceValue       = plusSprite;
-            lucSo.FindProperty("minusIcon").objectReferenceValue      = minusSprite;
-            lucSo.ApplyModifiedProperties();
+            go      = (GameObject)Object.Instantiate(squadBtnPrefab, parent);
+            go.name = goName;
+
+            // Border Glow (12-unit outset, baked alpha ~0.39) looks muddy at small sizes.
+            var normalT = go.transform.Find("Normal");
+            if (normalT != null)
+            {
+                var bgT = normalT.Find("Border Glow");
+                if (bgT != null) bgT.gameObject.SetActive(false);
+            }
+
+            // Hide the Profile Picture overlay — we want an icon button, not a portrait.
+            var profilePic = go.transform.Find("Profile Picture");
+            if (profilePic != null) profilePic.gameObject.SetActive(false);
+
+            // Stamp the icon on Normal / Highlighted / Pressed so it shows in every state.
+            if (icon != null)
+            {
+                foreach (string stateName in new[] { "Normal", "Highlighted", "Pressed" })
+                {
+                    var stateT = go.transform.Find(stateName);
+                    var iconT  = stateT?.Find("Icon");
+                    var img    = iconT?.GetComponent<Image>();
+                    if (img != null)
+                    {
+                        img.sprite         = icon;
+                        img.preserveAspect = true;
+                        img.color          = Color.white;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Fallback — plain Image + Button with TMP label
+            string label = (goName == "PlusButton") ? "+" : "−";
+            go = MakeImage(parent, goName, new Color(0.10f, 0.28f, 0.46f, 1f));
+            go.AddComponent<Button>().targetGraphic = go.GetComponent<Image>();
+            var lbl = MakeTMP(go.transform, "Label", label, 26, TextWhite);
+            Stretch(lbl);
         }
 
-        return panel;
+        // Squad Member Button is designed at 60×60. Lock that size so the border glow
+        // outset stays proportional and the row HLG can't bloat it.
+        var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
+        le.preferredWidth  = 60f;
+        le.preferredHeight = 60f;
+        le.flexibleWidth   = 0f;
+        le.flexibleHeight  = 0f;
+
+        return go;
     }
 
     // -----------------------------------------------------------------------
@@ -3218,8 +3338,6 @@ public static class GameSceneSetup
                     levelUpPanel.transform.Find("Card/ColumnsArea/SkillsContainer");
                 lucSo.FindProperty("skillsContainerRight").objectReferenceValue =
                     levelUpPanel.transform.Find("Card/ColumnsArea/SkillsContainerRight");
-                lucSo.FindProperty("skillBtnPrefab").objectReferenceValue =
-                    AssetDatabase.LoadAssetAtPath<GameObject>(PanelBtnPrefabPath);
                 var confirmTf = levelUpPanel.transform.Find("Card/ConfirmButton");
                 lucSo.FindProperty("confirmButton").objectReferenceValue =
                     confirmTf?.GetComponentInChildren<Button>(true);
