@@ -71,6 +71,7 @@ public class CrewViewController : MonoBehaviour
 
     private bool   _isRecruitmentMode;
     private string _stationName;
+    private int    _stationPoiId;
 
     /// <summary>
     /// Called when the header text should change.
@@ -133,16 +134,41 @@ public class CrewViewController : MonoBehaviour
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Activates recruitment mode. Call immediately after showing the crew panel.
-    /// Generates 2–3 candidates and repopulates the list.
+    /// Activates recruitment mode. Loads persisted recruits for this station if they
+    /// are still fresh; otherwise clears them and generates a new pool.
     /// </summary>
-    public void StartRecruitmentMode(string stationName, int captainLevel)
+    public void StartRecruitmentMode(PointOfInterest poi, int captainLevel)
     {
         _isRecruitmentMode = true;
-        _stationName       = stationName;
+        _stationName       = poi.Name;
+        _stationPoiId      = poi.Id;
         _hired.Clear();
-        GenerateCandidates(captainLevel);
-        OnHeaderTextChanged?.Invoke($"{stationName} — Crew Recruitment");
+
+        if (_portraitLib == null)
+            _portraitLib = Resources.Load<PortraitLibrary>("PortraitLibrary");
+
+        var gm = GameManager.Instance;
+        float daysPassed = gm?.CurrentSave?.DaysPassed ?? 0f;
+        int saveId     = gm?.CurrentSave?.Id ?? 0;
+
+        bool needsRefresh = poi.RecruitRefreshDay < 0
+            || (daysPassed - poi.RecruitRefreshDay) >= Constants.Recruitment.RecruitRefreshDays;
+
+        if (needsRefresh)
+        {
+            // Wipe the old pool and generate a fresh one
+            if (gm?.Database != null) gm.Database.ClearStationRecruits(poi.Id);
+            GenerateAndPersistCandidates(captainLevel, poi, saveId, daysPassed, gm);
+        }
+        else
+        {
+            // Load the persisted pool
+            _candidates.Clear();
+            if (gm?.Database != null)
+                _candidates.AddRange(gm.Database.GetStationRecruits(poi.Id));
+        }
+
+        OnHeaderTextChanged?.Invoke($"{poi.Name} — Crew Recruitment");
         Populate();
     }
 
@@ -214,7 +240,8 @@ public class CrewViewController : MonoBehaviour
 
     // ── Candidate generation ──────────────────────────────────────────────────
 
-    private void GenerateCandidates(int captainLevel)
+    private void GenerateAndPersistCandidates(int captainLevel, PointOfInterest poi,
+                                               int saveId, float daysPassed, GameManager gm)
     {
         _candidates.Clear();
 
@@ -236,12 +263,70 @@ public class CrewViewController : MonoBehaviour
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
 
+        // Portrait pool: exclude portraits already used by hired crew and captain.
+        var usedPortraits      = CollectUsedPortraits(gm);
+        var availablePortraits = new List<string>();
+        if (_portraitLib != null && _portraitLib.IsValid)
+        {
+            foreach (var fn in _portraitLib.FileNames)
+                if (!usedPortraits.Contains(fn))
+                    availablePortraits.Add(fn);
+
+            for (int i = availablePortraits.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (availablePortraits[i], availablePortraits[j]) = (availablePortraits[j], availablePortraits[i]);
+            }
+        }
+
         int count = Random.Range(2, 4);
         for (int i = 0; i < count; i++)
         {
-            int level = Random.Range(1, Mathf.Max(2, captainLevel + 1));
-            _candidates.Add(CharacterFactory.CreateRandomCrewMember(shuffled[i], level));
+            int level     = Random.Range(1, Mathf.Max(2, captainLevel + 1));
+            var candidate = CharacterFactory.CreateRandomCrewMember(shuffled[i], level);
+
+            if (availablePortraits.Count > 0)
+            {
+                candidate.PortraitId = availablePortraits[0];
+                availablePortraits.RemoveAt(0);
+            }
+
+            // Persist as a station recruit; Id is assigned by the DB after Insert.
+            candidate.SaveGameId    = saveId;
+            candidate.StationPoiId  = poi.Id;
+            if (gm?.Database != null)
+                gm.Database.Characters.Insert(candidate);
+
+            _candidates.Add(candidate);
         }
+
+        // Record when this pool was generated so we know when to refresh it.
+        poi.RecruitRefreshDay = Mathf.FloorToInt(daysPassed);
+        if (gm?.Database != null)
+            gm.Database.POIs.Update(poi);
+    }
+
+    /// <summary>
+    /// Returns the set of portrait IDs in use by the captain and all hired crew.
+    /// Station recruits (StationPoiId > 0) are excluded — they haven't joined the ship.
+    /// </summary>
+    private HashSet<string> CollectUsedPortraits(GameManager gm = null)
+    {
+        var used = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+        gm = gm ?? GameManager.Instance;
+        if (gm?.CurrentSave == null) return used;
+
+        if (gm.PlayerCaptain != null && !string.IsNullOrEmpty(gm.PlayerCaptain.PortraitId))
+            used.Add(gm.PlayerCaptain.PortraitId);
+
+        var crew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
+        if (crew != null)
+            foreach (var c in crew)
+                if (!string.IsNullOrEmpty(c.PortraitId))
+                    used.Add(c.PortraitId);
+
+        return used;
     }
 
     // ── List row builder ──────────────────────────────────────────────────────
@@ -466,10 +551,12 @@ public class CrewViewController : MonoBehaviour
         var gm = GameManager.Instance;
         if (gm?.CurrentSave == null) { Debug.LogWarning("[CrewViewController] No save — cannot hire."); return; }
 
-        candidate.SaveGameId = gm.CurrentSave.Id;
+        // Promote from station recruit to active crew by clearing StationPoiId.
+        // The record already exists in the DB (inserted during generation), so Update, not Insert.
+        candidate.StationPoiId = 0;
         try
         {
-            gm.Database.Characters.Insert(candidate);
+            gm.Database.Characters.Update(candidate);
             Debug.Log($"[CrewViewController] Hired {candidate.Name} ({candidate.Role} Lv{candidate.Level}).");
         }
         catch (System.Exception e)

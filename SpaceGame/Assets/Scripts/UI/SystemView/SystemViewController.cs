@@ -47,6 +47,7 @@ public class SystemViewController : MonoBehaviour
 
     [Header("Header")]
     [SerializeField] private TMP_Text    systemNameText;
+    [SerializeField] private TMP_Text    daysText;
     [SerializeField] private TMP_Text    salvageText;
     [SerializeField] private GameObject  salvageWidgetGO;
     [SerializeField] private CanvasGroup combatHeaderStatsGroup;
@@ -352,6 +353,7 @@ public class SystemViewController : MonoBehaviour
         if (systemNameText)
             systemNameText.text = ToTitleCase(_currentSystem.Name);
         RefreshSalvage();
+        RefreshDays();
     }
 
     public void RefreshSalvage()
@@ -359,6 +361,13 @@ public class SystemViewController : MonoBehaviour
         if (salvageText == null) return;
         var save = GameManager.Instance?.CurrentSave;
         salvageText.text = save != null ? save.Salvage.ToString("N0") : "0";
+    }
+
+    public void RefreshDays()
+    {
+        if (daysText == null) return;
+        var save = GameManager.Instance?.CurrentSave;
+        daysText.text = save != null ? Mathf.FloorToInt(save.DaysPassed).ToString() : "0";
     }
 
     // ── Star visual ──────────────────────────────────────────────────────────
@@ -768,17 +777,32 @@ public class SystemViewController : MonoBehaviour
     private void OnShipClicked()
     {
         if (_shipFlying || _shipCurrentPoi == null) return;
-        ShowPOIDetail(_shipCurrentPoi);
+        OnArrivedAtOrTappedPOI(_shipCurrentPoi);
     }
 
     /// <summary>
-    /// Called when any POI is tapped. If the ship is already there, show the
-    /// popup immediately. If it's flying, ignore the tap. Otherwise fly there first.
+    /// Called when any POI is tapped. If the ship is already there, handle the
+    /// arrival action immediately. If it's flying, ignore the tap. Otherwise fly there first.
     /// </summary>
     private void OnPOIClicked(PointOfInterest poi)
     {
         if (_shipFlying) return;
-        ShowPOIDetail(poi);
+        if (poi == _shipCurrentPoi)
+            OnArrivedAtOrTappedPOI(poi);
+        else
+            ShowPOIDetail(poi);
+    }
+
+    /// <summary>
+    /// Central handler for "player interacts with the POI their ship is currently at".
+    /// Space stations open recruitment directly; everything else shows the info popup.
+    /// </summary>
+    private void OnArrivedAtOrTappedPOI(PointOfInterest poi)
+    {
+        if (poi.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
+            StartCoroutine(ShowRecruitmentAfterDelay(poi, GetCaptainLevel()));
+        else
+            ShowPOIDetail(poi);
     }
 
     private void OnNavigateClicked()
@@ -805,6 +829,9 @@ public class SystemViewController : MonoBehaviour
     private System.Collections.IEnumerator FlyShipToCoroutine(
         PointOfInterest target, Vector2 fromPos, Vector2 toPos)
     {
+        // Capture departure POI before _shipCurrentPoi is reassigned on arrival.
+        var fromPoi = _shipCurrentPoi;
+
         _shipFlying = true;
         if (_thrusterImg != null) _thrusterImg.enabled = true;
         SetShipBackdropVisible(false);
@@ -819,10 +846,10 @@ public class SystemViewController : MonoBehaviour
             if (_thrusterImg != null) _thrusterImg.enabled = false;
             SetShipBackdropVisible(true);
             SetNavButtonsInteractable(true);
+            GameManager.Instance?.AddInSystemTravelTime(fromPoi, target);
+            RefreshDays();
             MarkVisited(target);
-            ShowPOIDetail(target);
-            if (target.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
-                StartCoroutine(ShowRecruitmentAfterDelay(target.Name, GetCaptainLevel()));
+            OnArrivedAtOrTappedPOI(target);
             yield break;
         }
 
@@ -907,15 +934,10 @@ public class SystemViewController : MonoBehaviour
 
         SetShipBackdropVisible(true);
         SetNavButtonsInteractable(true);
+        GameManager.Instance?.AddInSystemTravelTime(fromPoi, target);
+        RefreshDays();
         MarkVisited(target);
-        ShowPOIDetail(target);
-
-        // Trigger crew recruitment when arriving at a functioning space station
-        if (target.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
-        {
-            int captainLevel = GetCaptainLevel();
-            StartCoroutine(ShowRecruitmentAfterDelay(target.Name, captainLevel));
-        }
+        OnArrivedAtOrTappedPOI(target);
     }
 
     private int GetCaptainLevel()
@@ -936,7 +958,7 @@ public class SystemViewController : MonoBehaviour
     /// One-frame delay so the POI detail panel fully collapses before the crew
     /// view opens in recruitment mode — avoids same-frame input bleed.
     /// </summary>
-    private System.Collections.IEnumerator ShowRecruitmentAfterDelay(string stationName, int captainLevel)
+    private System.Collections.IEnumerator ShowRecruitmentAfterDelay(PointOfInterest poi, int captainLevel)
     {
         yield return null;
         ShowCrewView();
@@ -947,7 +969,7 @@ public class SystemViewController : MonoBehaviour
             {
                 if (systemNameText != null) systemNameText.text = text;
             };
-            crewViewController.StartRecruitmentMode(stationName, captainLevel);
+            crewViewController.StartRecruitmentMode(poi, captainLevel);
             // systemNameText already set by StartRecruitmentMode via the callback above
         }
     }
@@ -987,6 +1009,7 @@ public class SystemViewController : MonoBehaviour
         if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
         if (shipViewPanel   != null) shipViewPanel.SetActive(false);
         if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        RefreshHeader();
         ZoomToShip();
     }
 
@@ -1016,6 +1039,8 @@ public class SystemViewController : MonoBehaviour
         }
         if (shipViewPanel != null) shipViewPanel.SetActive(false);
         if (crewViewPanel != null) crewViewPanel.SetActive(false);
+
+        if (systemNameText != null) systemNameText.text = "Galaxy";
     }
 
     /// <summary>
@@ -1240,7 +1265,7 @@ public class SystemViewController : MonoBehaviour
     {
         if (combatDebugButton == null) return;
         var mb = combatDebugButton.GetComponentInParent<Michsky.UI.Shift.MainButton>();
-        if (mb != null) mb.buttonText = _inCombat ? "◀ EXIT BATTLE" : "⚔ BATTLE";
+        if (mb != null) mb.buttonText = _inCombat ? "EXIT BATTLE" : "BATTLE";
 
         // Random button stays enabled in combat so you can re-roll enemies mid-battle.
     }

@@ -117,11 +117,66 @@ public class RecruitmentController : MonoBehaviour
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
 
+        // Build the set of portrait IDs already in use by the captain and hired crew.
+        // Candidate portraits are excluded from this set — unhired recruits don't hold
+        // a portrait "slot", so their portrait can appear again next visit.
+        var usedPortraits = CollectUsedPortraits();
+
+        // Build a shuffled list of available portrait filenames to hand out to candidates.
+        var availablePortraits = new List<string>();
+        if (_portraitLib != null && _portraitLib.IsValid)
+        {
+            foreach (var fn in _portraitLib.FileNames)
+                if (!usedPortraits.Contains(fn))
+                    availablePortraits.Add(fn);
+
+            // Fisher-Yates shuffle
+            for (int i = availablePortraits.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (availablePortraits[i], availablePortraits[j]) = (availablePortraits[j], availablePortraits[i]);
+            }
+        }
+
         for (int i = 0; i < count; i++)
         {
-            int level = Random.Range(1, Mathf.Max(2, captainLevel + 1));
-            _candidates.Add(CharacterFactory.CreateRandomCrewMember(shuffled[i], level));
+            int level     = Random.Range(1, Mathf.Max(2, captainLevel + 1));
+            var candidate = CharacterFactory.CreateRandomCrewMember(shuffled[i], level);
+
+            // Assign a unique portrait not used by any hired crew or earlier candidate.
+            if (availablePortraits.Count > 0)
+            {
+                candidate.PortraitId = availablePortraits[0];
+                availablePortraits.RemoveAt(0);
+            }
+
+            _candidates.Add(candidate);
         }
+    }
+
+    /// <summary>
+    /// Returns the set of portrait IDs currently in use by the captain and all hired crew.
+    /// Unhired recruits do NOT contribute — their portrait is released between visits.
+    /// </summary>
+    private System.Collections.Generic.HashSet<string> CollectUsedPortraits()
+    {
+        var used = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+        var gm = GameManager.Instance;
+        if (gm?.CurrentSave == null) return used;
+
+        // Captain
+        if (gm.PlayerCaptain != null && !string.IsNullOrEmpty(gm.PlayerCaptain.PortraitId))
+            used.Add(gm.PlayerCaptain.PortraitId);
+
+        // All hired crew for this save
+        var crew = gm.Database.GetCrewForSave(gm.CurrentSave.Id);
+        if (crew != null)
+            foreach (var c in crew)
+                if (!string.IsNullOrEmpty(c.PortraitId))
+                    used.Add(c.PortraitId);
+
+        return used;
     }
 
     // ── Card builder ─────────────────────────────────────────────────────────

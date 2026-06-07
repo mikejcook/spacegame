@@ -95,12 +95,27 @@ public class DatabaseManager : MonoBehaviour
     // Convenience query helpers
     // -----------------------------------------------------------------------
 
+    /// <summary>Returns all hired crew for a save (excludes pending station recruits).</summary>
     public List<Character> GetCrewForSave(int saveGameId)
-        => Characters.Query().Where(c => c.SaveGameId == saveGameId).ToList();
+        => Characters.Query().Where(c => c.SaveGameId == saveGameId && c.StationPoiId == 0).ToList();
 
-    /// <summary>Returns the first crew member with the given role for a save, or null.</summary>
+    /// <summary>Returns the first hired crew member with the given role for a save, or null.</summary>
     public Character GetCrewByRole(int saveGameId, string role)
-        => Characters.Query().Where(c => c.SaveGameId == saveGameId && c.Role == role).FirstOrDefault();
+        => Characters.Query().Where(c => c.SaveGameId == saveGameId && c.StationPoiId == 0 && c.Role == role).FirstOrDefault();
+
+    /// <summary>Returns all pending recruits stored for a given space station POI.</summary>
+    public List<Character> GetStationRecruits(int poiId)
+        => Characters.Query().Where(c => c.StationPoiId == poiId).ToList();
+
+    /// <summary>
+    /// Deletes all pending recruits for a station POI so a fresh pool can be generated.
+    /// </summary>
+    public void ClearStationRecruits(int poiId)
+    {
+        var old = GetStationRecruits(poiId);
+        foreach (var c in old)
+            Characters.Delete(c);
+    }
 
     public List<PointOfInterest> GetPOIsForSystem(int starSystemId)
         => POIs.Query().Where(p => p.StarSystemId == starSystemId).ToList();

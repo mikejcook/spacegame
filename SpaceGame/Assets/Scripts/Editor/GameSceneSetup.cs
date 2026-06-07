@@ -238,7 +238,7 @@ public static class GameSceneSetup
             var combatDbgGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
             combatDbgGO.name = "CombatDebugButton";
             var mb = combatDbgGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "⚔ BATTLE";
+            if (mb != null) mb.buttonText = "BATTLE";
             var rt = combatDbgGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot     = new Vector2(0f, 0.5f);
@@ -249,7 +249,7 @@ public static class GameSceneSetup
             var randomGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
             randomGO.name = "RandomCombatButton";
             var rmb = randomGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (rmb != null) rmb.buttonText = "🎲 RANDOM";
+            if (rmb != null) rmb.buttonText = "RANDOM";
             var rrt = randomGO.GetComponent<RectTransform>();
             rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
             rrt.pivot     = new Vector2(0f, 0.5f);
@@ -260,7 +260,7 @@ public static class GameSceneSetup
         {
             var combatDbgGO = MakeImage(header.transform, "CombatDebugButton", BtnNormal);
             combatDbgGO.AddComponent<Button>();
-            var lbl = MakeTMP(combatDbgGO.transform, "Label", "⚔ BATTLE", 20, TextWhite);
+            var lbl = MakeTMP(combatDbgGO.transform, "Label", "BATTLE", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             var rt = combatDbgGO.GetComponent<RectTransform>();
@@ -271,7 +271,7 @@ public static class GameSceneSetup
 
             var randomGO = MakeImage(header.transform, "RandomCombatButton", BtnNormal);
             randomGO.AddComponent<Button>();
-            var rlbl = MakeTMP(randomGO.transform, "Label", "🎲 RANDOM", 20, TextWhite);
+            var rlbl = MakeTMP(randomGO.transform, "Label", "RANDOM", 20, TextWhite);
             Stretch(rlbl);
             rlbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             var rrt = randomGO.GetComponent<RectTransform>();
@@ -280,6 +280,49 @@ public static class GameSceneSetup
             rrt.sizeDelta = new Vector2(180f, 56f);
             rrt.anchoredPosition = new Vector2(12f + 180f + 8f, 0f);
         }
+
+        // Days widget — "DAY" label + count, right-aligned, left of salvage widget
+        //   DaysWidget  (HorizontalLayoutGroup, right-anchored)
+        //     DaysLabel  (TMP_Text, "DAY")
+        //     DaysText   (TMP_Text, "0")
+        var daysWidget = MakeUIGO("DaysWidget", header.transform);
+        {
+            var rt       = daysWidget.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot     = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(160f, 50f);
+            rt.anchoredPosition = new Vector2(-252f, 0f);   // 220 (salvage) + 16 (edge gap) + 16 (gap between)
+        }
+        var daysHLG = daysWidget.AddComponent<HorizontalLayoutGroup>();
+        daysHLG.padding                = new RectOffset(0, 0, 0, 0);
+        daysHLG.spacing                = 6f;
+        daysHLG.childControlWidth      = false;
+        daysHLG.childControlHeight     = false;
+        daysHLG.childForceExpandWidth  = false;
+        daysHLG.childForceExpandHeight = false;
+        daysHLG.childAlignment         = TextAnchor.MiddleRight;
+
+        var daysLabelGO = MakeTMP(daysWidget.transform, "DaysLabel", "DAY", 22, TextSubtle);
+        {
+            var rt       = daysLabelGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(52f, 40f);
+        }
+        var daysLabelTMP = daysLabelGO.GetComponent<TextMeshProUGUI>();
+        daysLabelTMP.alignment          = TextAlignmentOptions.Right;
+        daysLabelTMP.fontStyle          = FontStyles.Normal;
+        daysLabelTMP.enableWordWrapping = false;
+
+        var daysCountGO = MakeTMP(daysWidget.transform, "DaysText", "0", 32, TextWhite);
+        {
+            var rt       = daysCountGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(90f, 40f);
+        }
+        var daysTMP = daysCountGO.GetComponent<TextMeshProUGUI>();
+        daysTMP.alignment          = TextAlignmentOptions.Left;
+        daysTMP.fontStyle          = FontStyles.Bold;
+        daysTMP.enableWordWrapping = false;
 
         // Salvage widget — icon + count, right-aligned in the header
         //   SalvageWidget  (HorizontalLayoutGroup, right-anchored)
@@ -629,21 +672,22 @@ public static class GameSceneSetup
         BuildComponentColumn(shipView.transform, "RightComponentColumn", isLeft: false,
             "Beam Weapons", "Torpedoes", "Scanner", "Cargo Hold", "Crew Quarters");
 
-        // ── Layer 3: ship sprite — inset to leave room for the 150 px columns.
-        // At 1920 reference width, 150 px ≈ 7.8 %, so anchor at 0.09 / 0.91.
-        // preserveAspect constrains to the shorter axis so the sprite stays square.
+        // ── Layer 3: ship sprite — native pixel size (56×72), centred.
+        // The DGB corvette sprite is 56×72 px pixel art. Any upscaling blurs it
+        // regardless of filter mode, so we display 1:1 (no scaling). If a higher-res
+        // ship sprite is swapped in later, increase the sizeDelta to match.
+        // DGB sprites face UP (+Y) by default — no rotation correction needed
+        // (the old 180° was for the Excalibur sprite which faced left/−X).
         var shipImg = MakeImage(shipView.transform, "ShipImage", Color.white);
-        PlaceRect(shipImg, anchor(0.09f, 0.03f), anchor(0.91f, 0.97f), v2(0f, 0f), v2(0f, 0f));
-        shipImg.GetComponent<RectTransform>().localEulerAngles = new Vector3(0f, 0f, 180f);
+        // Canvas scale on the target device is ~0.5 (960-wide effective resolution vs
+        // 1920 reference), so 56 canvas units → ~28 screen pixels (half native).
+        // Double the sizeDelta so the sprite renders at ~1× native pixels on device.
+        PlaceRect(shipImg, anchor(0.5f, 0.5f), anchor(0.5f, 0.5f), v2(0f, 0f), v2(112f, 144f));
+        // No rotation — DGB sprites already face up.
         var img = shipImg.GetComponent<Image>();
         img.preserveAspect = true;
         img.type           = Image.Type.Simple;
-        // Decorative only — must not intercept taps. The sprite's rect (0.09–0.91)
-        // is drawn on top of the component columns, and once a column shifts inward
-        // (safe-area insets on device) the sprite's rect covers the inner half of
-        // each slot. With raycastTarget=true that swallowed taps on the inner edge,
-        // so only the outer side of each slot opened the popup. preserveAspect
-        // letterboxing does NOT shrink the raycast rect — the full rect still hits.
+        // Decorative only — must not intercept taps.
         img.raycastTarget  = false;
 
         // ── Layer 4: equipment detail overlay (CanvasGroup-controlled popup) ─
@@ -2554,6 +2598,7 @@ public static class GameSceneSetup
 
         Set(so, "starfieldBackground",    background.GetComponent<RawImage>());
         Set(so, "systemNameText",         Find<TMP_Text>(header, "SystemNameText"));
+        Set(so, "daysText",               Find<TMP_Text>(header, "DaysWidget/DaysText"));
         Set(so, "salvageText",            Find<TMP_Text>(header, "SalvageWidget/SalvageText"));
         Set(so, "salvageWidgetGO",        header.transform.Find("SalvageWidget")?.gameObject);
         Set(so, "combatHeaderStatsGroup", header.transform.Find("CombatHeaderStats")?.GetComponent<CanvasGroup>());

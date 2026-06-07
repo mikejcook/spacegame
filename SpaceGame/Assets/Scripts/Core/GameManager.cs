@@ -370,6 +370,66 @@ public class GameManager : MonoBehaviour
         Debug.Log("[GameManager] Game saved.");
     }
 
+    // -----------------------------------------------------------------------
+    // Travel time
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Computes the number of in-game days to travel between two star systems
+    /// via FTL drive, with a minimum of <see cref="Constants.Travel.MinTravelDays"/>.
+    /// Uses the same galaxy-distance formula as GalaxyViewController (y weighted
+    /// by 0.15 to reflect the landscape galaxy layout).
+    /// </summary>
+    public static float CalculateTravelDays(StarSystem from, StarSystem to)
+    {
+        if (from == null || to == null) return Constants.Travel.MinTravelDays;
+
+        float dx = to.GalaxyX - from.GalaxyX;
+        float dy = to.GalaxyY - from.GalaxyY;
+        float distanceLY = Mathf.Sqrt(dx * dx + dy * dy * 0.15f) * Constants.Travel.LightYearsPerUnit;
+        float days = distanceLY / Constants.Travel.FtlLyPerDay;
+        return Mathf.Max(Constants.Travel.MinTravelDays, days);
+    }
+
+    /// <summary>
+    /// Adds the FTL travel time from <paramref name="from"/> to <paramref name="to"/>
+    /// to DaysPassed and persists the save.
+    /// </summary>
+    public void AddTravelTime(StarSystem from, StarSystem to)
+    {
+        if (CurrentSave == null) return;
+        CurrentSave.DaysPassed += CalculateTravelDays(from, to);
+        SaveGame();
+    }
+
+    /// <summary>
+    /// Adds the minimum travel time for an in-system sublight hop (POI to POI).
+    /// Adds sublight travel time for an in-system hop between two POIs.
+    /// Distance is computed from their normalised SystemX/Y positions (centre = 0.5,0.5).
+    /// A null <paramref name="from"/> is treated as the star centre (0.5, 0.5).
+    /// Result is clamped to a minimum of <see cref="Constants.Travel.MinTravelDays"/>.
+    /// </summary>
+    public void AddInSystemTravelTime(PointOfInterest from, PointOfInterest to)
+    {
+        if (CurrentSave == null) return;
+        CurrentSave.DaysPassed += CalculateInSystemTravelDays(from, to);
+        SaveGame();
+    }
+
+    public static float CalculateInSystemTravelDays(PointOfInterest from, PointOfInterest to)
+    {
+        float fromX = from?.SystemX ?? 0.5f;
+        float fromY = from?.SystemY ?? 0.5f;
+        float toX   = to?.SystemX   ?? 0.5f;
+        float toY   = to?.SystemY   ?? 0.5f;
+
+        float dx   = toX - fromX;
+        float dy   = toY - fromY;
+        float dist = Mathf.Sqrt(dx * dx + dy * dy);
+        float days = dist * Constants.Travel.SubLightDaysPerSystemUnit;
+        return Mathf.Max(Constants.Travel.MinTravelDays, days);
+    }
+
     public void ReturnToMainMenu()
     {
         EventBus.Clear();

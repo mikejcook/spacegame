@@ -98,6 +98,14 @@ public class PointOfInterest
     public bool IsBoardable { get; set; } = false;
     public bool IsLooted    { get; set; } = false;
 
+    /// <summary>
+    /// The DaysPassed value when this station's recruit pool was last generated.
+    /// -1 means recruits have never been generated.
+    /// Used to determine when to refresh the pool (see Constants.Recruitment.RecruitRefreshDays).
+    /// Only meaningful for POIType == Constants.POI.Types.SpaceStation.
+    /// </summary>
+    public int RecruitRefreshDay { get; set; } = -1;
+
     // Danger level (can exceed parent system danger for derelicts, anomalies)
     public int DangerLevel { get; set; } = 1;
 

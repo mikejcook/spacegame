@@ -221,6 +221,14 @@ public static class Constants
         }
     }
 
+    public static class Recruitment
+    {
+        /// <summary>
+        /// Number of days that must pass before a space station refreshes its recruit pool.
+        /// </summary>
+        public const int RecruitRefreshDays = 7;
+    }
+
     public static class Economy
     {
         public const int StartingCredits = 1000;
@@ -233,5 +241,31 @@ public static class Constants
 
         /// <summary>interludeId of the intro sequence played when a new game begins.</summary>
         public const string NewGameIntroId = "new_game_intro";
+    }
+
+    public static class Travel
+    {
+        /// <summary>
+        /// Multiplier from normalised galaxy units to light-years.
+        /// Matches GalaxyViewController.LightYearsPerUnit.
+        /// </summary>
+        public const float LightYearsPerUnit = 100_000f;
+
+        /// <summary>
+        /// FTL cruise speed in light-years per day.
+        /// At this rate Sol → Alpha Centauri (~4,340 ly) takes ~4.3 days.
+        /// </summary>
+        public const float FtlLyPerDay = 1_000f;
+
+        /// <summary>Minimum travel time for any jump, regardless of distance.</summary>
+        public const float MinTravelDays = 0.25f;
+
+        /// <summary>
+        /// In-system sublight travel speed expressed as days per normalised system unit.
+        /// System coords are 0-1 centred at (0.5, 0.5); orbital radii run 0.07 (Mercury)
+        /// to 0.46 (Neptune). At this rate a 0.17-unit hop (e.g. Earth→Mars same side)
+        /// hits the MinTravelDays floor; a 0.35-unit cross-system trip costs ~0.5 days.
+        /// </summary>
+        public const float SubLightDaysPerSystemUnit = 1.5f;
     }
 }

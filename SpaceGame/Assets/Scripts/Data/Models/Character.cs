@@ -34,6 +34,13 @@ public class Character
     // Portrait references a filename in Resources/PortraitsNew/ (e.g. "male_1.png")
     public string PortraitId { get; set; } = "male_1.png";
 
+    /// <summary>
+    /// If > 0, this character is a pending recruit at the space station with this POI ID.
+    /// 0 = hired crew (part of the ship's active roster).
+    /// Set to 0 when the player hires the recruit.
+    /// </summary>
+    public int StationPoiId { get; set; } = 0;
+
     // Progression
     public int Level                { get; set; } = 1;
     public int ExperiencePoints     { get; set; } = 0;

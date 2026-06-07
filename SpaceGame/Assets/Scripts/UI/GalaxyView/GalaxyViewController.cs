@@ -91,7 +91,8 @@ public class GalaxyViewController : MonoBehaviour
     private StarSystem              _pendingTravelTarget;
 
     // Scale factor: 1 normalised unit = 100,000 light years (Milky Way diameter)
-    private const float LightYearsPerUnit = 100_000f;
+    // Authoritative value lives in Constants.Travel.LightYearsPerUnit.
+    private const float LightYearsPerUnit = Constants.Travel.LightYearsPerUnit;
 
     // Initial view: centre on the Sol / Alpha / Barnard's cluster.
     // Centroid of Sol (0.595, 0.448) + Alpha (0.628, 0.428) + Barnard's (0.658, 0.458).
@@ -634,6 +635,9 @@ public class GalaxyViewController : MonoBehaviour
         float fromGX, float fromGY,
         float toGX,   float toGY)
     {
+        // Capture departure system before _shipCurrentSystem is reassigned on arrival.
+        var fromSystem = _shipCurrentSystem;
+
         _shipFlying = true;
         if (_thrusterImg != null) _thrusterImg.enabled = true;
         OnFlightStarted?.Invoke();
@@ -651,6 +655,7 @@ public class GalaxyViewController : MonoBehaviour
             _shipFlying        = false;
             if (_thrusterImg != null) _thrusterImg.enabled = false;
             OnFlightEnded?.Invoke();
+            GameManager.Instance?.AddTravelTime(fromSystem, target);
             OnSystemSelected?.Invoke(target);
             yield break;
         }
@@ -759,6 +764,7 @@ public class GalaxyViewController : MonoBehaviour
         if (_thrusterImg != null) _thrusterImg.enabled = false;
 
         OnFlightEnded?.Invoke();
+        GameManager.Instance?.AddTravelTime(fromSystem, target);
         OnSystemSelected?.Invoke(target);
     }
 
