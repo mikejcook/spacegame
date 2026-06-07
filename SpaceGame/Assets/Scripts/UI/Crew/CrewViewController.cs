@@ -47,6 +47,7 @@ public class CrewViewController : MonoBehaviour
     private Transform  _skillsContainer;
     private GameObject _levelUpButtonGO;
     private GameObject _hireButtonGO;
+    private GameObject _debugXPButtonGO;
 
     // ── Colours (match GameSceneSetup palette) ───────────────────────────────
 
@@ -408,6 +409,21 @@ public class CrewViewController : MonoBehaviour
         roleTMP.alignment = TextAlignmentOptions.Left;
         roleGO.AddComponent<LayoutElement>().preferredHeight = 28f;
 
+        // Level-up arrow — shown when the character has unspent skill points
+        var arrowGO  = new GameObject("LevelUpArrow", typeof(RectTransform));
+        arrowGO.transform.SetParent(rowGO.transform, false);
+        var arrowTMP = arrowGO.AddComponent<TextMeshProUGUI>();
+        arrowTMP.text               = "▲";
+        arrowTMP.fontSize           = 30f;
+        arrowTMP.color              = new Color(0.20f, 0.90f, 0.35f, 1f);
+        arrowTMP.alignment          = TextAlignmentOptions.Center;
+        arrowTMP.enableWordWrapping = false;
+        var arrowLE = arrowGO.AddComponent<LayoutElement>();
+        arrowLE.preferredWidth  = 36f;
+        arrowLE.preferredHeight = 36f;
+        arrowLE.flexibleWidth   = 0f;
+        arrowGO.SetActive(!hired && person.AvailableSkillPoints > 0);
+
         _rowButtons.Add(rowGO);
     }
 
@@ -520,17 +536,23 @@ public class CrewViewController : MonoBehaviour
         }
 
         if (_isRecruitmentMode)
+        {
             ShowOrHideHireButton(person, _selectedIdx);
+        }
         else
+        {
+            BuildDebugXPButton(person);
             ShowOrHideLevelUpButton(person);
+        }
     }
 
     // ── Hire button (recruitment mode) ────────────────────────────────────────
 
     private void ShowOrHideHireButton(Character candidate, int index)
     {
-        // Hide level-up button
-        if (_levelUpButtonGO != null) _levelUpButtonGO.SetActive(false);
+        // Hide level-up and debug buttons
+        if (_levelUpButtonGO  != null) _levelUpButtonGO.SetActive(false);
+        if (_debugXPButtonGO  != null) _debugXPButtonGO.SetActive(false);
 
         var detail = _skillsContainer?.parent;
         if (detail == null) return;
@@ -618,18 +640,52 @@ public class CrewViewController : MonoBehaviour
         if (detail == null) return;
 
         if (_levelUpButtonGO == null && hasPoints)
-            _levelUpButtonGO = BuildActionButton(detail, "LevelUpButton",
-                                                 new Color(0.20f, 0.55f, 0.10f, 1f),
-                                                 new Color(0.28f, 0.72f, 0.15f, 1f),
-                                                 new Color(0.10f, 0.32f, 0.06f, 1f));
+        {
+            // Compact button to the left of LevelText.
+            // LevelText: anchor/pivot (1,1), anchoredPosition (-24,-24), sizeDelta (186,52).
+            // This button's right edge = LevelText's left edge - 8px gap = -(24+186+8) = -218.
+            _levelUpButtonGO = new GameObject("LevelUpButton", typeof(RectTransform));
+            _levelUpButtonGO.transform.SetParent(detail, false);
+
+            var rt = _levelUpButtonGO.GetComponent<RectTransform>();
+            rt.anchorMin        = rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-218f, -24f);
+            rt.sizeDelta        = new Vector2(130f, 44f);
+
+            var img = _levelUpButtonGO.AddComponent<Image>();
+            img.color = new Color(0.20f, 0.55f, 0.10f, 1f);
+
+            var btn = _levelUpButtonGO.AddComponent<Button>();
+            btn.targetGraphic = img;
+            var bc = btn.colors;
+            bc.highlightedColor = new Color(0.28f, 0.72f, 0.15f, 1f);
+            bc.pressedColor     = new Color(0.10f, 0.32f, 0.06f, 1f);
+            btn.colors = bc;
+
+            var lblGO = new GameObject("Label", typeof(RectTransform));
+            lblGO.transform.SetParent(_levelUpButtonGO.transform, false);
+            var lbl2 = lblGO.AddComponent<TextMeshProUGUI>();
+            lbl2.text               = "LEVEL UP";
+            lbl2.fontSize           = 20f;
+            lbl2.color              = TextWhite;
+            lbl2.fontStyle          = FontStyles.Bold;
+            lbl2.alignment          = TextAlignmentOptions.Center;
+            lbl2.enableWordWrapping = false;
+            var lblRT = lblGO.GetComponent<RectTransform>();
+            lblRT.anchorMin = Vector2.zero;
+            lblRT.anchorMax = Vector2.one;
+            lblRT.offsetMin = lblRT.offsetMax = Vector2.zero;
+        }
 
         if (_levelUpButtonGO != null)
         {
             _levelUpButtonGO.SetActive(hasPoints);
             if (hasPoints)
             {
+                // Label text is fixed at creation; no update needed here
                 var lbl = _levelUpButtonGO.GetComponentInChildren<TextMeshProUGUI>();
-                if (lbl != null) lbl.text = $"LEVEL UP  ({crew.AvailableSkillPoints} pts)";
+                if (lbl != null) lbl.text = "LEVEL UP";
 
                 var btn = _levelUpButtonGO.GetComponent<Button>();
                 if (btn != null)
@@ -689,6 +745,83 @@ public class CrewViewController : MonoBehaviour
         lblRT.offsetMax = Vector2.zero;
 
         return go;
+    }
+
+    // ── Debug helpers ─────────────────────────────────────────────────────────
+
+    private void BuildDebugXPButton(Character person)
+    {
+        var detail = _skillsContainer?.parent;
+        if (detail == null) return;
+
+        if (_debugXPButtonGO == null)
+        {
+            _debugXPButtonGO = new GameObject("DebugXPButton", typeof(RectTransform));
+            _debugXPButtonGO.transform.SetParent(detail, false);
+
+            // Position just below LevelText (top-right anchor, (-24,-24), size (186,52))
+            // Button sits 6px below it: y = -(24 + 52 + 6) = -82
+            var rt = _debugXPButtonGO.GetComponent<RectTransform>();
+            rt.anchorMin        = rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-24f, -82f);
+            rt.sizeDelta        = new Vector2(120f, 28f);
+
+            var img = _debugXPButtonGO.AddComponent<Image>();
+            img.color = new Color(0.20f, 0.20f, 0.08f, 0.85f);
+
+            var btn = _debugXPButtonGO.AddComponent<Button>();
+            btn.targetGraphic = img;
+            var c = btn.colors;
+            c.highlightedColor = new Color(0.32f, 0.32f, 0.14f, 1f);
+            c.pressedColor     = new Color(0.10f, 0.10f, 0.04f, 1f);
+            btn.colors = c;
+
+            var lblGO = new GameObject("Label", typeof(RectTransform));
+            lblGO.transform.SetParent(_debugXPButtonGO.transform, false);
+            var lbl = lblGO.AddComponent<TextMeshProUGUI>();
+            lbl.text               = "Add XP";
+            lbl.fontSize           = 18f;
+            lbl.color              = new Color(0.85f, 0.85f, 0.40f, 1f);
+            lbl.fontStyle          = FontStyles.Bold;
+            lbl.alignment          = TextAlignmentOptions.Center;
+            lbl.enableWordWrapping = false;
+            var lblRT = lblGO.GetComponent<RectTransform>();
+            lblRT.anchorMin = Vector2.zero;
+            lblRT.anchorMax = Vector2.one;
+            lblRT.offsetMin = lblRT.offsetMax = Vector2.zero;
+        }
+
+        _debugXPButtonGO.SetActive(true);
+        var button = _debugXPButtonGO.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            var captured = person;
+            button.onClick.AddListener(() => OnDebugAddXP(captured));
+        }
+    }
+
+    private void OnDebugAddXP(Character person)
+    {
+        person.GainExperience(100);
+
+        var gm = GameManager.Instance;
+        if (gm?.Database != null)
+        {
+            try   { gm.Database.Characters.Update(person); }
+            catch (System.Exception e) { Debug.LogError($"[CrewViewController] Debug XP save failed: {e.Message}"); }
+        }
+
+        // Refresh the detail panel (rebuilds XP bar, level text, skill-up button visibility)
+        ShowDetail(person);
+
+        // Update the level-up arrow on the selected list row immediately
+        if (_selectedIdx >= 0 && _selectedIdx < _rowButtons.Count && _rowButtons[_selectedIdx] != null)
+        {
+            var arrow = _rowButtons[_selectedIdx].transform.Find("LevelUpArrow")?.gameObject;
+            if (arrow != null) arrow.SetActive(person.AvailableSkillPoints > 0);
+        }
     }
 
     private void ShowEmptyDetail()

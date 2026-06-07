@@ -2805,7 +2805,22 @@ public static class GameSceneSetup
             var cvcComp = crewViewGO.GetComponent<CrewViewController>();
             so.FindProperty("crewViewController").objectReferenceValue = cvcComp;
             if (cvcComp == null)
+            {
                 Debug.LogWarning("[GameSceneSetup] CrewViewController component not found on CrewView.");
+            }
+            else
+            {
+                // Wire levelUpController — panel is built after CrewView, so wired here
+                var lucComp = levelUpPanel?.GetComponent<LevelUpController>();
+                if (lucComp != null)
+                {
+                    var cvcSo2 = new SerializedObject(cvcComp);
+                    cvcSo2.FindProperty("levelUpController").objectReferenceValue = lucComp;
+                    cvcSo2.ApplyModifiedProperties();
+                }
+                else
+                    Debug.LogWarning("[GameSceneSetup] LevelUpController not found on levelUpPanel — level-up button will be broken.");
+            }
         }
         else
             Debug.LogWarning("[GameSceneSetup] CrewView not found under Body.");
