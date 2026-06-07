@@ -472,29 +472,50 @@ public class CrewViewController : MonoBehaviour
         var xpLabel = _detailXPBar?.transform.parent?.Find("XPLabel")?.gameObject;
         if (xpLabel != null) xpLabel.SetActive(showXP);
 
-        // Skills
+        // Skills — two-column layout, row-based so both columns share the same baseline
         if (_skillsContainer != null)
         {
             for (int i = _skillsContainer.childCount - 1; i >= 0; i--)
                 Destroy(_skillsContainer.GetChild(i).gameObject);
 
-            bool anySkill = false;
-            foreach (var skillName in Constants.Skills.All)
-            {
-                person.Skills.TryGetValue(skillName, out int rank);
-                if (rank > 0) { BuildSkillRow(skillName, rank); anySkill = true; }
-            }
+            var skills     = person.Skills;
+            var allSkills  = Constants.Skills.All;
+            int rows       = Mathf.CeilToInt(allSkills.Length / 2f); // 5 rows for 9 skills
 
-            if (!anySkill)
+            for (int row = 0; row < rows; row++)
             {
-                var noSkillsGO = new GameObject("NoSkills", typeof(RectTransform));
-                noSkillsGO.transform.SetParent(_skillsContainer, false);
-                var tmp = noSkillsGO.AddComponent<TextMeshProUGUI>();
-                tmp.text      = "No skills yet.";
-                tmp.fontSize  = 24f;
-                tmp.color     = TextSubtle;
-                tmp.alignment = TextAlignmentOptions.Left;
-                noSkillsGO.AddComponent<LayoutElement>().preferredHeight = 32f;
+                var rowGO = new GameObject($"SkillRow_{row}", typeof(RectTransform));
+                rowGO.transform.SetParent(_skillsContainer, false);
+                rowGO.AddComponent<LayoutElement>().preferredHeight = 34f;
+
+                var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
+                hlg.childControlWidth      = true;
+                hlg.childControlHeight     = true;
+                hlg.childForceExpandWidth  = false;
+                hlg.childForceExpandHeight = true;
+                hlg.spacing                = 0f;
+                hlg.childAlignment         = TextAnchor.MiddleLeft;
+
+                // Left skill (indices 0-4)
+                int leftIdx = row;
+                if (leftIdx < allSkills.Length)
+                {
+                    skills.TryGetValue(allSkills[leftIdx], out int lr);
+                    BuildSkillPair(rowGO.transform, allSkills[leftIdx], lr);
+                }
+
+                // Fixed gap between the two columns
+                var spacerGO = new GameObject("ColGap", typeof(RectTransform));
+                spacerGO.transform.SetParent(rowGO.transform, false);
+                spacerGO.AddComponent<LayoutElement>().preferredWidth = 40f;
+
+                // Right skill (indices 5-8)
+                int rightIdx = row + rows;
+                if (rightIdx < allSkills.Length)
+                {
+                    skills.TryGetValue(allSkills[rightIdx], out int rr);
+                    BuildSkillPair(rowGO.transform, allSkills[rightIdx], rr);
+                }
             }
         }
 
@@ -679,48 +700,41 @@ public class CrewViewController : MonoBehaviour
         if (_detailXPBar     != null) _detailXPBar.value    = 0f;
     }
 
-    // ── Skill row ─────────────────────────────────────────────────────────────
+    // ── Skill pair (name + number, fixed widths so columns stay crisp) ───────
 
-    private void BuildSkillRow(string skillName, int rank)
+    private void BuildSkillPair(Transform parent, string skillName, int rank)
     {
-        var rowGO = new GameObject($"Skill_{skillName}", typeof(RectTransform));
-        rowGO.transform.SetParent(_skillsContainer, false);
-
-        var hlg = rowGO.AddComponent<HorizontalLayoutGroup>();
-        hlg.childControlWidth      = false;
-        hlg.childControlHeight     = true;
-        hlg.childForceExpandWidth  = false;
-        hlg.childForceExpandHeight = true;
-        hlg.spacing                = 10f;
-        hlg.childAlignment         = TextAnchor.MiddleLeft;
-        rowGO.AddComponent<LayoutElement>().preferredHeight = 34f;
-
-        var labelGO  = new GameObject("Label", typeof(RectTransform));
-        labelGO.transform.SetParent(rowGO.transform, false);
+        // Name label — fixed width covers the longest skill ("Engineering")
+        var labelGO  = new GameObject($"SkillName_{skillName}", typeof(RectTransform));
+        labelGO.transform.SetParent(parent, false);
         var labelTMP = labelGO.AddComponent<TextMeshProUGUI>();
-        labelTMP.text      = skillName;
-        labelTMP.fontSize  = 24f;
-        labelTMP.color     = TextSubtle;
-        labelTMP.alignment = TextAlignmentOptions.Left;
+        labelTMP.text               = skillName;
+        labelTMP.fontSize           = 26f;
+        labelTMP.color              = TextSubtle;
+        labelTMP.alignment          = TextAlignmentOptions.Left;
+        labelTMP.enableWordWrapping = false;
         var labelLE = labelGO.AddComponent<LayoutElement>();
-        labelLE.preferredWidth  = 200f;
-        labelLE.preferredHeight = 30f;
+        labelLE.preferredWidth = 150f;   // wide enough for "Engineering" at 26pt
+        labelLE.flexibleWidth  = 0f;
 
-        const int   MaxRank = 10;
-        const float DotSize = 16f;
+        // Small gap between name and number
+        var gapGO = new GameObject($"NameNumGap_{skillName}", typeof(RectTransform));
+        gapGO.transform.SetParent(parent, false);
+        gapGO.AddComponent<LayoutElement>().preferredWidth = 10f;
 
-        for (int i = 0; i < MaxRank; i++)
-        {
-            var dotGO  = new GameObject($"Dot_{i}", typeof(RectTransform));
-            dotGO.transform.SetParent(rowGO.transform, false);
-            dotGO.AddComponent<Image>().color = i < rank
-                ? AccentCyan
-                : new Color(0.25f, 0.35f, 0.45f, 0.70f);
-            var dotLE = dotGO.AddComponent<LayoutElement>();
-            dotLE.preferredWidth  = DotSize;
-            dotLE.preferredHeight = DotSize;
-            dotLE.flexibleWidth   = 0f;
-        }
+        // Rank number — fixed width handles "10"
+        var rankGO  = new GameObject($"SkillRank_{skillName}", typeof(RectTransform));
+        rankGO.transform.SetParent(parent, false);
+        var rankTMP = rankGO.AddComponent<TextMeshProUGUI>();
+        rankTMP.text               = rank.ToString();
+        rankTMP.fontSize           = 26f;
+        rankTMP.color              = rank > 0 ? AccentCyan : TextSubtle;
+        rankTMP.fontStyle          = rank > 0 ? FontStyles.Bold : FontStyles.Normal;
+        rankTMP.alignment          = TextAlignmentOptions.Left;
+        rankTMP.enableWordWrapping = false;
+        var rankLE = rankGO.AddComponent<LayoutElement>();
+        rankLE.preferredWidth = 36f;   // handles "10"
+        rankLE.flexibleWidth  = 0f;
     }
 
     // ── Portrait loading ──────────────────────────────────────────────────────
