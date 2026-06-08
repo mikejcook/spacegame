@@ -271,7 +271,7 @@ public class RecruitmentController : MonoBehaviour
         tmp.color            = color;
         tmp.alignment        = TextAlignmentOptions.Center;
         tmp.fontStyle        = bold ? FontStyles.Bold : FontStyles.Normal;
-        tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        tmp.enableWordWrapping = false;
         tmp.overflowMode     = TextOverflowModes.Ellipsis;
         go.AddComponent<LayoutElement>().preferredHeight = height;
         return go;

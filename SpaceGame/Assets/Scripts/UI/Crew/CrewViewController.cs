@@ -396,7 +396,7 @@ public class CrewViewController : MonoBehaviour
         nameTMP.color              = hired ? AccentCyan : TextWhite;
         nameTMP.fontStyle          = FontStyles.Bold;
         nameTMP.alignment          = TextAlignmentOptions.Left;
-        nameTMP.enableWordWrapping = false;
+        nameTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         nameTMP.overflowMode       = TextOverflowModes.Ellipsis;
         nameGO.AddComponent<LayoutElement>().preferredHeight = 36f;
 
@@ -417,7 +417,7 @@ public class CrewViewController : MonoBehaviour
         arrowTMP.fontSize           = 30f;
         arrowTMP.color              = new Color(0.20f, 0.90f, 0.35f, 1f);
         arrowTMP.alignment          = TextAlignmentOptions.Center;
-        arrowTMP.enableWordWrapping = false;
+        arrowTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         var arrowLE = arrowGO.AddComponent<LayoutElement>();
         arrowLE.preferredWidth  = 36f;
         arrowLE.preferredHeight = 36f;
@@ -671,7 +671,7 @@ public class CrewViewController : MonoBehaviour
             lbl2.color              = TextWhite;
             lbl2.fontStyle          = FontStyles.Bold;
             lbl2.alignment          = TextAlignmentOptions.Center;
-            lbl2.enableWordWrapping = false;
+            lbl2.textWrappingMode   = TextWrappingModes.NoWrap;
             var lblRT = lblGO.GetComponent<RectTransform>();
             lblRT.anchorMin = Vector2.zero;
             lblRT.anchorMax = Vector2.one;
@@ -807,7 +807,7 @@ public class CrewViewController : MonoBehaviour
             lbl.color              = new Color(0.85f, 0.85f, 0.40f, 1f);
             lbl.fontStyle          = FontStyles.Bold;
             lbl.alignment          = TextAlignmentOptions.Center;
-            lbl.enableWordWrapping = false;
+            lbl.textWrappingMode   = TextWrappingModes.NoWrap;
             var lblRT = lblGO.GetComponent<RectTransform>();
             lblRT.anchorMin = Vector2.zero;
             lblRT.anchorMax = Vector2.one;
@@ -867,7 +867,7 @@ public class CrewViewController : MonoBehaviour
         labelTMP.fontSize           = 26f;
         labelTMP.color              = TextSubtle;
         labelTMP.alignment          = TextAlignmentOptions.Left;
-        labelTMP.enableWordWrapping = false;
+        labelTMP.textWrappingMode   = TextWrappingModes.NoWrap;
         var labelLE = labelGO.AddComponent<LayoutElement>();
         labelLE.preferredWidth = 150f;   // wide enough for "Engineering" at 26pt
         labelLE.flexibleWidth  = 0f;
@@ -886,7 +886,7 @@ public class CrewViewController : MonoBehaviour
         rankTMP.color              = rank > 0 ? AccentCyan : TextSubtle;
         rankTMP.fontStyle          = rank > 0 ? FontStyles.Bold : FontStyles.Normal;
         rankTMP.alignment          = TextAlignmentOptions.Left;
-        rankTMP.enableWordWrapping = false;
+        rankTMP.textWrappingMode   = TextWrappingModes.NoWrap;
         var rankLE = rankGO.AddComponent<LayoutElement>();
         rankLE.preferredWidth = 36f;   // handles "10"
         rankLE.flexibleWidth  = 0f;

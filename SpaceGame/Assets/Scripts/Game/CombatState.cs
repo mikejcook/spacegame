@@ -166,9 +166,9 @@ public class CombatState
             Engineer       = engineer,
 
             PlayerMaxShields     = maxShields,
-            PlayerCurrentShields = Mathf.Min(ship.ShieldPoints, maxShields),
+            PlayerCurrentShields = Mathf.Min(ship.ShieldPoints + shieldTierBonus, maxShields),
             PlayerMaxHull        = maxHull,
-            PlayerCurrentHull    = Mathf.Min(ship.HullPoints,   maxHull),
+            PlayerCurrentHull    = Mathf.Min(ship.HullPoints   + armorTierBonus,  maxHull),
 
             PlayerBeamTier     = beamWeapon != null ? (int)beamWeapon.Tier : 0,
             PlayerTorpedoTier  = torpedoTier,

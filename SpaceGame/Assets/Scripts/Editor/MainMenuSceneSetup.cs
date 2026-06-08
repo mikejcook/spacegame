@@ -758,7 +758,7 @@ public static class MainMenuSceneSetup
             tmp.fontSize           = 38;
             tmp.color              = TextWhite;
             tmp.alignment          = TextAlignmentOptions.Center;
-            tmp.enableWordWrapping = true;
+            tmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
         }
 
         // ── TapHint — full-width, right-aligned, so it can never be clipped ────
@@ -990,7 +990,7 @@ public static class MainMenuSceneSetup
             tmp.color             = active ? new Color(0.04f, 0.06f, 0.10f, 1f) : TextSubtle;
             tmp.alignment         = TextAlignmentOptions.Center;
             tmp.fontStyle         = FontStyles.Bold;
-            tmp.enableWordWrapping = false;
+            tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         }
         var le = go.GetComponent<LayoutElement>(); if (le == null) le = go.AddComponent<LayoutElement>();
         le.preferredWidth = 200; le.minWidth = 200;

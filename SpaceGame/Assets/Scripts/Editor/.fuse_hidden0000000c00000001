@@ -334,7 +334,7 @@ public static class GameSceneSetup
         var daysLabelTMP = daysLabelGO.GetComponent<TextMeshProUGUI>();
         daysLabelTMP.alignment          = TextAlignmentOptions.Right;
         daysLabelTMP.fontStyle          = FontStyles.Normal;
-        daysLabelTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        daysLabelTMP.enableWordWrapping = false;
 
         var daysCountGO = MakeTMP(daysWidget.transform, "DaysText", "0", 32, TextWhite);
         {
@@ -345,7 +345,7 @@ public static class GameSceneSetup
         var daysTMP = daysCountGO.GetComponent<TextMeshProUGUI>();
         daysTMP.alignment          = TextAlignmentOptions.Left;
         daysTMP.fontStyle          = FontStyles.Bold;
-        daysTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        daysTMP.enableWordWrapping = false;
 
         // Salvage widget — icon + count, right-aligned in the header
         //   SalvageWidget  (HorizontalLayoutGroup, right-anchored)
@@ -406,7 +406,7 @@ public static class GameSceneSetup
         var salvageTMP = salvageText.GetComponent<TextMeshProUGUI>();
         salvageTMP.alignment          = TextAlignmentOptions.Left;
         salvageTMP.fontStyle          = FontStyles.Bold;
-        salvageTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        salvageTMP.enableWordWrapping = false;
 
         // ── Combat header stats — hidden by default, shown during combat ─────
         // Displays player's own Shield% and Hull% on the right side of the
@@ -478,7 +478,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(38f, 40f);
         }
         torpedoCountText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
-        torpedoCountText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        torpedoCountText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
         var chsDivider0 = MakeTMP(combatHeaderStats.transform, "DividerText0", "|", 26, TextSubtle);
         {
@@ -495,7 +495,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(180f, 40f);
         }
         playerShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
-        playerShieldText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        playerShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
         var chsDivider = MakeTMP(combatHeaderStats.transform, "DividerText", "|", 28, TextSubtle);
         {
@@ -512,7 +512,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(170f, 40f);
         }
         playerHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
-        playerHullText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        playerHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
         return header;
     }
@@ -636,7 +636,7 @@ public static class GameSceneSetup
         PlaceRect(nameText, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -60f), v2(-48f, 66f));
         nameText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
         nameText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-        nameText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        nameText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         nameText.GetComponent<TextMeshProUGUI>().overflowMode = TextOverflowModes.Ellipsis;
 
         // Subtitle — star type
@@ -826,7 +826,7 @@ public static class GameSceneSetup
         var nameTMP = nameGO.GetComponent<TextMeshProUGUI>();
         nameTMP.alignment = TextAlignmentOptions.Left;
         nameTMP.fontStyle = FontStyles.Bold;
-        nameTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        nameTMP.enableWordWrapping = false;
 
         // ── Current tier label, right-aligned on the name row ─────────────
         var tierGO = MakeTMP(card.transform, "DetailTier", "Mk I", 24, AccentCyan);
@@ -836,7 +836,7 @@ public static class GameSceneSetup
         var tierTMP = tierGO.GetComponent<TextMeshProUGUI>();
         tierTMP.alignment = TextAlignmentOptions.Right;
         tierTMP.fontStyle = FontStyles.Bold;
-        tierTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        tierTMP.enableWordWrapping = false;
 
         // ── Horizontal rule ───────────────────────────────────────────────
         float ruleY = -(Pad + IconSize + 4f + 12f);
@@ -853,7 +853,7 @@ public static class GameSceneSetup
                   v2(0f, descTop - DescH * 0.5f), v2(-Pad * 2f, DescH));
         var descTMP = descGO.GetComponent<TextMeshProUGUI>();
         descTMP.alignment          = TextAlignmentOptions.TopLeft;
-        descTMP.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        descTMP.enableWordWrapping = true;
 
         // ── Upgrade cost ──────────────────────────────────────────────────
         float costY = descTop - DescH - 18f;
@@ -966,7 +966,7 @@ public static class GameSceneSetup
                   v2(0f, -(Pad + 80f)), v2(-Pad * 2f, 140f));
         var textTMP = textGO.GetComponent<TextMeshProUGUI>();
         textTMP.alignment          = TextAlignmentOptions.Center;
-        textTMP.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        textTMP.enableWordWrapping = true;
 
         var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
 
@@ -1302,7 +1302,7 @@ public static class GameSceneSetup
         TopStretch(nameText, 204f, 24f, 210f, 52f);
         nameText.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Left;
         nameText.GetComponent<TextMeshProUGUI>().fontStyle        = FontStyles.Bold;
-        nameText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        nameText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         nameText.GetComponent<TextMeshProUGUI>().overflowMode     = TextOverflowModes.Ellipsis;
 
         var levelText = MakeTMP(detailPanel.transform, "LevelText", "Level 1", 28, AccentCyan);
@@ -1311,7 +1311,7 @@ public static class GameSceneSetup
           rt.anchoredPosition = new Vector2(-24f, -24f); rt.sizeDelta = new Vector2(186f, 52f); }
         levelText.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Right;
         levelText.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-        levelText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        levelText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
         var roleText = MakeTMP(detailPanel.transform, "CrewRoleText", "Role", 30, AccentCyan);
         TopStretch(roleText, 204f, 82f, 24f, 36f);
@@ -1545,7 +1545,7 @@ public static class GameSceneSetup
         }
         roleLabelGO.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Center;
         roleLabelGO.GetComponent<TextMeshProUGUI>().fontStyle        = FontStyles.Bold;
-        roleLabelGO.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        roleLabelGO.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
         // Portrait — centred in remaining space
         var portraitGO  = MakeImage(slotGO.transform, "PortraitImage", new Color(0.12f, 0.18f, 0.28f, 1f));
@@ -1571,7 +1571,7 @@ public static class GameSceneSetup
             rt.sizeDelta        = new Vector2(0f, NameH);
         }
         nameGO.GetComponent<TextMeshProUGUI>().alignment        = TextAlignmentOptions.Center;
-        nameGO.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        nameGO.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         nameGO.GetComponent<TextMeshProUGUI>().overflowMode     = TextOverflowModes.Ellipsis;
 
         return slotGO;
@@ -1943,7 +1943,7 @@ public static class GameSceneSetup
 
         var targetShieldText = MakeTMP(statsRow.transform, "TargetShieldText", "Shields  100%", 24, TextWhite);
         targetShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
-        targetShieldText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        targetShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         {
             var le          = targetShieldText.AddComponent<LayoutElement>();
             le.preferredWidth = 210f;
@@ -1960,7 +1960,7 @@ public static class GameSceneSetup
 
         var targetHullText = MakeTMP(statsRow.transform, "TargetHullText", "Hull  100%", 24, TextWhite);
         targetHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
-        targetHullText.GetComponent<TextMeshProUGUI>().textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        targetHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         {
             var le          = targetHullText.AddComponent<LayoutElement>();
             le.preferredWidth = 190f;
@@ -2101,7 +2101,7 @@ public static class GameSceneSetup
             rt.offsetMax  = new Vector2(-10f, -6f);
             var tmp                  = logTextGO.GetComponent<TextMeshProUGUI>();
             tmp.alignment            = TextAlignmentOptions.TopLeft;
-            tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            tmp.enableWordWrapping   = false;
             tmp.richText             = true;
             tmp.overflowMode         = TextOverflowModes.Truncate;
         }
@@ -2284,7 +2284,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(0f, 0f);
             var tmp               = expandedLogTextGO.GetComponent<TextMeshProUGUI>();
             tmp.alignment         = TextAlignmentOptions.TopLeft;
-            tmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            tmp.enableWordWrapping = true;
             tmp.richText          = true;
             tmp.overflowMode      = TextOverflowModes.Overflow;
         }
@@ -2472,7 +2472,7 @@ public static class GameSceneSetup
         PlaceRect(desc, anchor(0f, 0f), anchor(1f, 1f), v2(0f, -45f), v2(-60f, -234f));
         var descTMP               = desc.GetComponent<TextMeshProUGUI>();
         descTMP.alignment         = TextAlignmentOptions.TopLeft;
-        descTMP.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        descTMP.enableWordWrapping = true;
         descTMP.overflowMode      = TextOverflowModes.ScrollRect;
 
         // Scanner upgrade hint — shown when scanner level is too low to display all info
@@ -2482,7 +2482,7 @@ public static class GameSceneSetup
         PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 100f), v2(-60f, 32f));
         var scannerHintTMP = scannerHint.GetComponent<TextMeshProUGUI>();
         scannerHintTMP.alignment          = TextAlignmentOptions.Center;
-        scannerHintTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        scannerHintTMP.enableWordWrapping = false;
         scannerHintTMP.fontStyle          = FontStyles.Italic;
         scannerHint.SetActive(false); // hidden by default; shown at runtime when needed
 

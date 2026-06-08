@@ -63,7 +63,7 @@ public class CombatDamageText : MonoBehaviour
         tmp.color             = DamageColor;
         tmp.raycastTarget     = false;
         tmp.overflowMode      = TextOverflowModes.Overflow;
-        tmp.enableWordWrapping = false;
+        tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
         StartCoroutine(AnimateRoutine(rt, tmp));
     }

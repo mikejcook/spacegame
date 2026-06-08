@@ -279,7 +279,7 @@ public class CrewAssignmentViewController : MonoBehaviour
         nameTMP.color              = isAssignedHere ? AccentCyan : TextWhite;
         nameTMP.fontStyle          = FontStyles.Bold;
         nameTMP.alignment          = TextAlignmentOptions.Left;
-        nameTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+        nameTMP.enableWordWrapping = false;
         nameTMP.overflowMode       = TextOverflowModes.Ellipsis;
         nameGO.AddComponent<LayoutElement>().preferredHeight = 32f;
 

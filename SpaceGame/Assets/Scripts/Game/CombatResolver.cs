@@ -224,9 +224,6 @@ public static class CombatResolver
 
         r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
 
-        // Consume one torpedo before applying damage.
-        state.PlayerTorpedoCount = Mathf.Max(0, state.PlayerTorpedoCount - 1);
-
         bool hadShields = target.ShieldsUp;
         (_, r.HullOverflow) = ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields,
                                                   hullDR: 0);  // torpedoes crack hull — no hull DR
