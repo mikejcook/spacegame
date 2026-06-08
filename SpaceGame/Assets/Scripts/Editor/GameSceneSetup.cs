@@ -244,7 +244,7 @@ public static class GameSceneSetup
             var combatDbgGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
             combatDbgGO.name = "CombatDebugButton";
             var mb = combatDbgGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "BATTLE";
+            if (mb != null) mb.buttonText = "Battle";
             var rt = combatDbgGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot     = new Vector2(0f, 0.5f);
@@ -255,7 +255,7 @@ public static class GameSceneSetup
             var randomGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
             randomGO.name = "RandomCombatButton";
             var rmb = randomGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (rmb != null) rmb.buttonText = "RANDOM";
+            if (rmb != null) rmb.buttonText = "Random";
             var rrt = randomGO.GetComponent<RectTransform>();
             rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
             rrt.pivot     = new Vector2(0f, 0.5f);
@@ -658,13 +658,13 @@ public static class GameSceneSetup
             travelGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             travelGO.name = "SystemInfoTravelButton";
             var mb = travelGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "SET COURSE";
+            if (mb != null) mb.buttonText = "Set Course";
         }
         else
         {
             travelGO = MakeImage(card.transform, "SystemInfoTravelButton", BtnNormal);
             travelGO.AddComponent<Button>();
-            var lbl = MakeTMP(travelGO.transform, "Label", "SET COURSE", 22, TextWhite);
+            var lbl = MakeTMP(travelGO.transform, "Label", "Set Course", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -683,13 +683,13 @@ public static class GameSceneSetup
             closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             closeGO.name = "SystemInfoCloseButton";
             var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CLOSE";
+            if (mb != null) mb.buttonText = "Close";
         }
         else
         {
             closeGO = MakeImage(card.transform, "SystemInfoCloseButton", BtnNormal);
             closeGO.AddComponent<Button>();
-            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            var lbl = MakeTMP(closeGO.transform, "Label", "Close", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -861,13 +861,13 @@ public static class GameSceneSetup
             upgradeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             upgradeGO.name = "UpgradeButton";
             var mb = upgradeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "UPGRADE";
+            if (mb != null) mb.buttonText = "Upgrade";
         }
         else
         {
             upgradeGO = MakeImage(card.transform, "UpgradeButton", BtnNormal);
             upgradeGO.AddComponent<Button>();
-            var lbl = MakeTMP(upgradeGO.transform, "Label", "UPGRADE", 22, TextWhite);
+            var lbl = MakeTMP(upgradeGO.transform, "Label", "Upgrade", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -886,13 +886,13 @@ public static class GameSceneSetup
             closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             closeGO.name = "DetailCloseButton";
             var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CLOSE";
+            if (mb != null) mb.buttonText = "Close";
         }
         else
         {
             closeGO = MakeImage(card.transform, "DetailCloseButton", BtnNormal);
             closeGO.AddComponent<Button>();
-            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            var lbl = MakeTMP(closeGO.transform, "Label", "Close", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -960,13 +960,13 @@ public static class GameSceneSetup
             yesGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             yesGO.name = "ConfirmYesButton";
             var mb = yesGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "YES";
+            if (mb != null) mb.buttonText = "Yes";
         }
         else
         {
             yesGO = MakeImage(card.transform, "ConfirmYesButton", BtnNormal);
             yesGO.AddComponent<Button>();
-            var lbl = MakeTMP(yesGO.transform, "Label", "YES", 22, TextWhite);
+            var lbl = MakeTMP(yesGO.transform, "Label", "Yes", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -985,13 +985,13 @@ public static class GameSceneSetup
             noGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             noGO.name = "ConfirmNoButton";
             var mb = noGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "NO";
+            if (mb != null) mb.buttonText = "No";
         }
         else
         {
             noGO = MakeImage(card.transform, "ConfirmNoButton", BtnNormal);
             noGO.AddComponent<Button>();
-            var lbl = MakeTMP(noGO.transform, "Label", "NO", 22, TextWhite);
+            var lbl = MakeTMP(noGO.transform, "Label", "No", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -1674,14 +1674,14 @@ public static class GameSceneSetup
             closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             closeGO.name = "CloseButton";
             var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CLOSE";
+            if (mb != null) mb.buttonText = "Close";
         }
         else
         {
             Debug.LogWarning("[GameSceneSetup] Shift MainButton prefab not found — using plain close button.");
             closeGO = MakeImage(card.transform, "CloseButton", BtnNormal);
             closeGO.AddComponent<Button>();
-            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            var lbl = MakeTMP(closeGO.transform, "Label", "Close", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -1779,7 +1779,30 @@ public static class GameSceneSetup
             img.color          = Color.white;
         }
 
-        // ── Action bar — 96 px strip at the bottom ───────────────────────
+        // ── Turn banner — centred overlay, hidden by default ─────────────
+        // Faded in/out by CombatViewController.ShowTurnBanner() to announce
+        // "Player's Turn" at combat start and after each enemy turn.
+        var turnBannerGO = MakeUIGO("TurnBanner", combatView.transform);
+        {
+            var rt       = turnBannerGO.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.2f, 0.42f);
+            rt.anchorMax = new Vector2(0.8f, 0.58f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+        var turnBannerCG = turnBannerGO.AddComponent<CanvasGroup>();
+        turnBannerCG.alpha          = 0f;
+        turnBannerCG.blocksRaycasts = false;
+        turnBannerCG.interactable   = false;
+
+        var turnBannerTMP = MakeTMP(turnBannerGO.transform, "TurnBannerText",
+                                    "Player's Turn", 54, AccentCyan);
+        Stretch(turnBannerTMP);
+        var tbTMP = turnBannerTMP.GetComponent<TextMeshProUGUI>();
+        tbTMP.alignment  = TextAlignmentOptions.Center;
+        tbTMP.fontStyle  = FontStyles.Bold;
+
+        // Action bar — 96 px strip at the bottom ───────────────────────
         //
         // Layout (left → right):
         //   FireTorpedesContainer   (300 px, left-anchored)
@@ -2455,13 +2478,13 @@ public static class GameSceneSetup
             navigateGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             navigateGO.name = "POIDetailNavigateButton";
             var mb = navigateGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "NAVIGATE";
+            if (mb != null) mb.buttonText = "Navigate";
         }
         else
         {
             navigateGO = MakeImage(card.transform, "POIDetailNavigateButton", BtnNormal);
             navigateGO.AddComponent<Button>();
-            var lbl = MakeTMP(navigateGO.transform, "Label", "NAVIGATE", 22, TextWhite);
+            var lbl = MakeTMP(navigateGO.transform, "Label", "Navigate", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2480,7 +2503,7 @@ public static class GameSceneSetup
             closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             closeGO.name = "POIDetailCloseButton";
             var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CLOSE";
+            if (mb != null) mb.buttonText = "Close";
         }
         else
         {
@@ -2492,7 +2515,7 @@ public static class GameSceneSetup
             cc.pressedColor     = new Color(0.04f, 0.16f, 0.28f, 1f);
             closeBtn.colors    = cc;
             closeBtn.targetGraphic = closeGO.GetComponent<Image>();
-            var closeLbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            var closeLbl = MakeTMP(closeGO.transform, "Label", "Close", 22, TextWhite);
             Stretch(closeLbl);
             closeLbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2564,13 +2587,13 @@ public static class GameSceneSetup
             closeGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             closeGO.name = "CloseButton";
             var mb = closeGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CLOSE";
+            if (mb != null) mb.buttonText = "Close";
         }
         else
         {
             closeGO = MakeImage(card.transform, "CloseButton", BtnNormal);
             closeGO.AddComponent<Button>();
-            var lbl = MakeTMP(closeGO.transform, "Label", "CLOSE", 22, TextWhite);
+            var lbl = MakeTMP(closeGO.transform, "Label", "Close", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2713,13 +2736,13 @@ public static class GameSceneSetup
             cancelGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
             cancelGO.name = "CancelButton";
             var mb = cancelGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CANCEL";
+            if (mb != null) mb.buttonText = "Cancel";
         }
         else
         {
             cancelGO = MakeImage(card.transform, "CancelButton", BtnNormal);
             cancelGO.AddComponent<Button>();
-            var lbl = MakeTMP(cancelGO.transform, "Label", "CANCEL", 22, TextWhite);
+            var lbl = MakeTMP(cancelGO.transform, "Label", "Cancel", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2737,13 +2760,13 @@ public static class GameSceneSetup
             confirmGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
             confirmGO.name = "ConfirmButton";
             var mb = confirmGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "CONFIRM";
+            if (mb != null) mb.buttonText = "Confirm";
         }
         else
         {
             confirmGO = MakeImage(card.transform, "ConfirmButton", BtnNormal);
             confirmGO.AddComponent<Button>();
-            var lbl = MakeTMP(confirmGO.transform, "Label", "CONFIRM", 22, TextWhite);
+            var lbl = MakeTMP(confirmGO.transform, "Label", "Confirm", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2764,13 +2787,13 @@ public static class GameSceneSetup
             recommendedGO      = (GameObject)Object.Instantiate(mainBtnPrefab, card.transform);
             recommendedGO.name = "RecommendedButton";
             var mb = recommendedGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "RECOMMENDED";
+            if (mb != null) mb.buttonText = "Recommended";
         }
         else
         {
             recommendedGO = MakeImage(card.transform, "RecommendedButton", new Color(0.10f, 0.35f, 0.55f, 1f));
             recommendedGO.AddComponent<Button>();
-            var lbl = MakeTMP(recommendedGO.transform, "Label", "RECOMMENDED", 22, TextWhite);
+            var lbl = MakeTMP(recommendedGO.transform, "Label", "Recommended", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }

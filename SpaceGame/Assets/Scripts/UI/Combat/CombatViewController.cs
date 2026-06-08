@@ -154,10 +154,17 @@ public class CombatViewController : MonoBehaviour
     [Tooltip("Shift Dropdown prefab in CombatActionBar/PilotManeuverContainer.")]
     [SerializeField] private TMP_Dropdown pilotManeuverDropdown;
 
+    [Header("Turn Banner — wired by GameSceneSetup")]
+    [Tooltip("Full-screen TMP_Text flashed at the start of each player turn (e.g. 'Player's Turn').")]
+    [SerializeField] private TMP_Text turnBannerText;
+    [SerializeField] private CanvasGroup turnBannerCanvasGroup;
+
     [Header("Audio — wired by GameSceneSetup")]
     [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip   beamWeaponClip;
     [SerializeField] private AudioClip   torpedoClip;
+    [Tooltip("Played when an enemy ship is destroyed. Assign in Inspector — add a clip at Assets/Audio/SFX/explosion.mp3.")]
+    [SerializeField] private AudioClip   explosionClip;
 
     // -----------------------------------------------------------------------
     // Pilot maneuver
@@ -218,6 +225,12 @@ public class CombatViewController : MonoBehaviour
 
     // Maps each slot RectTransform to the Image component for nose-position calculations.
     private readonly Dictionary<RectTransform, Image> _slotToImage = new();
+
+    // Maps each slot RectTransform to its CanvasGroup (used to hide destroyed ships).
+    private readonly Dictionary<RectTransform, CanvasGroup> _slotToGroup = new();
+
+    // Slots that have already had their destruction explosion played this combat.
+    private readonly HashSet<RectTransform> _destroyedSlots = new();
 
     // Live D20 combat data — set by StartCombat().
     private CombatState _combatState;
@@ -282,6 +295,12 @@ public class CombatViewController : MonoBehaviour
             expandedLogCloseButton = transform.Find("ExpandedLogPanel/ExpandedLogHeader/ExpandedLogCloseButton")
                                               ?.GetComponent<Button>();
 
+        // Self-wire turn banner if not assigned by the builder.
+        if (turnBannerCanvasGroup == null)
+            turnBannerCanvasGroup = transform.Find("TurnBanner")?.GetComponent<CanvasGroup>();
+        if (turnBannerText == null)
+            turnBannerText = transform.Find("TurnBanner/TurnBannerText")?.GetComponent<TMP_Text>();
+
         combatLogButton?.onClick.AddListener(ToggleCombatLog);
         expandedLogCloseButton?.onClick.AddListener(() => SetExpandedLogVisible(false));
 
@@ -343,8 +362,11 @@ public class CombatViewController : MonoBehaviour
                 CombatHitEffect.HitType.Beam));
         }
 
-        // Wait for the full animation, then apply damage numbers.
+        // Wait for the full animation, then check for ship destruction before
+        // refreshing the displays and checking combat end.
         yield return new WaitForSeconds(CombatBeamEffect.AnimationDuration);
+        SpawnDamageText(GetEnemyNoseWorld(_currentTargetRT), result);
+        yield return StartCoroutine(PlayDestroyedShipEffects());
         RefreshDisplaysFromState();
         CheckCombatEnd();
 
@@ -358,7 +380,10 @@ public class CombatViewController : MonoBehaviour
         }
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+        {
+            StartCoroutine(ShowTurnBanner("Player's Turn"));
             SetFireButtonsEnabled(true);
+        }
     }
 
     private IEnumerator PlayerTorpedoRoutine(EnemyCombatState target)
@@ -369,7 +394,7 @@ public class CombatViewController : MonoBehaviour
         var result = CombatResolver.PlayerFireTorpedo(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
         AppendLog(FormatPlayerAttack(result));
-        AppendDetailLog($"<color={ColPlayer}>YOU</color>  {result.Description}");
+        AppendDetailLog($"<color={ColPlayer}>You</color>  {result.Description}");
 
         // Update torpedo count immediately (resolver decremented it).
         RefreshTorpedoCountDisplay();
@@ -389,6 +414,8 @@ public class CombatViewController : MonoBehaviour
             CombatHitEffect.SpawnAt(projectileContainer, endWorld,
                                     beamGlowSprite, CombatHitEffect.HitType.Explosion);
 
+        SpawnDamageText(endWorld, result);
+        yield return StartCoroutine(PlayDestroyedShipEffects());
         RefreshDisplaysFromState();
         CheckCombatEnd();
 
@@ -402,7 +429,10 @@ public class CombatViewController : MonoBehaviour
         }
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+        {
+            StartCoroutine(ShowTurnBanner("Player's Turn"));
             SetFireButtonsEnabled(true);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -455,11 +485,55 @@ public class CombatViewController : MonoBehaviour
 
             yield return new WaitForSeconds(waitTime);
 
+            SpawnDamageText(GetNoseWorld(playerShipImage), result);
             RefreshDisplaysFromState();
             CheckCombatEnd();
 
             if (_combatState.Phase != CombatPhase.PlayerTurn) yield break;
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Turn banner
+    // -----------------------------------------------------------------------
+
+    private const float TurnBannerFadeIn  = 0.25f;
+    private const float TurnBannerHold    = 0.75f;
+    private const float TurnBannerFadeOut = 0.40f;
+
+    /// <summary>
+    /// Flashes the turn banner with the given text, then hides it.
+    /// Safe to call even if the banner references are null.
+    /// </summary>
+    private IEnumerator ShowTurnBanner(string text)
+    {
+        if (turnBannerCanvasGroup == null || turnBannerText == null) yield break;
+
+        turnBannerText.text           = text;
+        turnBannerCanvasGroup.alpha   = 0f;
+        turnBannerCanvasGroup.blocksRaycasts = false;
+
+        // Fade in
+        float t = 0f;
+        while (t < TurnBannerFadeIn)
+        {
+            t += Time.deltaTime;
+            turnBannerCanvasGroup.alpha = Mathf.Clamp01(t / TurnBannerFadeIn);
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(TurnBannerHold);
+
+        // Fade out
+        t = 0f;
+        while (t < TurnBannerFadeOut)
+        {
+            t += Time.deltaTime;
+            turnBannerCanvasGroup.alpha = Mathf.Clamp01(1f - t / TurnBannerFadeOut);
+            yield return null;
+        }
+
+        turnBannerCanvasGroup.alpha = 0f;
     }
 
     /// <summary>
@@ -508,6 +582,19 @@ public class CombatViewController : MonoBehaviour
 
             return TorpedoFlightDuration;
         }
+    }
+
+    /// <summary>
+    /// Spawns a floating damage number (or "MISS") at <paramref name="worldPos"/>.
+    /// Uses the total damage dealt (shield + hull overflow).
+    /// </summary>
+    private void SpawnDamageText(Vector3 worldPos, CombatResolver.AttackResult result)
+    {
+        if (projectileContainer == null) return;
+        string text = result.IsHit
+            ? (result.FinalDamage + result.HullOverflow).ToString()
+            : "Miss";
+        CombatDamageText.Spawn(projectileContainer, worldPos, text);
     }
 
     /// <summary>Waits delay seconds then spawns a hit effect at worldPos.</summary>
@@ -722,25 +809,25 @@ public class CombatViewController : MonoBehaviour
     private static string FormatPlayerAttack(CombatResolver.AttackResult r)
     {
         if (r.AttackerRoll == 0) return null;    // no weapon — nothing to log
-        string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
+        string wpn   = r.IsBeamAttack ? "Beam" : "Torpedo";
         string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
-            return $"<color={ColPlayer}>YOU</color>  {wpn} miss  {rolls}";
+            return $"<color={ColPlayer}>You</color> {wpn} miss {rolls}";
         string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
-        string shd = r.ShieldsBroken ? " ▼SHD" : "";
-        return $"<color={ColPlayer}>YOU</color>  {wpn} hit {dmg} dmg{shd}  {rolls}";
+        string shd = r.ShieldsBroken ? " Shields Down!" : "";
+        return $"<color={ColPlayer}>You</color> {wpn} hit {dmg} dmg{shd} {rolls}";
     }
 
     private static string FormatEnemyAttack(CombatResolver.AttackResult r)
     {
         if (r.AttackerRoll == 0) return null;
-        string wpn   = r.IsBeamAttack ? "Beam" : "Torp";
+        string wpn   = r.IsBeamAttack ? "Beam" : "Torpedo";
         string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
-            return $"<color={ColEnemy}>ENE</color>  {wpn} miss  {rolls}";
+            return $"<color={ColEnemy}>Enemy</color> {wpn} miss {rolls}";
         string dmg = r.HullOverflow > 0 ? $"{r.FinalDamage}+{r.HullOverflow}" : $"{r.FinalDamage}";
-        string shd = r.ShieldsBroken ? " ▼SHD" : "";
-        return $"<color={ColEnemy}>ENE</color>  {wpn} hit {dmg} dmg{shd}  {rolls}";
+        string shd = r.ShieldsBroken ? " Shields Down!" : "";
+        return $"<color={ColEnemy}>Enemy</color> {wpn} hit {dmg} dmg{shd} {rolls}";
     }
 
     private static string FormatRepair(CombatResolver.EngineerRepairResult r)
@@ -748,17 +835,17 @@ public class CombatViewController : MonoBehaviour
         if (!r.Attempted) return null;
         string rolls = $"<color={ColRolls}>({r.Total} vs {r.DC})</color>";
         if (!r.Success)
-            return $"<color={ColEngineer}>ENG</color>  failed  {rolls}";
+            return $"<color={ColEngineer}>Engineer</color>  failed  {rolls}";
         string what;
         if (r.ShieldsRepaired > 0 && r.HullRepaired > 0)
-            what = $"shlds +{r.ShieldsRepaired} hull +{r.HullRepaired}";
+            what = $"shields +{r.ShieldsRepaired} hull +{r.HullRepaired}";
         else if (r.ShieldsRepaired > 0)
-            what = $"shlds +{r.ShieldsRepaired}";
+            what = $"shields +{r.ShieldsRepaired}";
         else if (r.HullRepaired > 0)
             what = $"hull +{r.HullRepaired}";
         else
             what = "nothing to repair";
-        return $"<color={ColEngineer}>ENG</color>  {what}  {rolls}";
+        return $"<color={ColEngineer}>Engineer</color>  {what}  {rolls}";
     }
 
     // -----------------------------------------------------------------------
@@ -807,9 +894,11 @@ public class CombatViewController : MonoBehaviour
         _slotToConfig.Clear();
         _slotToState.Clear();
         _slotToImage.Clear();
+        _slotToGroup.Clear();
+        _destroyedSlots.Clear();
         _combatState = null;
         SetFireButtonsEnabled(true);
-        if (targetInfoTitle != null) targetInfoTitle.text = "TARGET";
+        if (targetInfoTitle != null) targetInfoTitle.text = "Target";
         RefreshDisplays(100f, 100f, 100f, 100f);
         RefreshTorpedoCountDisplay();
         ClearLog();
@@ -838,9 +927,9 @@ public class CombatViewController : MonoBehaviour
         if (targetInfoTitle != null)
         {
             if (_slotToConfig.TryGetValue(slotRT, out var config))
-                targetInfoTitle.text = config.shipClass.ToString().ToUpper();
+                targetInfoTitle.text = config.shipClass.ToString();
             else
-                targetInfoTitle.text = "TARGET";
+                targetInfoTitle.text = "Target";
         }
 
         RefreshDisplaysFromState();
@@ -859,143 +948,180 @@ public class CombatViewController : MonoBehaviour
     {
         HideAllEnemySlots();
 
-        if (enemies == null || enemies.Length == 0)
+        if (enemies == null || enemies.Length == 0 || enemies.Length > 3)
         {
-            Debug.LogWarning("[CombatViewController] StartCombat called with no enemies.");
+            Debug.LogWarning($"[CombatViewController] StartCombat: invalid enemy count {enemies?.Length}");
             return;
         }
 
-        int count = Mathf.Clamp(enemies.Length, 1, 3);
-
-        _slotToConfig.Clear();
-        _slotToState.Clear();
-        _slotToImage.Clear();
-
-        // If a CombatState was set via SetCombatState(), wire enemy states to slots.
-        // Index order matches the slot layout: [0]=left/centre, [1]=right, [2]=centre(3-enemy).
-        EnemyCombatState EnemyState(int idx) =>
-            (_combatState != null && idx < _combatState.Enemies.Count)
-                ? _combatState.Enemies[idx] : null;
-
-        RectTransform defaultTarget = null;
-        switch (count)
+        // Slot assignment by enemy count:
+        //   1 → centre;   2 → left + right;   3 → all three
+        var slots = new (RectTransform rt, CanvasGroup group, Image img)[]
         {
-            case 1:
-                ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[0]);
-                _slotToConfig[enemyCenterSlotRT] = enemies[0];
-                if (EnemyState(0) != null) _slotToState[enemyCenterSlotRT] = EnemyState(0);
-                defaultTarget = enemyCenterSlotRT;
-                break;
-            case 2:
-                ShowEnemySlot(enemyLeftGroup,  enemyLeftSlotRT,  enemyLeftImage,  enemies[0]);
-                ShowEnemySlot(enemyRightGroup, enemyRightSlotRT, enemyRightImage, enemies[1]);
-                _slotToConfig[enemyLeftSlotRT]  = enemies[0];
-                _slotToConfig[enemyRightSlotRT] = enemies[1];
-                if (EnemyState(0) != null) _slotToState[enemyLeftSlotRT]  = EnemyState(0);
-                if (EnemyState(1) != null) _slotToState[enemyRightSlotRT] = EnemyState(1);
-                defaultTarget = enemyLeftSlotRT;
-                break;
-            case 3:
-                ShowEnemySlot(enemyLeftGroup,   enemyLeftSlotRT,   enemyLeftImage,   enemies[0]);
-                ShowEnemySlot(enemyCenterGroup, enemyCenterSlotRT, enemyCenterImage, enemies[1]);
-                ShowEnemySlot(enemyRightGroup,  enemyRightSlotRT,  enemyRightImage,  enemies[2]);
-                _slotToConfig[enemyLeftSlotRT]   = enemies[0];
-                _slotToConfig[enemyCenterSlotRT] = enemies[1];
-                _slotToConfig[enemyRightSlotRT]  = enemies[2];
-                if (EnemyState(0) != null) _slotToState[enemyLeftSlotRT]   = EnemyState(0);
-                if (EnemyState(1) != null) _slotToState[enemyCenterSlotRT] = EnemyState(1);
-                if (EnemyState(2) != null) _slotToState[enemyRightSlotRT]  = EnemyState(2);
-                defaultTarget = enemyCenterSlotRT;
-                break;
+            (enemyLeftSlotRT,   enemyLeftGroup,   enemyLeftImage),
+            (enemyCenterSlotRT, enemyCenterGroup, enemyCenterImage),
+            (enemyRightSlotRT,  enemyRightGroup,  enemyRightImage),
+        };
+
+        int[] indices = enemies.Length switch
+        {
+            1 => new[] { 1 },          // centre only
+            2 => new[] { 0, 2 },       // left + right
+            _ => new[] { 0, 1, 2 },    // all three
+        };
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            var config = enemies[i];
+            var (rt, cg, img) = slots[indices[i]];
+
+            // Assign sprite
+            var sprite = GetEnemySprite(config);
+            if (img != null)
+            {
+                img.sprite  = sprite;
+                img.enabled = true;
+                img.color   = Color.white;
+            }
+
+            // Size the slot to the sprite's natural pixel dimensions, capped so
+            // even a dreadnaught fits within a reasonable arena region.
+            if (rt != null && sprite != null)
+            {
+                const float MaxDim = 280f;
+                float w = sprite.rect.width;
+                float h = sprite.rect.height;
+                float scale = Mathf.Min(MaxDim / Mathf.Max(w, h, 1f), 1f);
+                rt.sizeDelta = new Vector2(w * scale, h * scale);
+            }
+
+            // Show the slot
+            if (cg != null)
+            {
+                cg.alpha          = 1f;
+                cg.blocksRaycasts = true;
+                cg.interactable   = true;
+            }
+
+            // Register in lookup dictionaries.
+            // Reuse the EnemyCombatState from _combatState.Enemies if available — this
+            // keeps the reference identical to what EnemyTurnRoutine iterates, so
+            // GetSlotForEnemy's reference comparison succeeds and enemy attack visuals fire.
+            // Fall back to a fresh FromConfig only when running without D20 state (display mode).
+            var existingState = _combatState?.Enemies.Find(e => e.Config == config);
+            _slotToConfig[rt] = config;
+            _slotToState[rt]  = existingState ?? EnemyCombatState.FromConfig(config);
+            if (img != null) _slotToImage[rt] = img;
+            if (cg  != null) _slotToGroup[rt] = cg;
         }
 
-        RefreshTorpedoCountDisplay();
-        SetTarget(defaultTarget);
+        // Initial target: centre for 1 and 3 enemies, left for 2
+        RectTransform initialTarget = enemies.Length == 2 ? enemyLeftSlotRT : enemyCenterSlotRT;
+        SetTarget(initialTarget);
+
+        StartCoroutine(ShowTurnBanner("Player's Turn"));
+        Debug.Log($"[CombatViewController] StartCombat — {enemies.Length} enemy(s).");
     }
-
-    public void SetPlayerShipSprite(Sprite sprite)
-    {
-        if (playerShipImage == null) return;
-        playerShipImage.sprite = sprite;
-        playerShipImage.color  = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-    }
-
-    // -----------------------------------------------------------------------
-    // Sprite lookup
-    // -----------------------------------------------------------------------
-
-    public Sprite GetEnemySprite(DGBShipColor color, DGBShipClass shipClass, int variant = 1)
-    {
-        if (dgbShipSprites == null) return null;
-
-        if (UnavailableCombos.Contains((color, shipClass)))
-        {
-            Debug.LogWarning($"[CombatViewController] No DGB sprite exists for {color} {shipClass}.");
-            return null;
-        }
-
-        var sprite = FindSprite(BuildSpriteName(color, shipClass, variant));
-        // Fall back to variant 1 if the requested variant doesn't exist
-        if (sprite == null && variant != 1)
-            sprite = FindSprite(BuildSpriteName(color, shipClass, 1));
-
-        if (sprite == null)
-            Debug.LogWarning($"[CombatViewController] No DGB sprite: {color} {shipClass} v{variant}");
-
-        return sprite;
-    }
-
-    // -----------------------------------------------------------------------
-    // Private helpers
-    // -----------------------------------------------------------------------
 
     private void HideAllEnemySlots()
     {
-        SetSlotVisible(enemyLeftGroup,   false);
-        SetSlotVisible(enemyCenterGroup, false);
-        SetSlotVisible(enemyRightGroup,  false);
+        HideSlot(enemyLeftGroup);
+        HideSlot(enemyCenterGroup);
+        HideSlot(enemyRightGroup);
     }
 
-    private void ShowEnemySlot(CanvasGroup group, RectTransform slotRT,
-                                Image img, EnemyShipConfig config)
+    private static void HideSlot(CanvasGroup cg)
     {
-        if (config == null) return;
+        if (cg == null) return;
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+    }
 
-        var sprite = GetEnemySprite(config.color, config.shipClass, config.variant);
+    // -----------------------------------------------------------------------
+    // Ship destruction effects
+    // -----------------------------------------------------------------------
 
-        if (slotRT != null && sprite != null)
-            slotRT.sizeDelta = sprite.rect.size;
+    /// <summary>
+    /// For every enemy that just reached 0 hull, hides its sprite and plays
+    /// the ship-destruction explosion and sound.  Yields for the explosion
+    /// duration so the caller can wait before resolving combat end.
+    ///
+    /// Safe to call even when no ships were destroyed this turn — exits
+    /// immediately without yielding.
+    /// </summary>
+    private IEnumerator PlayDestroyedShipEffects()
+    {
+        bool anyDestroyed = false;
 
-        if (img != null)
+        foreach (var kvp in _slotToState)
         {
-            img.sprite = sprite;
-            img.color  = sprite != null ? Color.white : new Color(0.6f, 0.2f, 0.2f, 0.4f);
+            var slotRT = kvp.Key;
+            var state  = kvp.Value;
+
+            if (!state.IsDestroyed || _destroyedSlots.Contains(slotRT)) continue;
+
+            _destroyedSlots.Add(slotRT);
+            anyDestroyed = true;
+
+            // Hide the ship image immediately so the explosion plays over nothing.
+            if (_slotToImage.TryGetValue(slotRT, out var img) && img != null)
+                img.enabled = false;
+
+            // Play the destruction sound (null-safe).
+            sfxSource?.PlayOneShot(explosionClip);
+
+            // Spawn the large ship-destruction explosion centred on the slot.
+            if (projectileContainer != null)
+                CombatShipExplosion.SpawnAt(projectileContainer, slotRT.position, beamGlowSprite);
+
+            AppendLog($"<color={ColEnemy}>DESTROYED</color>");
+            AppendDetailLog($"<color={ColEnemy}>ENE</color>  ship destroyed!");
         }
 
-        // Register the image for nose-position lookups.
-        if (slotRT != null && img != null)
-            _slotToImage[slotRT] = img;
-
-        SetSlotVisible(group, true);
+        if (anyDestroyed)
+            yield return new WaitForSeconds(CombatShipExplosion.Duration);
     }
 
-    private static void SetSlotVisible(CanvasGroup group, bool visible)
-    {
-        if (group == null) return;
-        group.alpha          = visible ? 1f : 0f;
-        group.blocksRaycasts = visible;
-        group.interactable   = visible;
-    }
+    // -----------------------------------------------------------------------
+    // DGB sprite lookup
+    // -----------------------------------------------------------------------
 
-    // Filename format: "{color}_{class}_{variant}"  e.g. "red_cruiser_1"
-    private static string BuildSpriteName(DGBShipColor color, DGBShipClass shipClass, int variant)
-        => $"{color.ToString().ToLower()}_{shipClass.ToString().ToLower()}_{variant}";
-
-    private Sprite FindSprite(string name)
+    /// <summary>
+    /// Returns the best-matching sprite from <see cref="dgbShipSprites"/> for
+    /// the given config.  Tries the requested variant first, then falls back to
+    /// variant 1.  Returns null if no match is found (caller shows a blank slot).
+    /// </summary>
+    private Sprite GetEnemySprite(EnemyShipConfig config)
     {
+        if (dgbShipSprites == null || dgbShipSprites.Length == 0) return null;
+
+        // Skip unavailable color/class combos immediately.
+        if (UnavailableCombos.Contains((config.color, config.shipClass)))
+        {
+            Debug.LogWarning($"[CombatViewController] No sprite for {config.color} {config.shipClass} (unavailable combo).");
+            return null;
+        }
+
+        string colorStr = config.color.ToString().ToLowerInvariant();
+        string classStr = config.shipClass.ToString().ToLowerInvariant();
+        string target   = $"{colorStr}_{classStr}_{config.variant}";
+
+        // Exact match
         foreach (var s in dgbShipSprites)
-            if (s != null && s.name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            if (s != null && s.name.Equals(target, System.StringComparison.OrdinalIgnoreCase))
                 return s;
+
+        // Fall back to variant 1
+        if (config.variant != 1)
+        {
+            string fallback = $"{colorStr}_{classStr}_1";
+            foreach (var s in dgbShipSprites)
+                if (s != null && s.name.Equals(fallback, System.StringComparison.OrdinalIgnoreCase))
+                    return s;
+        }
+
+        Debug.LogWarning($"[CombatViewController] No sprite found for {target}");
         return null;
     }
 }

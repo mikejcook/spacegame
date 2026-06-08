@@ -4,6 +4,10 @@ This file captures project-specific context and hard-won lessons. Read it before
 making non-trivial changes — especially anything that touches Unity UI scenes,
 the MainMenu builder, or layout code.
 
+## Text and capitalization conventions
+
+**Never use ALL CAPS for in-game text.** Use standard sentence capitalization — first letter uppercase, the rest lowercase. This applies to button labels, panel headers, UI strings, narrative text, and any other player-facing text. The Shift `MainButton.buttonText` assignment is a common place this rule applies.
+
 ## Project basics
 
 - **Engine:** Unity 6 (`6000.4.8f1`). Treat any "Unity 6 changed X" hypothesis
