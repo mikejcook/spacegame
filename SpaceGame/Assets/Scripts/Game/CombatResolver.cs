@@ -435,7 +435,7 @@ public static class CombatResolver
     {
         string drPart       = r.DR > 0 ? $" − DR {r.DR}" : "";
         string overflowPart = r.HullOverflow > 0 ? $" + hull {r.HullOverflow}" : "";
-        string shieldBreak  = r.ShieldsBroken ? " — SHIELDS DOWN!" : "";
+        string shieldBreak  = r.ShieldsBroken ? " — Shields Down!" : "";
         return $"{weapon} hits {where} for {r.FinalDamage}{overflowPart}!{shieldBreak} " +
                $"(attack {r.AttackerTotal} vs defense {r.DefenderTotal}, " +
                $"raw {r.RawDamage}{drPart})";

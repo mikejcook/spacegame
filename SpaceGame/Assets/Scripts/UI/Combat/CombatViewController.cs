@@ -454,7 +454,7 @@ public class CombatViewController : MonoBehaviour
         var repair = CombatResolver.EngineerRepair(_combatState);
         Debug.Log($"[Combat] {repair.Description}");
         AppendLog(FormatRepair(repair));
-        AppendDetailLog($"<color={ColEngineer}>ENG</color>  {repair.Description}");
+        AppendDetailLog($"<color={ColEngineer}>Engineer</color> {repair.Description}");
 
         if (repair.Attempted && repair.Success)
         {
@@ -476,7 +476,7 @@ public class CombatViewController : MonoBehaviour
             var result = CombatResolver.EnemyAttack(_combatState, enemy);
             Debug.Log($"[Combat] {result.Description}");
             AppendLog(FormatEnemyAttack(result));
-            AppendDetailLog($"<color={ColEnemy}>ENE</color>  {result.Description}");
+            AppendDetailLog($"<color={ColEnemy}>Enemy</color> {result.Description}");
 
             var slotRT = GetSlotForEnemy(enemy);
             float waitTime = 0f;
@@ -835,7 +835,7 @@ public class CombatViewController : MonoBehaviour
         if (!r.Attempted) return null;
         string rolls = $"<color={ColRolls}>({r.Total} vs {r.DC})</color>";
         if (!r.Success)
-            return $"<color={ColEngineer}>Engineer</color>  failed  {rolls}";
+            return $"<color={ColEngineer}>Engineer</color> failed {rolls}";
         string what;
         if (r.ShieldsRepaired > 0 && r.HullRepaired > 0)
             what = $"shields +{r.ShieldsRepaired} hull +{r.HullRepaired}";
@@ -845,7 +845,7 @@ public class CombatViewController : MonoBehaviour
             what = $"hull +{r.HullRepaired}";
         else
             what = "nothing to repair";
-        return $"<color={ColEngineer}>Engineer</color>  {what}  {rolls}";
+        return $"<color={ColEngineer}>Engineer</color> {what} {rolls}";
     }
 
     // -----------------------------------------------------------------------

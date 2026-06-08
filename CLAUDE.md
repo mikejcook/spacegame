@@ -6,6 +6,8 @@ the MainMenu builder, or layout code.
 
 ## Text and capitalization conventions
 
+**`TMP_Text.enableWordWrapping` is obsolete — use `textWrappingMode` instead.** Set `textWrappingMode = TMPro.TextWrappingModes.NoWrap` (replaces `= false`) or `TMPro.TextWrappingModes.Normal` (replaces `= true`). Using the old property compiles but generates CS0618 warnings on every affected file.
+
 **Never use ALL CAPS for in-game text.** Use standard sentence capitalization — first letter uppercase, the rest lowercase. This applies to button labels, panel headers, UI strings, narrative text, and any other player-facing text. The Shift `MainButton.buttonText` assignment is a common place this rule applies.
 
 ## Project basics
