@@ -5,12 +5,16 @@ using UnityEngine;
 ///
 /// ── Attack resolution ────────────────────────────────────────────────────
 ///
-///   Attacker:  d20 + weapon skill + weapon tier bonus
-///   Defense:   10  + pilot skill + shield defense rating (shields up)
-///                              OR armor defense rating  (shields down)
+///   Attacker:  d20 + weapon skill + weapon tier bonus + ManeuverAttackBonus
+///   Defense:   10  + pilot skill + shield defense rating (shields up)  + ManeuverDefenseBonus
+///                              OR armor defense rating  (shields down) + ManeuverDefenseBonus
 ///
 ///   No defender roll — flat DC makes hitting more consistent and combat faster.
 ///   Pilot skill still adds directly, so a skilled pilot is a meaningful defensive asset.
+///   ManeuverAttackBonus / ManeuverDefenseBonus come from the pilot maneuver dropdown:
+///     Standard          → both 0
+///     Evasive Maneuvers → attack −2, defense +2
+///     Attack Pattern    → attack +2, defense −2
 ///   A tie goes to the attacker (≥ is a hit).
 ///   There is no automatic success on a natural 20 — just a high roll.
 ///
@@ -124,7 +128,7 @@ public static class CombatResolver
         int skill       = GetPlayerWeaponSkill(state, isBeam: true);
         int tierBonus   = TierBonus(state.PlayerBeamTier);
         r.AttackerRoll  = DiceRoller.D20();
-        r.AttackerTotal = r.AttackerRoll + skill + tierBonus;
+        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill     = GetEnemyPilotSkill(target);
@@ -183,7 +187,7 @@ public static class CombatResolver
         int skill       = GetPlayerWeaponSkill(state, isBeam: false);
         int tierBonus   = TierBonus(state.PlayerTorpedoTier);
         r.AttackerRoll  = DiceRoller.D20();
-        r.AttackerTotal = r.AttackerRoll + skill + tierBonus;
+        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill   = GetEnemyPilotSkill(target);
@@ -252,11 +256,11 @@ public static class CombatResolver
         r.AttackerRoll  = DiceRoller.D20();
         r.AttackerTotal = r.AttackerRoll + enemy.Config.WeaponSkill + TierBonus(enemyTier);
 
-        // Flat defense DC — pilot skill + defense rating, no roll
+        // Flat defense DC — pilot skill + defense rating + maneuver bonus, no roll
         int pilotSkill   = GetPlayerPilotSkill(state);
         int defenseBonus = state.PlayerShieldsUp ? state.PlayerShieldDefenseRating : state.PlayerArmorDefenseRating;
         r.DefenderRoll   = 0;
-        r.DefenderTotal  = 10 + pilotSkill + defenseBonus;
+        r.DefenderTotal  = 10 + pilotSkill + defenseBonus + state.ManeuverDefenseBonus;
 
         r.IsBeamAttack = useBeam;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;

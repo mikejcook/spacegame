@@ -111,6 +111,20 @@ public class CombatState
 
     public bool AllEnemiesDestroyed => Enemies.TrueForAll(e => e.IsDestroyed);
 
+    // ── Pilot maneuver modifiers (set each turn by CombatViewController) ─────
+
+    /// <summary>
+    /// Added to the player's attack total when firing. Negative for Evasive Maneuvers,
+    /// positive for Attack Pattern, zero for Standard.
+    /// </summary>
+    public int ManeuverAttackBonus  { get; set; }
+
+    /// <summary>
+    /// Added to the player's defense DC against incoming fire. Positive for Evasive
+    /// Maneuvers, negative for Attack Pattern, zero for Standard.
+    /// </summary>
+    public int ManeuverDefenseBonus { get; set; }
+
     // ── Phase ─────────────────────────────────────────────────────────────────
 
     public CombatPhase Phase { get; set; } = CombatPhase.PlayerTurn;

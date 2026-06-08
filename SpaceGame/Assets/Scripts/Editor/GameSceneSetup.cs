@@ -405,13 +405,21 @@ public static class GameSceneSetup
             var rt       = combatHeaderStats.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot     = new Vector2(1f, 0.5f);
-            rt.sizeDelta = new Vector2(380f, 56f);
+            rt.sizeDelta = new Vector2(400f, 56f);  // torpedo icon + count + dividers + shields + hull
             rt.anchoredPosition = new Vector2(-48f, 0f);   // moved inward from edge
         }
         var chsCG = combatHeaderStats.AddComponent<CanvasGroup>();
         chsCG.alpha          = 0f;
         chsCG.blocksRaycasts = false;
         chsCG.interactable   = false;
+
+        // Shift inward on devices with right-side safe area (notch / rounded corners)
+        {
+            var inset   = combatHeaderStats.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_right").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
 
         var chsHLG = combatHeaderStats.AddComponent<HorizontalLayoutGroup>();
         chsHLG.padding                = new RectOffset(0, 0, 0, 0);
@@ -422,16 +430,57 @@ public static class GameSceneSetup
         chsHLG.childForceExpandHeight = false;
         chsHLG.childAlignment         = TextAnchor.MiddleRight;
 
-        var playerShieldText = MakeTMP(combatHeaderStats.transform, "PlayerShieldText", "SHIELDS  100%", 26, TextWhite);
+        // ── Torpedo icon + count ──────────────────────────────────────────
+        var torpIconContainer = MakeUIGO("TorpedoIconContainer", combatHeaderStats.transform);
+        {
+            var rt       = torpIconContainer.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(72f, 40f);
+        }
+        var torpHLG = torpIconContainer.AddComponent<HorizontalLayoutGroup>();
+        torpHLG.padding                = new RectOffset(0, 0, 0, 0);
+        torpHLG.spacing                = 6f;
+        torpHLG.childControlWidth      = false;
+        torpHLG.childControlHeight     = false;
+        torpHLG.childForceExpandWidth  = false;
+        torpHLG.childForceExpandHeight = false;
+        torpHLG.childAlignment         = TextAnchor.MiddleCenter;
+
+        var torpIconGO = MakeImage(torpIconContainer.transform, "TorpedoIcon", Color.white);
+        {
+            var rt       = torpIconGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(28f, 28f);
+            torpIconGO.GetComponent<Image>().preserveAspect = true;
+        }
+
+        var torpedoCountText = MakeTMP(torpIconContainer.transform, "TorpedoCountText", "×8", 26, TextWhite);
+        {
+            var rt       = torpedoCountText.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(38f, 40f);
+        }
+        torpedoCountText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
+        torpedoCountText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
+
+        var chsDivider0 = MakeTMP(combatHeaderStats.transform, "DividerText0", "|", 26, TextSubtle);
+        {
+            var rt       = chsDivider0.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(16f, 40f);
+        }
+        chsDivider0.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+
+        var playerShieldText = MakeTMP(combatHeaderStats.transform, "PlayerShieldText", "Shields  100%", 28, TextWhite);
         {
             var rt       = playerShieldText.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(170f, 40f);
+            rt.sizeDelta = new Vector2(180f, 40f);
         }
         playerShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
         playerShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
 
-        var chsDivider = MakeTMP(combatHeaderStats.transform, "DividerText", "|", 26, TextSubtle);
+        var chsDivider = MakeTMP(combatHeaderStats.transform, "DividerText", "|", 28, TextSubtle);
         {
             var rt       = chsDivider.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -439,11 +488,11 @@ public static class GameSceneSetup
         }
         chsDivider.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
 
-        var playerHullText = MakeTMP(combatHeaderStats.transform, "PlayerHullText", "HULL  100%", 26, TextWhite);
+        var playerHullText = MakeTMP(combatHeaderStats.transform, "PlayerHullText", "Hull  100%", 28, TextWhite);
         {
             var rt       = playerHullText.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(160f, 40f);
+            rt.sizeDelta = new Vector2(170f, 40f);
         }
         playerHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
         playerHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
@@ -1673,6 +1722,9 @@ public static class GameSceneSetup
     //      │     ├─ TargetShieldText   ("SHIELDS  100%")
     //      │     ├─ DividerText        ("|")
     //      │     └─ TargetHullText     ("HULL  100%")
+    //      ├─ PilotManeuverContainer   (right-anchored, 220 px — left of beam button)
+    //      │  ├─ ManeuverLabel         (TMP_Text — "PILOT MANEUVER")
+    //      │  └─ PilotManeuverDropdown (Shift Dropdown — Standard / Evasive / Attack Pattern)
     //      └─ FireBeamWeaponContainer  (right-anchored, 300 px)
     //         └─ FireBeamWeaponButton  (Shift MainButton — "FIRE BEAM WEAPON")
 
@@ -1754,8 +1806,11 @@ public static class GameSceneSetup
         var actionRule = MakeImage(actionBar.transform, "AccentLine", AccentCyan);
         PlaceRect(actionRule, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -1f), v2(0f, 2f));
 
-        const float WeaponBtnWidth = 300f;
-        const float ActionBarPad   = 40f;   // padding from each edge of the action bar
+        const float WeaponBtnWidth  = 300f;
+        const float ActionBarPad    = 40f;   // padding from each edge of the action bar
+        const float DropdownWidth   = 220f;  // pilot maneuver dropdown, to the left of beam button
+        const float DropdownGap     = 12f;   // gap between dropdown container and beam container
+        const string DropdownPrefabPath = "Assets/Shift - Complete Sci-Fi UI/Prefabs/Dropdown/Dropdown.prefab";
 
         // ── Left weapon button ────────────────────────────────────────────
         var torpContainer = MakeUIGO("FireTorpedesContainer", actionBar.transform);
@@ -1782,38 +1837,25 @@ public static class GameSceneSetup
             var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, torpContainer.transform);
             go.name = "FireTorpedesButton";
             var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "FIRE TORPEDOES";
-            // Leave 28 px at the bottom of the container for the torpedo count label.
+            if (mb != null) mb.buttonText = "Fire Torpedoes";
             var rt   = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(0f, 28f);
+            rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
         }
         else
         {
             var go  = MakeImage(torpContainer.transform, "FireTorpedesButton", BtnNormal);
             go.AddComponent<Button>();
-            var lbl = MakeTMP(go.transform, "Label", "FIRE TORPEDOES", 20, TextWhite);
+            var lbl = MakeTMP(go.transform, "Label", "Fire Torpedoes", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             var rt  = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(0f, 28f);
+            rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
-        }
-
-        // Torpedo count label — "×8" shown at the bottom of the container.
-        {
-            var countLbl = MakeTMP(torpContainer.transform, "TorpedoCountLabel", "×8", 17, TextSubtle);
-            var rt       = countLbl.GetComponent<RectTransform>();
-            rt.anchorMin        = new Vector2(0f, 0f);
-            rt.anchorMax        = new Vector2(1f, 0f);
-            rt.pivot            = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 4f);
-            rt.sizeDelta        = new Vector2(0f, 22f);
-            countLbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
 
         // ── Target info panel — centre ────────────────────────────────────
@@ -1859,7 +1901,7 @@ public static class GameSceneSetup
         statsHLG.childForceExpandHeight = true;
         statsHLG.childAlignment         = TextAnchor.MiddleCenter;
 
-        var targetShieldText = MakeTMP(statsRow.transform, "TargetShieldText", "SHIELDS  100%", 24, TextWhite);
+        var targetShieldText = MakeTMP(statsRow.transform, "TargetShieldText", "Shields  100%", 24, TextWhite);
         targetShieldText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Right;
         targetShieldText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         {
@@ -1876,13 +1918,67 @@ public static class GameSceneSetup
             le.flexibleWidth  = 0f;
         }
 
-        var targetHullText = MakeTMP(statsRow.transform, "TargetHullText", "HULL  100%", 24, TextWhite);
+        var targetHullText = MakeTMP(statsRow.transform, "TargetHullText", "Hull  100%", 24, TextWhite);
         targetHullText.GetComponent<TextMeshProUGUI>().alignment          = TextAlignmentOptions.Left;
         targetHullText.GetComponent<TextMeshProUGUI>().enableWordWrapping = false;
         {
             var le          = targetHullText.AddComponent<LayoutElement>();
             le.preferredWidth = 190f;
             le.flexibleWidth  = 0f;
+        }
+
+        // ── Pilot maneuver dropdown — to the left of the beam button ─────
+        // Uses the Shift Dropdown prefab (styled TMP_Dropdown, 300×40 default).
+        // Anchored from the right edge: position = -(ActionBarPad + WeaponBtnWidth + DropdownGap),
+        // width = DropdownWidth. A label above names the control.
+        // Maneuver container: fixed height, vertically centered in the action bar
+        // Label (26px) + 4px gap + dropdown (40px) = 70px total
+        const float ManeuverLabelH   = 26f;
+        const float ManeuverDropH    = 40f;
+        const float ManeuverTotalH   = ManeuverLabelH + 4f + ManeuverDropH; // 70px
+        var maneuverContainer = MakeUIGO("PilotManeuverContainer", actionBar.transform);
+        {
+            var rt              = maneuverContainer.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(1f, 0.5f);
+            rt.anchorMin        = new Vector2(1f, 0.5f);
+            rt.anchorMax        = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-(ActionBarPad + WeaponBtnWidth + DropdownGap), 0f);
+            rt.sizeDelta        = new Vector2(DropdownWidth, ManeuverTotalH);
+        }
+        {
+            var inset   = maneuverContainer.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_right").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+        // Label — top of the container
+        {
+            var lbl = MakeTMP(maneuverContainer.transform, "ManeuverLabel", "Pilot Maneuver", 24, TextSubtle);
+            var rt  = lbl.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, 0f);
+            rt.sizeDelta        = new Vector2(0f, ManeuverLabelH);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        // Dropdown — bottom of the container, fixed height
+        var dropdownPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DropdownPrefabPath);
+        if (dropdownPrefab != null)
+        {
+            var go = (GameObject)Object.Instantiate(dropdownPrefab, maneuverContainer.transform);
+            go.name = "PilotManeuverDropdown";
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 0f);
+            rt.anchorMax        = new Vector2(1f, 0f);
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 0f);
+            rt.sizeDelta        = new Vector2(0f, ManeuverDropH);
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] Shift Dropdown prefab not found at " + DropdownPrefabPath +
+                             " — PilotManeuverDropdown will be missing.");
         }
 
         // ── Right weapon button ───────────────────────────────────────────
@@ -1908,7 +2004,7 @@ public static class GameSceneSetup
             var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, beamContainer.transform);
             go.name = "FireBeamWeaponButton";
             var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "FIRE BEAM WEAPON";
+            if (mb != null) mb.buttonText = "Fire Beam Weapon";
             var rt  = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
@@ -1919,7 +2015,7 @@ public static class GameSceneSetup
         {
             var go  = MakeImage(beamContainer.transform, "FireBeamWeaponButton", BtnNormal);
             go.AddComponent<Button>();
-            var lbl = MakeTMP(go.transform, "Label", "FIRE BEAM WEAPON", 20, TextWhite);
+            var lbl = MakeTMP(go.transform, "Label", "Fire Beam Weapon", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             Stretch(go);
@@ -2828,6 +2924,7 @@ public static class GameSceneSetup
         Set(so, "daysText",               Find<TMP_Text>(header, "DaysWidget/DaysText"));
         Set(so, "salvageText",            Find<TMP_Text>(header, "SalvageWidget/SalvageText"));
         Set(so, "salvageWidgetGO",        header.transform.Find("SalvageWidget")?.gameObject);
+        Set(so, "daysWidgetGO",           header.transform.Find("DaysWidget")?.gameObject);
         Set(so, "combatHeaderStatsGroup", header.transform.Find("CombatHeaderStats")?.GetComponent<CanvasGroup>());
         Set(so, "systemMapArea",       FindRT(body, "SystemMap"));
         Set(so, "starNode",            Find<Image>(body, "SystemMap/StarNode"));
@@ -3114,9 +3211,14 @@ public static class GameSceneSetup
                 cvcSo.FindProperty("fireBeamWeaponButton").objectReferenceValue =
                     beamContainerTf?.GetComponentInChildren<Button>(true);
 
-                // Torpedo count label
+                // Torpedo count — now in the header combat stats bar
                 cvcSo.FindProperty("torpedoCountText").objectReferenceValue =
-                    Find<TMP_Text>(combatView, "CombatActionBar/FireTorpedesContainer/TorpedoCountLabel");
+                    Find<TMP_Text>(header, "CombatHeaderStats/TorpedoIconContainer/TorpedoCountText");
+
+                // Pilot maneuver dropdown
+                var maneuverContainerTf = combatView.transform.Find("CombatActionBar/PilotManeuverContainer");
+                cvcSo.FindProperty("pilotManeuverDropdown").objectReferenceValue =
+                    maneuverContainerTf?.GetComponentInChildren<TMP_Dropdown>(true);
 
                 // Combat log text (compact) + tap button
                 cvcSo.FindProperty("combatLogText").objectReferenceValue =
@@ -3230,6 +3332,14 @@ public static class GameSceneSetup
                 if (missileSprite == null)
                     Debug.LogWarning($"[GameSceneSetup] Missile sprite not found: {MissilePath}");
                 cvcSo.FindProperty("missileSprite").objectReferenceValue = missileSprite;
+
+                // Wire missile sprite to the header torpedo icon image
+                var torpIconImg = header.transform.Find(
+                    "CombatHeaderStats/TorpedoIconContainer/TorpedoIcon")?.GetComponent<Image>();
+                if (torpIconImg != null && missileSprite != null)
+                    torpIconImg.sprite = missileSprite;
+                else if (torpIconImg == null)
+                    Debug.LogWarning("[GameSceneSetup] TorpedoIcon Image not found in CombatHeaderStats.");
 
                 // ── Beam weapon textures ──────────────────────────────────
                 // laser_noise00.png → beam line (RawImage — keep as Texture2D, not Sprite)

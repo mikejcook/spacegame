@@ -150,10 +150,58 @@ public class CombatViewController : MonoBehaviour
     [Tooltip("glow_round00 sprite used for the impact circle and muzzle flash.")]
     [SerializeField] private Sprite beamGlowSprite;
 
+    [Header("Pilot Maneuver Dropdown — wired by GameSceneSetup")]
+    [Tooltip("Shift Dropdown prefab in CombatActionBar/PilotManeuverContainer.")]
+    [SerializeField] private TMP_Dropdown pilotManeuverDropdown;
+
     [Header("Audio — wired by GameSceneSetup")]
     [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip   beamWeaponClip;
     [SerializeField] private AudioClip   torpedoClip;
+
+    // -----------------------------------------------------------------------
+    // Pilot maneuver
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Which piloting stance the player has selected this combat.
+    /// Standard     → no modifiers
+    /// Evasive      → +2 defense DC, −2 attack
+    /// AttackPattern → −2 defense DC, +2 attack
+    /// </summary>
+    public enum PilotManeuver { Standard = 0, EvasiveManeuvers = 1, AttackPattern = 2 }
+
+    /// <summary>Added to the player's attack total this turn. Set by dropdown selection.</summary>
+    public int ManeuverAttackBonus  { get; private set; }
+    /// <summary>Added to the player's defense DC this turn. Set by dropdown selection.</summary>
+    public int ManeuverDefenseBonus { get; private set; }
+
+    /// <summary>Push the current maneuver bonuses into _combatState before each resolver call.</summary>
+    private void SyncManeuverBonuses()
+    {
+        if (_combatState == null) return;
+        _combatState.ManeuverAttackBonus  = ManeuverAttackBonus;
+        _combatState.ManeuverDefenseBonus = ManeuverDefenseBonus;
+    }
+
+    private void ApplyManeuver(PilotManeuver m)
+    {
+        switch (m)
+        {
+            case PilotManeuver.EvasiveManeuvers:
+                ManeuverAttackBonus  = -2;
+                ManeuverDefenseBonus = +2;
+                break;
+            case PilotManeuver.AttackPattern:
+                ManeuverAttackBonus  = +2;
+                ManeuverDefenseBonus = -2;
+                break;
+            default:
+                ManeuverAttackBonus  = 0;
+                ManeuverDefenseBonus = 0;
+                break;
+        }
+    }
 
     // -----------------------------------------------------------------------
     // Combat state
@@ -201,6 +249,22 @@ public class CombatViewController : MonoBehaviour
 
         fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
         fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
+
+        // Pilot maneuver dropdown
+        if (pilotManeuverDropdown != null)
+        {
+            pilotManeuverDropdown.ClearOptions();
+            pilotManeuverDropdown.AddOptions(new System.Collections.Generic.List<string>
+            {
+                "Standard",
+                "Evasive Maneuvers",
+                "Attack Pattern",
+            });
+            pilotManeuverDropdown.value = 0;
+            ApplyManeuver(PilotManeuver.Standard);
+            pilotManeuverDropdown.onValueChanged.AddListener(idx =>
+                ApplyManeuver((PilotManeuver)idx));
+        }
 
         // Resolve expanded-log references at runtime if the builder didn't wire them.
         // CombatViewController sits on the CombatView root, so all paths start there.
@@ -257,6 +321,7 @@ public class CombatViewController : MonoBehaviour
     private IEnumerator PlayerBeamRoutine(EnemyCombatState target)
     {
         SetFireButtonsEnabled(false);
+        SyncManeuverBonuses();
 
         // Resolve dice immediately (damage is tracked internally).
         var result = CombatResolver.PlayerFireBeam(_combatState, target);
@@ -299,6 +364,7 @@ public class CombatViewController : MonoBehaviour
     private IEnumerator PlayerTorpedoRoutine(EnemyCombatState target)
     {
         SetFireButtonsEnabled(false);
+        SyncManeuverBonuses();
 
         var result = CombatResolver.PlayerFireTorpedo(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
@@ -729,10 +795,10 @@ public class CombatViewController : MonoBehaviour
     private void RefreshDisplays(float playerShieldPct, float playerHullPct,
                                   float targetShieldPct, float targetHullPct)
     {
-        if (playerShieldText != null) playerShieldText.text = $"SHIELDS  {playerShieldPct:0}%";
-        if (playerHullText   != null) playerHullText.text   = $"HULL  {playerHullPct:0}%";
-        if (targetShieldText != null) targetShieldText.text = $"SHIELDS  {targetShieldPct:0}%";
-        if (targetHullText   != null) targetHullText.text   = $"HULL  {targetHullPct:0}%";
+        if (playerShieldText != null) playerShieldText.text = $"Shields  {playerShieldPct:0}%";
+        if (playerHullText   != null) playerHullText.text   = $"Hull  {playerHullPct:0}%";
+        if (targetShieldText != null) targetShieldText.text = $"Shields  {targetShieldPct:0}%";
+        if (targetHullText   != null) targetHullText.text   = $"Hull  {targetHullPct:0}%";
     }
 
     public void OnCombatEnter()

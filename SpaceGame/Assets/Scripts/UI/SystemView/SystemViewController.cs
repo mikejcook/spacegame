@@ -50,6 +50,7 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text    daysText;
     [SerializeField] private TMP_Text    salvageText;
     [SerializeField] private GameObject  salvageWidgetGO;
+    [SerializeField] private GameObject  daysWidgetGO;
     [SerializeField] private CanvasGroup combatHeaderStatsGroup;
 
     [Header("System Map")]
@@ -1205,6 +1206,7 @@ public class SystemViewController : MonoBehaviour
         // Hide non-combat header elements; show combat stats
         if (systemNameText != null) systemNameText.gameObject.SetActive(false);
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(false);
+        if (daysWidgetGO != null) daysWidgetGO.SetActive(false);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 1f;
@@ -1273,6 +1275,7 @@ public class SystemViewController : MonoBehaviour
         // Restore header elements
         if (systemNameText != null) systemNameText.gameObject.SetActive(true);
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(true);
+        if (daysWidgetGO != null) daysWidgetGO.SetActive(true);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 0f;
