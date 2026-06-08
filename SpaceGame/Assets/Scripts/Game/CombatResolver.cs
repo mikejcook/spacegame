@@ -415,14 +415,28 @@ public static class CombatResolver
 
     private static int GetPlayerWeaponSkill(CombatState state, bool isBeam)
     {
-        var gunner = state.Gunner ?? state.Captain;
-        return gunner?.GetSkillRank(Constants.Skills.Gunnery) ?? 0;
+        if (state.Gunner != null)
+            return state.Gunner.GetSkillRank(Constants.Skills.Gunnery);
+
+        var captain = state.Captain;
+        if (captain == null) return 0;
+
+        int gunnery  = captain.GetSkillRank(Constants.Skills.Gunnery);
+        int command  = Mathf.Max(1, captain.GetSkillRank(Constants.Skills.Command) / 2);
+        return Mathf.Max(gunnery, command);
     }
 
     private static int GetPlayerPilotSkill(CombatState state)
     {
-        var pilot = state.Pilot ?? state.Captain;
-        return pilot?.GetSkillRank(Constants.Skills.Piloting) ?? 0;
+        if (state.Pilot != null)
+            return state.Pilot.GetSkillRank(Constants.Skills.Piloting);
+
+        var captain = state.Captain;
+        if (captain == null) return 0;
+
+        int gunnery = captain.GetSkillRank(Constants.Skills.Piloting);
+        int command = Mathf.Max(1, captain.GetSkillRank(Constants.Skills.Command) / 2);
+        return Mathf.Max(gunnery, command);
     }
 
     private static int GetEnemyPilotSkill(EnemyCombatState enemy)
