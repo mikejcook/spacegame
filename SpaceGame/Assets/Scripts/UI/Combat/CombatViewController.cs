@@ -556,9 +556,15 @@ public class CombatViewController : MonoBehaviour
             sfxSource?.PlayOneShot(beamWeaponClip);
             var go = new GameObject("EnemyBeamEffect", typeof(RectTransform));
             go.transform.SetParent(projectileContainer, worldPositionStays: false);
+            // Impact glow scaled to the player (target); muzzle scaled to the firing enemy.
+            float impactSize = EffectSizeForRect(playerShipImage != null ? playerShipImage.rectTransform : null,
+                                                 maxSize: 130f, minSize: 28f);
+            float muzzleSize = EffectSizeForRect(enemyImg != null ? enemyImg.rectTransform : null,
+                                                 maxSize: 60f, minSize: 28f);
             go.AddComponent<CombatBeamEffect>().Fire(
                 fromWorld, toWorld, beamTexture, beamGlowSprite,
-                tint: CombatBeamEffect.EnemyBeamTint);
+                tint: CombatBeamEffect.EnemyBeamTint,
+                impactSize: impactSize, muzzleSize: muzzleSize);
 
             if (isHit)
                 StartCoroutine(DelayedHitEffect(
@@ -702,11 +708,18 @@ public class CombatViewController : MonoBehaviour
     /// Player ship (no rotation)  → top-centre in world space.
     /// Enemy ship (rotated ≈180°) → visual bottom in world space (facing the player).
     /// </summary>
+    // How far from the sprite centre toward the nose tip to place beam endpoints.
+    // 0 = centre, 1 = exact nose tip. 0.82 lands on the hull rather than the extreme tip.
+    // Works for both player (no rotation, yMax = visual top = nose) and enemy
+    // (180°+ rotation: TransformPoint of local yMax maps to the visual bottom = nose facing player).
+    private const float NoseFraction = 0.82f;
+
     private static Vector3 GetNoseWorld(Image img)
     {
         if (img == null) return Vector3.zero;
-        var rt = img.rectTransform;
-        return rt.TransformPoint(new Vector3(0f, rt.rect.yMax, 0f));
+        var rt   = img.rectTransform;
+        float yPos = Mathf.Lerp(rt.rect.center.y, rt.rect.yMax, NoseFraction);
+        return rt.TransformPoint(new Vector3(0f, yPos, 0f));
     }
 
     /// <summary>Returns the nose position for whatever enemy is in the given slot.</summary>
@@ -714,6 +727,18 @@ public class CombatViewController : MonoBehaviour
     {
         var img = GetEnemyImageForSlot(slotRT);
         return img != null ? GetNoseWorld(img) : (slotRT != null ? slotRT.position : Vector3.zero);
+    }
+
+    // Beam impact glow / muzzle flash diameters must scale to the ship they land on,
+    // or a fixed 130-unit glow swallows a 24×29 fighter whole (looks like a wild
+    // overshoot). Roughly match the ship's smaller on-screen dimension, with a floor
+    // so tiny ships still read, and a ceiling matching the original constant so large
+    // ships are unchanged. NOTE: this scales the *effect*, not the ship sprite.
+    private static float EffectSizeForRect(RectTransform rt, float maxSize, float minSize)
+    {
+        if (rt == null) return maxSize;
+        float m = Mathf.Min(rt.rect.width, rt.rect.height);
+        return Mathf.Clamp(m * 1.1f, minSize, maxSize);
     }
 
     // -----------------------------------------------------------------------
@@ -867,7 +892,13 @@ public class CombatViewController : MonoBehaviour
         go.transform.SetParent(projectileContainer, worldPositionStays: false);
 
         var effect = go.AddComponent<CombatBeamEffect>();
-        effect.Fire(startWorld, endWorld, beamTexture, beamGlowSprite);
+        // Impact glow scaled to the target enemy; muzzle flash scaled to the player ship.
+        float impactSize = EffectSizeForRect(GetEnemyImageForSlot(_currentTargetRT)?.rectTransform,
+                                             maxSize: 130f, minSize: 28f);
+        float muzzleSize = EffectSizeForRect(playerShipImage != null ? playerShipImage.rectTransform : null,
+                                             maxSize: 60f, minSize: 28f);
+        effect.Fire(startWorld, endWorld, beamTexture, beamGlowSprite,
+                    tint: null, impactSize: impactSize, muzzleSize: muzzleSize);
     }
 
     /// <summary>

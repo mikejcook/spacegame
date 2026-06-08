@@ -61,12 +61,20 @@ public class CombatBeamEffect : MonoBehaviour
     /// <param name="beamTexture">laser_noise00 texture for the beam strip (may be null).</param>
     /// <param name="glowSprite">glow_round00 sprite for the impact circle (may be null).</param>
     /// <param name="tint">Base color for beam, glow, and muzzle flash. Defaults to PlayerBeamTint (cyan).</param>
+    /// <param name="impactSize">Diameter of the impact glow at <paramref name="endWorld"/>.
+    /// Defaults to GlowSize; pass a value scaled to the target sprite so the glow
+    /// doesn't dwarf small ships (a 24×29 fighter vs a 280px dreadnaught).</param>
+    /// <param name="muzzleSize">Diameter of the muzzle flash at <paramref name="startWorld"/>.
+    /// Defaults to MuzzleSize; scale to the firing sprite for the same reason.</param>
     public void Fire(Vector3 startWorld, Vector3 endWorld,
                      Texture beamTexture, Sprite glowSprite,
-                     Color? tint = null)
+                     Color? tint = null,
+                     float impactSize = GlowSize,
+                     float muzzleSize = MuzzleSize)
     {
         Color baseColor = tint ?? PlayerBeamTint;
-        StartCoroutine(BeamRoutine(startWorld, endWorld, beamTexture, glowSprite, baseColor));
+        StartCoroutine(BeamRoutine(startWorld, endWorld, beamTexture, glowSprite,
+                                   baseColor, impactSize, muzzleSize));
     }
 
     // -----------------------------------------------------------------------
@@ -75,7 +83,8 @@ public class CombatBeamEffect : MonoBehaviour
 
     private IEnumerator BeamRoutine(Vector3 start, Vector3 end,
                                     Texture beamTexture, Sprite glowSprite,
-                                    Color baseColor)
+                                    Color baseColor,
+                                    float impactSize, float muzzleSize)
     {
         // Derive per-instance tints from the base color.
         Color beamTint   = baseColor;
@@ -95,12 +104,12 @@ public class CombatBeamEffect : MonoBehaviour
         RawImage glowRI  = null;
         if (glowSprite != null)
         {
-            glowImg = MakeGlowImage(end, GlowSize, glowSprite, glowTint);
+            glowImg = MakeGlowImage(end, impactSize, glowSprite, glowTint);
         }
         else
         {
             // Fallback: plain colored rectangle if the glow sprite is missing.
-            glowRI = MakeGlowRaw(end, GlowSize, glowTint);
+            glowRI = MakeGlowRaw(end, impactSize, glowTint);
         }
 
         // ── Muzzle flash ──────────────────────────────────────────────────
@@ -108,12 +117,12 @@ public class CombatBeamEffect : MonoBehaviour
         RawImage muzzleRI  = null;
         if (glowSprite != null)
         {
-            muzzleImg = MakeGlowImage(start, MuzzleSize, glowSprite, muzzleTint);
+            muzzleImg = MakeGlowImage(start, muzzleSize, glowSprite, muzzleTint);
             muzzleImg.color = new Color(muzzleTint.r, muzzleTint.g, muzzleTint.b, 0f);
         }
         else
         {
-            muzzleRI = MakeGlowRaw(start, MuzzleSize, muzzleTint);
+            muzzleRI = MakeGlowRaw(start, muzzleSize, muzzleTint);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────
@@ -188,7 +197,19 @@ public class CombatBeamEffect : MonoBehaviour
         rt.anchorMax    = new Vector2(0.5f, 0.5f);
         rt.pivot        = new Vector2(0.5f, 0.5f);
         rt.position     = (start + end) * 0.5f;
-        rt.sizeDelta    = new Vector2(distance, BeamThickness);
+
+        // `distance` is a WORLD-space magnitude — start/end come from
+        // RectTransform.TransformPoint. But sizeDelta is expressed in this rect's
+        // LOCAL units, and under a CanvasScaler the canvas root scale is not 1
+        // (≈ Screen height / 1080 on device). Assigning the world distance
+        // directly therefore makes the beam the wrong length: it overshoots the
+        // target on the way out and, fired the other way, begins behind the
+        // shooter. Divide by lossyScale to convert world units → local units.
+        // (rt.position is already world-space, so the centre stays correct — only
+        // the length needs converting. BeamThickness is authored in local units.)
+        float worldScale = rt.lossyScale.x;
+        if (Mathf.Abs(worldScale) < 1e-4f) worldScale = 1f;
+        rt.sizeDelta    = new Vector2(distance / worldScale, BeamThickness);
         rt.localEulerAngles = new Vector3(0f, 0f, angleDeg);
 
         var ri           = go.AddComponent<RawImage>();

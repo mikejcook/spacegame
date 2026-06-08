@@ -977,13 +977,59 @@ The formula for a +Y-facing sprite to point from position A toward position B in
 | 2 | Left + Right |
 | 3 | Left + Centre + Right |
 
+### Impact / muzzle effect sizes must scale to the ship, not be fixed
+
+Enemy ships render at their **natural pixel dimensions** (a DGB fighter is only
+24×29 canvas units; a dreadnaught is capped at 280). A fixed-diameter effect that
+looks right on a dreadnaught swallows a fighter whole — a 130-unit impact glow on
+a 29-tall sprite bleeds ~65 units past every edge and reads as a wild overshoot
+even when the endpoint is exactly on the hull.
+
+**Rule:** scale beam impact glows and muzzle flashes to the ship they land on.
+`CombatViewController.EffectSizeForRect(rt, maxSize, minSize)` returns
+`clamp(min(width, height) * 1.1, minSize, maxSize)`; pass the **target** rect for
+the impact glow and the **shooter** rect for the muzzle flash.
+`CombatBeamEffect.Fire` takes optional `impactSize` / `muzzleSize` (defaulting to
+the old constants, so large ships are unchanged). This scales the *effect*, never
+the ship sprite — display sizes stay at natural pixels by design.
+
+**Still fixed-size (latent):** the torpedo `CombatHitEffect.SpawnAt` explosion in
+`PlayerTorpedoRoutine` has not had this treatment — it will dwarf a fighter the
+same way. Give it the same scaling when torpedo impacts look off.
+
 ### Files to know
 
 - `Assets/Scripts/UI/Combat/CombatViewController.cs` — runtime driver; `StartCombat(EnemyShipConfig[])` is the entry point.
+- `Assets/Scripts/UI/Combat/CombatBeamEffect.cs` — beam line + impact glow + muzzle flash; `Fire(start, end, tex, glow, tint, impactSize, muzzleSize)`. Works in world space — see the `sizeDelta` scale gotcha below.
 - `Assets/Scripts/Data/Models/EnemyShipConfig.cs` — `DGBShipColor`, `DGBShipClass`, `CombatShipDisplaySize` enums + `EnemyShipConfig` class.
 - Combat view is built by `GameSceneSetup.BuildCombatView()` and `BuildEnemySlot()`.
 
 ## Unity UI gotchas that bit us (none are Unity 6 specific)
+
+### A world-space distance assigned to `sizeDelta` is wrong by the canvas scale factor
+
+`RectTransform.sizeDelta` is in the rect's **local** units. Under a `CanvasScaler`
+the canvas root scale is **not 1** (≈ `Screen.height / 1080` on device, and ≠ 1
+in any Game-view resolution other than the 1920×1080 reference). So assigning a
+**world-space** length — e.g. a distance computed from two `TransformPoint` /
+`rt.position` results — straight into `sizeDelta` makes the element the wrong
+size by exactly that scale factor.
+
+Symptom we hit (`CombatBeamEffect.MakeBeamLine`): the beam line is *centred*
+correctly in world space (`rt.position = midpoint`) but its **length** was set
+from a world-space `distance`. With scale > 1 the line rendered longer than
+`start→end`, so it overshot the target on the way out and, fired the other
+direction, began *behind* the shooter. A line poking past **both** ends while
+its midpoint is right is the signature of this bug — not an endpoint error.
+It's invisible at the 1920×1080 reference (scale = 1) and only shows on device
+or other resolutions.
+
+**Rule:** convert world units → local units before writing `sizeDelta`:
+`sizeDelta.x = worldDistance / rt.lossyScale.x` (canvas scale is uniform, so
+`.x` is fine; guard against a zero scale). Position via world `rt.position` is
+unaffected — only lengths derived from world distances need the conversion.
+Constants authored as canvas units (e.g. `BeamThickness`) are already local and
+must **not** be divided.
 
 ### `Shift MainButton` in a `HorizontalLayoutGroup` collapses to zero width
 
