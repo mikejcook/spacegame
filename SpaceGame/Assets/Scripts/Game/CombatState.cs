@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// Which side gets to act next (or whether combat has ended).
@@ -150,6 +151,13 @@ public class CombatState
         int torpedoTier  = torpedoes != null ? (int)torpedoes.Tier : 0;
         int torpedoCount = torpedoTier > 0 ? torpedoTier * 4 : 0;  // Mk I = 4 shots … Mk VI = 24
 
+        // Each tier of Shields/Armor adds +5 to the respective max HP pool.
+        int shieldTierBonus = shields != null ? (int)shields.Tier * 5 : 0;
+        int armorTierBonus  = armor   != null ? (int)armor.Tier   * 5 : 0;
+
+        int maxShields = ship.MaxShieldPoints + shieldTierBonus;
+        int maxHull    = ship.MaxHullPoints   + armorTierBonus;
+
         var state = new CombatState
         {
             Captain = captain,
@@ -157,10 +165,10 @@ public class CombatState
             Pilot          = pilot,
             Engineer       = engineer,
 
-            PlayerMaxShields     = ship.MaxShieldPoints,
-            PlayerCurrentShields = ship.ShieldPoints,
-            PlayerMaxHull        = ship.MaxHullPoints,
-            PlayerCurrentHull    = ship.HullPoints,
+            PlayerMaxShields     = maxShields,
+            PlayerCurrentShields = Mathf.Min(ship.ShieldPoints, maxShields),
+            PlayerMaxHull        = maxHull,
+            PlayerCurrentHull    = Mathf.Min(ship.HullPoints,   maxHull),
 
             PlayerBeamTier     = beamWeapon != null ? (int)beamWeapon.Tier : 0,
             PlayerTorpedoTier  = torpedoTier,

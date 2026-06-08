@@ -198,6 +198,9 @@ public static class CombatResolver
         r.IsBeamAttack = false;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;
 
+        // Consume one torpedo regardless of hit or miss.
+        state.PlayerTorpedoCount = Mathf.Max(0, state.PlayerTorpedoCount - 1);
+
         if (!r.IsHit)
         {
             r.Description = $"Torpedo misses! ({r.AttackerTotal} vs {r.DefenderTotal})";

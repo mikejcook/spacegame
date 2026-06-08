@@ -201,6 +201,23 @@ public static class GameSceneSetup
             so.ApplyModifiedProperties();
         }
 
+        // ── Wire CombatViewController.torpedoCountText ────────────────────
+        // torpedoCountText lives in the Header hierarchy (built by BuildHeader)
+        // but is a serialised field on CombatViewController (built by BuildCombatView).
+        // Neither builder has visibility into the other, so we wire it here.
+        {
+            var cvc   = combatView.GetComponent<CombatViewController>();
+            var cvcSo = new SerializedObject(cvc);
+            var torpTMP = header.transform
+                              .Find("CombatHeaderStats/TorpedoIconContainer/TorpedoCountText")
+                              ?.GetComponent<TMP_Text>();
+            if (torpTMP == null)
+                Debug.LogError("[GameSceneSetup] TorpedoCountText not found — check BuildHeader hierarchy.");
+            else
+                cvcSo.FindProperty("torpedoCountText").objectReferenceValue = torpTMP;
+            cvcSo.ApplyModifiedProperties();
+        }
+
         // ── Wire serialised fields ────────────────────────────────────────
         WireController(controller, bg, header, body, navBar, poiDetail, combatView,
                        recruitmentPanel, levelUpPanel);
@@ -2056,8 +2073,8 @@ public static class GameSceneSetup
             rt.pivot            = new Vector2(1f, 0f);        // right-bottom — set BEFORE anchoredPosition (CLAUDE.md)
             rt.anchorMin        = new Vector2(1f, 0f);
             rt.anchorMax        = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-ActionBarPad, 170f);  // same right pad as beam button; well above action bar (96) + safe-area expansion
-            rt.sizeDelta        = new Vector2(620f, 170f);            // 620 × 170 canvas units ≈ 5 log lines at 24 pt
+            rt.anchoredPosition = new Vector2(0f, 170f);              // right edge flush with safe-area border (SafeAreaInset handles the inset); above action bar
+            rt.sizeDelta        = new Vector2(800f, 170f);            // ~380 displayed px at current scale; right edge at safe-area boundary
         }
         {
             var inset   = logPanel.AddComponent<SafeAreaInset>();

@@ -137,12 +137,12 @@ public class Ship
             Name            = name,
             ShipClass       = ShipClass.Freighter,
             // HP tuned for the D20 combat system.
-            // Shields: beams do 2d6 (avg 7) with no DR → expect ~3 hits to strip shields.
-            // Hull: torpedoes do 3d6 (avg 10.5) with no DR → expect ~3–4 hits after shields drop.
-            MaxHullPoints   = 35,
-            HullPoints      = 35,
-            MaxShieldPoints = 20,
-            ShieldPoints    = 20,
+            // Shields: beams do 2d6 (avg 7) with no DR → expect ~4 hits to strip shields.
+            // Hull: torpedoes do 3d6 (avg 10.5) with no DR → expect ~5 hits after shields drop.
+            MaxHullPoints   = 50,
+            HullPoints      = 50,
+            MaxShieldPoints = 30,
+            ShieldPoints    = 30,
             CargoCapacity   = 20,
             MaxCrew         = 4,   // captain + 3 crew
             MaxPassengers   = 2,

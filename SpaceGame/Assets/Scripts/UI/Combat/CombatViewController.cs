@@ -1019,6 +1019,7 @@ public class CombatViewController : MonoBehaviour
         RectTransform initialTarget = enemies.Length == 2 ? enemyLeftSlotRT : enemyCenterSlotRT;
         SetTarget(initialTarget);
 
+        RefreshTorpedoCountDisplay();   // OnCombatEnter ran before SetCombatState, so refresh now
         StartCoroutine(ShowTurnBanner("Player's Turn"));
         Debug.Log($"[CombatViewController] StartCombat — {enemies.Length} enemy(s).");
     }
