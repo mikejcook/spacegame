@@ -57,7 +57,7 @@ public static class CombatResolver
     /// How much beam damage hull armor absorbs. Low enough that beams still
     /// threaten hull, but torpedoes are clearly the better hull-cracker.
     /// </summary>
-    public const int BeamVsHullDR = 3;
+    public const int BeamVsHullDR = 2;
 
     /// <summary>DC for the engineer's end-of-turn repair check (d20 + Engineering).</summary>
     public const int RepairDC = 12;
@@ -132,7 +132,7 @@ public static class CombatResolver
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill     = GetEnemyPilotSkill(target);
-        int defenseBonus   = target.ShieldsUp ? target.Config.ShieldDefenseRating : target.Config.ArmorDefenseRating;
+        int defenseBonus   = target.ShieldsUp ? target.Config.ShieldTier : target.Config.ArmorTier;
         r.DefenderRoll     = 0;
         r.DefenderTotal    = 10 + pilotSkill + defenseBonus;
 
@@ -191,7 +191,7 @@ public static class CombatResolver
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill   = GetEnemyPilotSkill(target);
-        int defenseBonus = target.ShieldsUp ? target.Config.ShieldDefenseRating : target.Config.ArmorDefenseRating;
+        int defenseBonus = target.ShieldsUp ? target.Config.ShieldTier : target.Config.ArmorTier;
         r.DefenderRoll   = 0;
         r.DefenderTotal  = 10 + pilotSkill + defenseBonus;
 

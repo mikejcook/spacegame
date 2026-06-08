@@ -196,7 +196,7 @@ public class SystemViewController : MonoBehaviour
         // Default: one red medium enemy (variant 0).
         combatDebugButton?.onClick.AddListener(() => ToggleCombatView(new[]
         {
-            new EnemyShipConfig { color = DGBShipColor.Red, shipClass = DGBShipClass.Corvette, variant = 1 },
+            new EnemyShipConfig { color = DGBShipColor.Green, shipClass = DGBShipClass.Fighter, variant = 1 },
         }));
 
         randomCombatButton?.onClick.AddListener(() => StartOrRestartCombat(BuildRandomEnemies()));

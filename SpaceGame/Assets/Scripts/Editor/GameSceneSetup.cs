@@ -3430,13 +3430,17 @@ public static class GameSceneSetup
                 // on button press.
                 EnsureAudioDecompressOnLoad("Assets/Audio/SFX/beam_weapon.mp3");
                 EnsureAudioDecompressOnLoad("Assets/Audio/SFX/torpedo.mp3");
+                EnsureAudioDecompressOnLoad("Assets/Audio/SFX/explosion.mp3");
 
-                var beamClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/beam_weapon.mp3");
-                var torpClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/torpedo.mp3");
-                if (beamClip != null) cvcSo.FindProperty("beamWeaponClip").objectReferenceValue = beamClip;
+                var beamClip      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/beam_weapon.mp3");
+                var torpClip      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/torpedo.mp3");
+                var explosionClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/explosion.mp3");
+                if (beamClip      != null) cvcSo.FindProperty("beamWeaponClip").objectReferenceValue = beamClip;
                 else Debug.LogWarning("[GameSceneSetup] beam_weapon.mp3 not found at Assets/Audio/SFX/.");
-                if (torpClip != null) cvcSo.FindProperty("torpedoClip").objectReferenceValue = torpClip;
+                if (torpClip      != null) cvcSo.FindProperty("torpedoClip").objectReferenceValue = torpClip;
                 else Debug.LogWarning("[GameSceneSetup] torpedo.mp3 not found at Assets/Audio/SFX/.");
+                if (explosionClip != null) cvcSo.FindProperty("explosionClip").objectReferenceValue = explosionClip;
+                else Debug.LogWarning("[GameSceneSetup] explosion.mp3 not found at Assets/Audio/SFX/.");
 
                 // Projectile container
                 var projLayerTf = combatView.transform.Find("ProjectileLayer");

@@ -1076,8 +1076,8 @@ public class CombatViewController : MonoBehaviour
             if (projectileContainer != null)
                 CombatShipExplosion.SpawnAt(projectileContainer, slotRT.position, beamGlowSprite);
 
-            AppendLog($"<color={ColEnemy}>DESTROYED</color>");
-            AppendDetailLog($"<color={ColEnemy}>ENE</color>  ship destroyed!");
+            AppendLog($"<color={ColEnemy}>Destroyed!</color>");
+            AppendDetailLog($"<color={ColEnemy}>Enemy</color> ship destroyed!");
         }
 
         if (anyDestroyed)

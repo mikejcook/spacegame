@@ -65,9 +65,9 @@ public class EnemyShipConfig
     public int torpedoTier = -1;
 
     /// <summary>Defense bonus from shields added to defense roll while shields are up. -1 = use class default.</summary>
-    public int shieldDefenseRating = -1;
+    public int shieldTier = -1;
     /// <summary>Defense bonus from armor added to defense roll when shields are down. -1 = use class default.</summary>
-    public int armorDefenseRating  = -1;
+    public int armorTier  = -1;
 
     // ── Resolved accessors (apply class defaults when field == -1) ───────────
 
@@ -77,8 +77,8 @@ public class EnemyShipConfig
     public int WeaponSkill         => weaponSkill         >= 0 ? weaponSkill         : ClassDefaults.weapon;
     public int BeamTier            => beamTier            >= 0 ? beamTier            : ClassDefaults.beamTier;
     public int TorpedoTier         => torpedoTier         >= 0 ? torpedoTier         : ClassDefaults.torpedoTier;
-    public int ShieldDefenseRating => shieldDefenseRating >= 0 ? shieldDefenseRating : ClassDefaults.shieldDR;
-    public int ArmorDefenseRating  => armorDefenseRating  >= 0 ? armorDefenseRating  : ClassDefaults.armorDR;
+    public int ShieldTier          => shieldTier          >= 0 ? shieldTier          : ClassDefaults.shieldTier;
+    public int ArmorTier           => armorTier           >= 0 ? armorTier           : ClassDefaults.armorTier;
 
     // ── Class defaults ────────────────────────────────────────────────────────
     // Tuning table: (maxShields, maxHull, pilotSkill, weaponSkill, beamTier, torpedoTier, shieldDR, armorDR)
@@ -92,14 +92,14 @@ public class EnemyShipConfig
     // Defense rolls: d20 + pilotSkill + shieldDR (shields up) or armorDR (shields down)
     // Attack rolls:  d20 + weaponSkill + (beamTier - 1) or (torpedoTier - 1)
 
-    private (int shields, int hull, int pilot, int weapon, int beamTier, int torpedoTier, int shieldDR, int armorDR)
+    private (int shields, int hull, int pilot, int weapon, int beamTier, int torpedoTier, int shieldTier, int armorTier)
         ClassDefaults => shipClass switch
     {
-        DGBShipClass.Fighter     => (10,  18, 3, 2, 1, 1, 0, 0),
-        DGBShipClass.Corvette    => (20,  30, 2, 2, 2, 2, 1, 1),
-        DGBShipClass.Cruiser     => (35,  55, 2, 3, 3, 3, 2, 2),
-        DGBShipClass.Battleship  => (50,  80, 1, 4, 4, 4, 3, 3),
-        DGBShipClass.Dreadnaught => (70, 120, 1, 5, 5, 5, 4, 4),
+        DGBShipClass.Fighter     => (10,  18, 1, 1, 1, 1, 1, 1),
+        DGBShipClass.Corvette    => (10,  30, 2, 2, 1, 1, 1, 1),
+        DGBShipClass.Cruiser     => (35,  55, 3, 3, 2, 2, 2, 2),
+        DGBShipClass.Battleship  => (50,  80, 4, 4, 3, 3, 3, 3),
+        DGBShipClass.Dreadnaught => (70, 120, 5, 5, 4, 4, 4, 4),
         _                        => (15,  25, 1, 1, 1, 1, 0, 0)
     };
 }
