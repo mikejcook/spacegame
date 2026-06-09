@@ -1315,9 +1315,52 @@ public class SystemViewController : MonoBehaviour
     private void StartOrRestartCombat(EnemyShipConfig[] enemies)
     {
         if (_inCombat)
-            combatViewController?.StartCombat(enemies);   // swap enemies without exiting
+        {
+            // Rebuild combat state with the new enemies so _combatState.Enemies
+            // matches the new EnemyCombatState objects StartCombat puts in _slotToState.
+            // Without this, GetSlotForEnemy's reference comparison fails and enemy
+            // attack effects (beams/torpedoes) never fire.
+            if (combatViewController != null)
+            {
+                var gm = GameManager.Instance;
+                if (gm != null)
+                {
+                    var db   = gm.Database;
+                    var ship = gm.PlayerShip;
+                    EquipmentItem GetSlotItem(string slotName)
+                    {
+                        var slots = ship?.EquipmentSlots;
+                        if (slots == null) return null;
+                        if (!slots.TryGetValue(slotName, out int id) || id <= 0) return null;
+                        return db?.Equipment.Get(id);
+                    }
+                    var saveId = gm.CurrentSave?.Id ?? 0;
+                    var combatState = CombatState.Begin(
+                        ship:       ship,
+                        captain:    gm.Database?.Characters.Get(gm.CurrentSave.CaptainId),
+                        gunner:     db?.GetCrewByRole(saveId, Constants.Crew.Roles.Gunner),
+                        pilot:      db?.GetCrewByRole(saveId, Constants.Crew.Roles.Pilot),
+                        enemies:    enemies,
+                        beamWeapon: GetSlotItem(Constants.Ship.EquipmentSlots.BeamWeapons),
+                        torpedoes:  GetSlotItem(Constants.Ship.EquipmentSlots.Torpedoes),
+                        shields:    GetSlotItem(Constants.Ship.EquipmentSlots.Shields),
+                        armor:      GetSlotItem(Constants.Ship.EquipmentSlots.Armor),
+                        engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer)
+                    );
+                    combatViewController.OnCombatEnter();
+                    combatViewController.SetCombatState(combatState);
+                }
+                else
+                {
+                    combatViewController.OnCombatEnter();
+                }
+                combatViewController.StartCombat(enemies);
+            }
+        }
         else
+        {
             ShowCombatView(enemies);
+        }
     }
 
     private void UpdateCombatDebugButtonLabel()
