@@ -1,0 +1,148 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "displayName": "Research",
+      "description": "The foundation of all technological advancement.",
+      "category": "Core",
+      "cost": 0,
+      "prerequisites": [],
+      "posX": 0.5,
+      "posY": 0.5
+    },
+
+    {
+      "id": "weapons_1",
+      "displayName": "Beam Focus",
+      "description": "Improved targeting algorithms tighten beam coherence, increasing beam weapon damage by 10%.",
+      "category": "Weapons",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.25,
+      "posY": 0.72
+    },
+    {
+      "id": "weapons_2",
+      "displayName": "Overcharge Capacitors",
+      "description": "High-capacity power cells allow beam weapons to fire an overcharged burst once per combat.",
+      "category": "Weapons",
+      "cost": 4,
+      "prerequisites": ["weapons_1"],
+      "posX": 0.15,
+      "posY": 0.88
+    },
+    {
+      "id": "torpedoes_1",
+      "displayName": "Warhead Chemistry",
+      "description": "Reformulated torpedo warheads increase explosive yield by 15%.",
+      "category": "Weapons",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.35,
+      "posY": 0.72
+    },
+    {
+      "id": "torpedoes_2",
+      "displayName": "Guided Payloads",
+      "description": "Miniaturised guidance fins improve torpedo accuracy against evasive targets.",
+      "category": "Weapons",
+      "cost": 4,
+      "prerequisites": ["torpedoes_1"],
+      "posX": 0.30,
+      "posY": 0.88
+    },
+
+    {
+      "id": "engines_1",
+      "displayName": "Efficient Thrusters",
+      "description": "Refined combustion cycles cut sublight fuel consumption by 20%.",
+      "category": "Engines",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.75,
+      "posY": 0.72
+    },
+    {
+      "id": "engines_2",
+      "displayName": "Jump Capacitors",
+      "description": "Improved FTL capacitor banks reduce jump charge time by 25%.",
+      "category": "Engines",
+      "cost": 4,
+      "prerequisites": ["engines_1"],
+      "posX": 0.85,
+      "posY": 0.88
+    },
+    {
+      "id": "shields_1",
+      "displayName": "Shield Harmonics",
+      "description": "Resonance-tuned emitters improve shield regeneration rate by 15%.",
+      "category": "Engines",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.65,
+      "posY": 0.72
+    },
+    {
+      "id": "shields_2",
+      "displayName": "Adaptive Plating",
+      "description": "Smart armour plates redistribute incoming kinetic damage, reducing hull damage by 10%.",
+      "category": "Engines",
+      "cost": 4,
+      "prerequisites": ["shields_1"],
+      "posX": 0.70,
+      "posY": 0.88
+    },
+
+    {
+      "id": "crew_1",
+      "displayName": "Advanced Training",
+      "description": "Improved crew training protocols grant +1 to all skill checks during combat.",
+      "category": "Crew",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.25,
+      "posY": 0.28
+    },
+    {
+      "id": "crew_2",
+      "displayName": "Combat Medic Protocol",
+      "description": "Crew members stabilise faster after taking injuries. Reduces recovery time between encounters.",
+      "category": "Crew",
+      "cost": 4,
+      "prerequisites": ["crew_1"],
+      "posX": 0.15,
+      "posY": 0.12
+    },
+    {
+      "id": "crew_3",
+      "displayName": "Command Network",
+      "description": "Shipwide comms improvements let the captain issue orders faster. +1 action point per combat round.",
+      "category": "Crew",
+      "cost": 4,
+      "prerequisites": ["crew_1"],
+      "posX": 0.35,
+      "posY": 0.12
+    },
+
+    {
+      "id": "scanner_1",
+      "displayName": "Deep Scan Array",
+      "description": "Long-range sensor upgrades reveal hidden POI details from greater distances.",
+      "category": "Scanner",
+      "cost": 2,
+      "prerequisites": ["root"],
+      "posX": 0.75,
+      "posY": 0.28
+    },
+    {
+      "id": "scanner_2",
+      "displayName": "Anomaly Detection",
+      "description": "Passive subspace listeners flag anomalous readings automatically on the system map.",
+      "category": "Scanner",
+      "cost": 4,
+      "prerequisites": ["scanner_1"],
+      "posX": 0.85,
+      "posY": 0.12
+    }
+  ]
+}

@@ -50,10 +50,12 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text    daysText;
     [SerializeField] private TMP_Text    salvageText;
     [SerializeField] private TMP_Text    fuelText;
+    [SerializeField] private TMP_Text    iridiumText;
     [SerializeField] private TMP_Text    loyaltyText;
     [SerializeField] private GameObject  salvageWidgetGO;
     [SerializeField] private GameObject  daysWidgetGO;
     [SerializeField] private GameObject  fuelWidgetGO;
+    [SerializeField] private GameObject  iridiumWidgetGO;
     [SerializeField] private GameObject  loyaltyWidgetGO;
     [SerializeField] private CanvasGroup combatHeaderStatsGroup;
 
@@ -69,6 +71,7 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button galaxyNavButton;
     [SerializeField] private Button shipNavButton;
     [SerializeField] private Button crewNavButton;
+    [SerializeField] private Button researchNavButton;
 
     [Header("Player Ship")]
     [Tooltip("Ship sprite — blue_corvette_1 from DGB Spaceships, wired by GameSceneSetup.")]
@@ -96,6 +99,10 @@ public class SystemViewController : MonoBehaviour
     [Header("Crew View")]
     [SerializeField] private GameObject      crewViewPanel;
     [SerializeField] private CrewViewController crewViewController;
+
+    [Header("Research View")]
+    [SerializeField] private GameObject            researchViewPanel;
+    [SerializeField] private ResearchViewController researchViewController;
 
     [Header("Combat View")]
     [Tooltip("Root CombatView panel — sibling of Body, covers full area below header including NavBar.")]
@@ -197,6 +204,7 @@ public class SystemViewController : MonoBehaviour
         galaxyNavButton?.onClick.AddListener(ShowGalaxyView);
         shipNavButton?.onClick.AddListener(ShowShipView);
         crewNavButton?.onClick.AddListener(ShowCrewView);
+        researchNavButton?.onClick.AddListener(ShowResearchView);
 
         // Debug combat toggle — temporary, removed once combat has real triggers.
         // Default: one red medium enemy (variant 0).
@@ -416,6 +424,7 @@ public class SystemViewController : MonoBehaviour
         RefreshSalvage();
         RefreshDays();
         RefreshFuel();
+        RefreshIridium();
         RefreshLoyalty();
     }
 
@@ -438,6 +447,13 @@ public class SystemViewController : MonoBehaviour
         if (fuelText == null) return;
         var save = GameManager.Instance?.CurrentSave;
         fuelText.text = save != null ? save.Fuel.ToString() : "0";
+    }
+
+    public void RefreshIridium()
+    {
+        if (iridiumText == null) return;
+        var save = GameManager.Instance?.CurrentSave;
+        iridiumText.text = save != null ? save.Iridium.ToString("N0") : "0";
     }
 
     public void RefreshLoyalty()
@@ -1187,10 +1203,11 @@ public class SystemViewController : MonoBehaviour
     private void ShowSystemView()
     {
         HidePOIDetail();
-        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(true);
-        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
-        if (shipViewPanel   != null) shipViewPanel.SetActive(false);
-        if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        if (systemMapArea    != null) systemMapArea.gameObject.SetActive(true);
+        if (galaxyViewPanel  != null) galaxyViewPanel.SetActive(false);
+        if (shipViewPanel    != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel    != null) crewViewPanel.SetActive(false);
+        HideResearchPanel();
         RefreshHeader();
         ZoomToShip();
     }
@@ -1219,8 +1236,9 @@ public class SystemViewController : MonoBehaviour
             if (galaxyViewController != null && _currentSystem != null)
                 galaxyViewController.SetCurrentSystem(_currentSystem.Id);
         }
-        if (shipViewPanel != null) shipViewPanel.SetActive(false);
-        if (crewViewPanel != null) crewViewPanel.SetActive(false);
+        if (shipViewPanel  != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel  != null) crewViewPanel.SetActive(false);
+        HideResearchPanel();
 
         if (systemNameText != null) systemNameText.text = "Galaxy";
     }
@@ -1259,12 +1277,39 @@ public class SystemViewController : MonoBehaviour
         ShowSystemView();
     }
 
+    private void ShowResearchView()
+    {
+        HidePOIDetail();
+        if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
+        if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
+        if (shipViewPanel   != null) shipViewPanel.SetActive(false);
+        if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        if (systemNameText  != null) systemNameText.text = "Research";
+
+        if (researchViewPanel != null)
+        {
+            researchViewPanel.SetActive(true);
+            var cg = researchViewPanel.GetComponent<CanvasGroup>();
+            if (cg != null) { cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true; }
+            researchViewController?.Refresh();
+        }
+    }
+
+    private void HideResearchPanel()
+    {
+        if (researchViewPanel == null) return;
+        var cg = researchViewPanel.GetComponent<CanvasGroup>();
+        if (cg != null) { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; }
+        researchViewPanel.SetActive(false);
+    }
+
     private void SetNavButtonsInteractable(bool interactable)
     {
-        if (systemNavButton != null) systemNavButton.interactable = interactable;
-        if (galaxyNavButton != null) galaxyNavButton.interactable = interactable;
-        if (shipNavButton   != null) shipNavButton.interactable   = interactable;
-        if (crewNavButton   != null) crewNavButton.interactable   = interactable;
+        if (systemNavButton   != null) systemNavButton.interactable   = interactable;
+        if (galaxyNavButton   != null) galaxyNavButton.interactable   = interactable;
+        if (shipNavButton     != null) shipNavButton.interactable     = interactable;
+        if (crewNavButton     != null) crewNavButton.interactable     = interactable;
+        if (researchNavButton != null) researchNavButton.interactable = interactable;
     }
 
     private void ShowShipView()
@@ -1273,6 +1318,7 @@ public class SystemViewController : MonoBehaviour
         if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
         if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
         if (crewViewPanel   != null) crewViewPanel.SetActive(false);
+        HideResearchPanel();
         if (systemNameText  != null) systemNameText.text = "Ship";
         if (shipViewPanel   != null) shipViewPanel.SetActive(true);
         shipViewController?.Refresh();
@@ -1284,6 +1330,7 @@ public class SystemViewController : MonoBehaviour
         if (systemMapArea   != null) systemMapArea.gameObject.SetActive(false);
         if (galaxyViewPanel != null) galaxyViewPanel.SetActive(false);
         if (shipViewPanel   != null) shipViewPanel.SetActive(false);
+        HideResearchPanel();
         if (systemNameText  != null) systemNameText.text = "Crew";
         if (crewViewPanel   != null) crewViewPanel.SetActive(true);
         // If we were in recruitment mode, the panel may already be active so OnEnable
@@ -1335,6 +1382,7 @@ public class SystemViewController : MonoBehaviour
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(false);
         if (daysWidgetGO != null) daysWidgetGO.SetActive(false);
         if (fuelWidgetGO != null) fuelWidgetGO.SetActive(false);
+        if (iridiumWidgetGO != null) iridiumWidgetGO.SetActive(false);
         if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(false);
         if (combatHeaderStatsGroup != null)
         {
@@ -1406,6 +1454,7 @@ public class SystemViewController : MonoBehaviour
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(true);
         if (daysWidgetGO != null) daysWidgetGO.SetActive(true);
         if (fuelWidgetGO != null) fuelWidgetGO.SetActive(true);
+        if (iridiumWidgetGO != null) iridiumWidgetGO.SetActive(true);
         if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(true);
         if (combatHeaderStatsGroup != null)
         {

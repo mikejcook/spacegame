@@ -241,6 +241,7 @@ public static class Constants
         public const int StartingLoyalty = 75;
         public const int MaxLoyalty      = 100;
         public const int MutinyThreshold = 0;   // loyalty <= this triggers game over
+        public const int MaxIridium      = 9999;
     }
 
     public static class Interludes

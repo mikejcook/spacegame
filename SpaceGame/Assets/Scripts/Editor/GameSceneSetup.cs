@@ -219,8 +219,10 @@ public static class GameSceneSetup
         }
 
         // ── Wire serialised fields ────────────────────────────────────────
+        var researchView = body.transform.Find("ResearchView")?.gameObject;
+
         WireController(controller, bg, header, body, navBar, poiDetail, combatView,
-                       recruitmentPanel, levelUpPanel);
+                       recruitmentPanel, levelUpPanel, researchView);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
@@ -252,71 +254,23 @@ public static class GameSceneSetup
         sysName.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         sysName.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        // Debug combat toggle button — left-aligned in the header.
-        // Temporary: gives a quick way to enter/exit the combat view while
-        // developing. Remove (or hide) once gameplay triggers combat properly.
-        var btnPrefabForHeader = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
-        if (btnPrefabForHeader != null)
-        {
-            var combatDbgGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
-            combatDbgGO.name = "CombatDebugButton";
-            var mb = combatDbgGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "Battle";
-            var rt = combatDbgGO.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-            rt.pivot     = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(180f, 56f);
-            rt.anchoredPosition = new Vector2(12f, 0f);
-
-            // RANDOM button — immediately to the right of BATTLE
-            var randomGO = (GameObject)Object.Instantiate(btnPrefabForHeader, header.transform);
-            randomGO.name = "RandomCombatButton";
-            var rmb = randomGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (rmb != null) rmb.buttonText = "Random";
-            var rrt = randomGO.GetComponent<RectTransform>();
-            rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
-            rrt.pivot     = new Vector2(0f, 0.5f);
-            rrt.sizeDelta = new Vector2(180f, 56f);
-            rrt.anchoredPosition = new Vector2(12f + 180f + 8f, 0f);
-        }
-        else
-        {
-            var combatDbgGO = MakeImage(header.transform, "CombatDebugButton", BtnNormal);
-            combatDbgGO.AddComponent<Button>();
-            var lbl = MakeTMP(combatDbgGO.transform, "Label", "BATTLE", 20, TextWhite);
-            Stretch(lbl);
-            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-            var rt = combatDbgGO.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-            rt.pivot     = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(180f, 56f);
-            rt.anchoredPosition = new Vector2(12f, 0f);
-
-            var randomGO = MakeImage(header.transform, "RandomCombatButton", BtnNormal);
-            randomGO.AddComponent<Button>();
-            var rlbl = MakeTMP(randomGO.transform, "Label", "RANDOM", 20, TextWhite);
-            Stretch(rlbl);
-            rlbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
-            var rrt = randomGO.GetComponent<RectTransform>();
-            rrt.anchorMin = rrt.anchorMax = new Vector2(0f, 0.5f);
-            rrt.pivot     = new Vector2(0f, 0.5f);
-            rrt.sizeDelta = new Vector2(180f, 56f);
-            rrt.anchoredPosition = new Vector2(12f + 180f + 8f, 0f);
-        }
-
-        // Days widget — icon + count, right-aligned
-        // Offset: 16 (edge) + 220 (salvage) + 16 + 180 (fuel) + 16 + 180 (loyalty) + 16 = 644
-        //   DaysWidget  (HorizontalLayoutGroup, right-anchored)
-        //     DaysIcon   (Image, aspect-correct)
-        //     DaysText   (TMP_Text, "0")
+        // Days widget — left side, left-anchored ────────────────────────────────
         var daysWidget = MakeUIGO("DaysWidget", header.transform);
         {
             var rt       = daysWidget.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
-            rt.pivot     = new Vector2(1f, 0.5f);
-            rt.sizeDelta = new Vector2(160f, 50f);
-            rt.anchoredPosition = new Vector2(-644f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.sizeDelta = new Vector2(156f, 50f);
+            rt.anchoredPosition = new Vector2(16f, 0f);
         }
+        // Safe-area: shift right on devices with left notch/rounded corner
+        {
+            var inset   = daysWidget.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+
         var daysHLG = daysWidget.AddComponent<HorizontalLayoutGroup>();
         daysHLG.padding                = new RectOffset(0, 0, 0, 0);
         daysHLG.spacing                = 8f;
@@ -324,7 +278,7 @@ public static class GameSceneSetup
         daysHLG.childControlHeight     = false;
         daysHLG.childForceExpandWidth  = false;
         daysHLG.childForceExpandHeight = false;
-        daysHLG.childAlignment         = TextAnchor.MiddleRight;
+        daysHLG.childAlignment         = TextAnchor.MiddleLeft;
 
         var daysIconGO  = MakeImage(daysWidget.transform, "DaysIcon", Color.white);
         var daysIconImg = daysIconGO.GetComponent<Image>();
@@ -354,16 +308,13 @@ public static class GameSceneSetup
         daysTMP.fontStyle        = FontStyles.Bold;
         daysTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
-        // Salvage widget — icon + count, right-aligned in the header
-        //   SalvageWidget  (HorizontalLayoutGroup, right-anchored)
-        //     SalvageIcon  (Image, 36×36)
-        //     SalvageText  (TMP_Text, "0")
+        // Salvage widget — right side, rightmost ─────────────────────────────────
         var salvageWidget = MakeUIGO("SalvageWidget", header.transform);
         {
             var rt       = salvageWidget.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot     = new Vector2(1f, 0.5f);
-            rt.sizeDelta = new Vector2(220f, 50f);
+            rt.sizeDelta = new Vector2(156f, 50f);
             rt.anchoredPosition = new Vector2(-16f, 0f);
         }
         var hlg = salvageWidget.AddComponent<HorizontalLayoutGroup>();
@@ -403,22 +354,21 @@ public static class GameSceneSetup
         {
             var rt       = salvageText.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(170f, 40f);
+            rt.sizeDelta = new Vector2(100f, 40f);
         }
         var salvageTMP = salvageText.GetComponent<TextMeshProUGUI>();
         salvageTMP.alignment          = TextAlignmentOptions.Left;
         salvageTMP.fontStyle          = FontStyles.Bold;
         salvageTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
-        // Fuel widget — icon + count, right-anchored left of salvage widget
-        // Offset: 16 (edge gap) + 220 (salvage) + 16 (gap) = 252
+        // Fuel widget — right side, leftmost of right group ──────────────────────
         var fuelWidget = MakeUIGO("FuelWidget", header.transform);
         {
             var rt       = fuelWidget.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot     = new Vector2(1f, 0.5f);
-            rt.sizeDelta = new Vector2(180f, 50f);
-            rt.anchoredPosition = new Vector2(-252f, 0f);
+            rt.sizeDelta = new Vector2(156f, 50f);
+            rt.anchoredPosition = new Vector2(-360f, 0f);
         }
         var fuelHLG = fuelWidget.AddComponent<HorizontalLayoutGroup>();
         fuelHLG.padding                = new RectOffset(0, 0, 0, 0);
@@ -450,23 +400,30 @@ public static class GameSceneSetup
         {
             var rt       = fuelTextGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(120f, 40f);
+            rt.sizeDelta = new Vector2(100f, 40f);
         }
         var fuelTMP = fuelTextGO.GetComponent<TextMeshProUGUI>();
         fuelTMP.alignment        = TextAlignmentOptions.Left;
         fuelTMP.fontStyle        = FontStyles.Bold;
         fuelTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
-        // Loyalty widget — icon + count, right-anchored left of fuel widget
-        // Offset: 252 (fuel leading edge) + 180 (fuel width) + 16 (gap) = 448
+        // Loyalty widget — left side, right of Days ──────────────────────────────
         var loyaltyWidget = MakeUIGO("LoyaltyWidget", header.transform);
         {
             var rt       = loyaltyWidget.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
-            rt.pivot     = new Vector2(1f, 0.5f);
-            rt.sizeDelta = new Vector2(180f, 50f);
-            rt.anchoredPosition = new Vector2(-448f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.sizeDelta = new Vector2(156f, 50f);
+            rt.anchoredPosition = new Vector2(188f, 0f);
         }
+        // Safe-area: shift right to match DaysWidget so the gap between them stays constant
+        {
+            var inset   = loyaltyWidget.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+
         var loyaltyHLG = loyaltyWidget.AddComponent<HorizontalLayoutGroup>();
         loyaltyHLG.padding                = new RectOffset(0, 0, 0, 0);
         loyaltyHLG.spacing                = 8f;
@@ -474,7 +431,7 @@ public static class GameSceneSetup
         loyaltyHLG.childControlHeight     = false;
         loyaltyHLG.childForceExpandWidth  = false;
         loyaltyHLG.childForceExpandHeight = false;
-        loyaltyHLG.childAlignment         = TextAnchor.MiddleRight;
+        loyaltyHLG.childAlignment         = TextAnchor.MiddleLeft;
 
         var loyaltyIconGO  = MakeImage(loyaltyWidget.transform, "LoyaltyIcon", Color.white);
         var loyaltyIconImg = loyaltyIconGO.GetComponent<Image>();
@@ -497,12 +454,58 @@ public static class GameSceneSetup
         {
             var rt       = loyaltyTextGO.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(120f, 40f);
+            rt.sizeDelta = new Vector2(100f, 40f);
         }
         var loyaltyTMP = loyaltyTextGO.GetComponent<TextMeshProUGUI>();
         loyaltyTMP.alignment        = TextAlignmentOptions.Left;
         loyaltyTMP.fontStyle        = FontStyles.Bold;
         loyaltyTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+
+        // Iridium widget — right side, centre (x=-188) ─────────────────────────
+        var iridiumWidget = MakeUIGO("IridiumWidget", header.transform);
+        {
+            var rt       = iridiumWidget.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot     = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(156f, 50f);
+            rt.anchoredPosition = new Vector2(-188f, 0f);
+        }
+        var iridiumHLG = iridiumWidget.AddComponent<HorizontalLayoutGroup>();
+        iridiumHLG.padding                = new RectOffset(0, 0, 0, 0);
+        iridiumHLG.spacing                = 8f;
+        iridiumHLG.childControlWidth      = false;
+        iridiumHLG.childControlHeight     = false;
+        iridiumHLG.childForceExpandWidth  = false;
+        iridiumHLG.childForceExpandHeight = false;
+        iridiumHLG.childAlignment         = TextAnchor.MiddleRight;
+
+        var iridiumIconGO  = MakeImage(iridiumWidget.transform, "IridiumIcon", Color.white);
+        var iridiumIconImg = iridiumIconGO.GetComponent<Image>();
+        iridiumIconImg.preserveAspect = true;
+        {
+            const string IridiumIconPath = "Assets/Art/UI/Other/iridium.png";
+            var imp = AssetImporter.GetAtPath(IridiumIconPath) as TextureImporter;
+            if (imp != null && imp.spriteImportMode != SpriteImportMode.Single)
+            {
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(IridiumIconPath, ImportAssetOptions.ForceUpdate);
+            }
+            var iridiumSprite = AssetDatabase.LoadAssetAtPath<Sprite>(IridiumIconPath);
+            if (iridiumSprite != null) { iridiumIconImg.sprite = iridiumSprite; SizeIconToHeight(iridiumIconImg, 48f); }
+            else Debug.LogWarning("[GameSceneSetup] iridium.png not found at " + IridiumIconPath);
+        }
+
+        var iridiumTextGO = MakeTMP(iridiumWidget.transform, "IridiumText", "0", 32, TextWhite);
+        {
+            var rt       = iridiumTextGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(100f, 40f);
+        }
+        var iridiumTMP = iridiumTextGO.GetComponent<TextMeshProUGUI>();
+        iridiumTMP.alignment        = TextAlignmentOptions.Left;
+        iridiumTMP.fontStyle        = FontStyles.Bold;
+        iridiumTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
 
         // ── Combat header stats — hidden by default, shown during combat ─────
         // Displays player's own Shield% and Hull% on the right side of the
@@ -642,6 +645,7 @@ public static class GameSceneSetup
         BuildGalaxyView(body.transform);
         BuildShipView(body.transform);
         BuildCrewView(body.transform);
+        BuildResearchView(body.transform);
 
         return body;
     }
@@ -1809,6 +1813,169 @@ public static class GameSceneSetup
         return picker;
     }
 
+    // ── Research view — full body area, starts hidden ────────────────────────
+    //
+    // Hierarchy:
+    //   ResearchView                   (CanvasGroup for show/hide; ResearchViewController)
+    //     ResearchBackground           (Image, same dark blue as ShipView)
+    //     TreeScrollRect               (ScrollRect — pan to navigate)
+    //       Viewport                   (RectMask2D)
+    //         TreeContent              (2400×1800 fixed canvas; nodes + lines)
+    //           ConnectionLayer        (UILineRenderer children)
+    //           NodeLayer              (node GameObjects)
+    //     DetailPanel                  (CanvasGroup, right-anchored card)
+
+    // TreeContent canvas size — must match ResearchViewController.TreeCanvasW/H
+    const float ResearchTreeW = 2400f;
+    const float ResearchTreeH = 1800f;
+
+    static GameObject BuildResearchView(Transform parent)
+    {
+        var researchView = MakeUIGO("ResearchView", parent);
+        Stretch(researchView);
+        researchView.SetActive(false);
+
+        var cg = researchView.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+
+        researchView.AddComponent<ResearchViewController>();
+
+        // ── Solid background — same dark blue as ShipView / CrewView ─────────
+        var bg = MakeImage(researchView.transform, "ResearchBackground",
+                           new Color(0.03f, 0.05f, 0.12f, 1f));
+        Stretch(bg);
+
+        // ── Tree scroll area (full area, panning) ─────────────────────────────
+        var scrollGO = MakeUIGO("TreeScrollRect", researchView.transform);
+        Stretch(scrollGO);
+
+        var scrollRect = scrollGO.AddComponent<ScrollRect>();
+        scrollRect.horizontal        = true;
+        scrollRect.vertical          = true;
+        scrollRect.movementType      = ScrollRect.MovementType.Elastic;
+        scrollRect.elasticity        = 0.1f;
+        scrollRect.scrollSensitivity = 40f;
+        scrollRect.inertia           = true;
+        scrollRect.decelerationRate  = 0.135f;
+
+        var viewport = MakeUIGO("Viewport", scrollGO.transform);
+        Stretch(viewport);
+        viewport.AddComponent<RectMask2D>();
+        scrollRect.viewport = viewport.GetComponent<RectTransform>();
+
+        // TreeContent: fixed large canvas — nodes placed by normalised (0–1) coords
+        var content   = MakeUIGO("TreeContent", viewport.transform);
+        var contentRT = content.GetComponent<RectTransform>();
+        contentRT.anchorMin        = new Vector2(0f, 0f);
+        contentRT.anchorMax        = new Vector2(0f, 0f);
+        contentRT.pivot            = new Vector2(0f, 0f);
+        contentRT.anchoredPosition = Vector2.zero;
+        contentRT.sizeDelta        = new Vector2(ResearchTreeW, ResearchTreeH);
+        scrollRect.content         = contentRT;
+
+        // ConnectionLayer — lines drawn behind nodes
+        var connLayer = MakeUIGO("ConnectionLayer", content.transform);
+        Stretch(connLayer);
+
+        // NodeLayer — nodes drawn on top of lines
+        var nodeLayer = MakeUIGO("NodeLayer", content.transform);
+        Stretch(nodeLayer);
+
+        // ── Detail panel (right-side card, hidden until a node is tapped) ─────
+        var detailPanel = MakeImage(researchView.transform, "DetailPanel",
+                                    new Color(0.06f, 0.09f, 0.14f, 0.97f));
+        PlaceRect(detailPanel, anchor(1f, 0f), anchor(1f, 1f), v2(-360f, 80f), v2(340f, -80f));
+
+        var topAccent = MakeImage(detailPanel.transform, "TopAccent", AccentCyan);
+        PlaceRect(topAccent, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        var detailNameTMP = MakeTMP(detailPanel.transform, "DetailNameText", "Node Name", 34, TextWhite);
+        PlaceRect(detailNameTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -52f), v2(-32f, 44f));
+        detailNameTMP.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+        detailNameTMP.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        var detailCatTMP = MakeTMP(detailPanel.transform, "DetailCategoryText", "Category", 22, AccentCyan);
+        PlaceRect(detailCatTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -90f), v2(-32f, 30f));
+        detailCatTMP.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+
+        var rule = MakeImage(detailPanel.transform, "Rule", DividerColor);
+        PlaceRect(rule, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -112f), v2(-32f, 2f));
+
+        var detailDescTMP = MakeTMP(detailPanel.transform, "DetailDescText", "Description text.", 24, TextSubtle);
+        PlaceRect(detailDescTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -260f), v2(-32f, 140f));
+        {
+            var tmp = detailDescTMP.GetComponent<TextMeshProUGUI>();
+            tmp.alignment        = TextAlignmentOptions.TopLeft;
+            tmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        }
+
+        var detailCostTMP = MakeTMP(detailPanel.transform, "DetailCostText", "Cost: 0 salvage", 26,
+                                    new Color(1.00f, 0.78f, 0.20f, 1.00f));
+        PlaceRect(detailCostTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -298f), v2(-32f, 30f));
+        detailCostTMP.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
+
+        // Unlock button
+        GameObject unlockGO;
+        var unlockPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        if (unlockPrefab != null)
+        {
+            unlockGO      = (GameObject)Object.Instantiate(unlockPrefab, detailPanel.transform);
+            unlockGO.name = "UnlockButton";
+            var mb = unlockGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "Unlock";
+        }
+        else
+        {
+            unlockGO = MakeImage(detailPanel.transform, "UnlockButton", BtnNormal);
+            unlockGO.AddComponent<Button>();
+            var lbl = MakeTMP(unlockGO.transform, "Label", "Unlock", 24, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt              = unlockGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 70f);
+            rt.sizeDelta        = new Vector2(220f, 52f);
+        }
+
+        // Close detail button
+        GameObject closeDetailGO;
+        if (unlockPrefab != null)
+        {
+            closeDetailGO      = (GameObject)Object.Instantiate(unlockPrefab, detailPanel.transform);
+            closeDetailGO.name = "CloseDetailButton";
+            var mb = closeDetailGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "Close";
+        }
+        else
+        {
+            closeDetailGO = MakeImage(detailPanel.transform, "CloseDetailButton", BtnNormal);
+            closeDetailGO.AddComponent<Button>();
+            var lbl = MakeTMP(closeDetailGO.transform, "Label", "Close", 24, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt              = closeDetailGO.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 10f);
+            rt.sizeDelta        = new Vector2(180f, 52f);
+        }
+
+        // Detail panel CanvasGroup
+        var detailCG = detailPanel.AddComponent<CanvasGroup>();
+        detailCG.alpha          = 0f;
+        detailCG.blocksRaycasts = false;
+        detailCG.interactable   = false;
+
+        return researchView;
+    }
+
     // ── Combat view — full body area, starts hidden ──────────────────────────
     //
     // Hierarchy:
@@ -2501,10 +2668,74 @@ public static class GameSceneSetup
         hlg.childForceExpandHeight = true;
         hlg.childAlignment         = TextAnchor.MiddleCenter;
 
-        BuildNavButton(container.transform, "SystemButton", "System");
-        BuildNavButton(container.transform, "GalaxyButton", "Galaxy");
-        BuildNavButton(container.transform, "ShipButton",   "Ship");
-        BuildNavButton(container.transform, "CrewButton",   "Crew");
+        BuildNavButton(container.transform, "SystemButton",   "System");
+        BuildNavButton(container.transform, "GalaxyButton",   "Galaxy");
+        BuildNavButton(container.transform, "ShipButton",     "Ship");
+        BuildNavButton(container.transform, "CrewButton",     "Crew");
+        BuildNavButton(container.transform, "ResearchButton", "Research");
+
+        // ── Debug button container — bottom-left ─────────────────────────────────
+        // Battle + Random buttons sit outside the centred nav area.
+        // Container shifts right/up via SafeAreaInset so buttons clear the
+        // left notch and bottom home indicator on iPhone X+ devices.
+        var debugContainer = MakeUIGO("DebugButtonContainer", bar.transform);
+        {
+            var rt = debugContainer.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.anchoredPosition = new Vector2(8f, 16f);
+            rt.sizeDelta = new Vector2(376f, 56f);
+        }
+        {
+            var inset   = debugContainer.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue   = true;
+            insetSo.FindProperty("_bottom").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+        var dbgPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        if (dbgPrefab != null)
+        {
+            var battleGO = (GameObject)Object.Instantiate(dbgPrefab, debugContainer.transform);
+            battleGO.name = "CombatDebugButton";
+            var bMB = battleGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (bMB != null) bMB.buttonText = "Battle";
+            var bRT = battleGO.GetComponent<RectTransform>();
+            bRT.pivot     = new Vector2(0f, 0.5f);
+            bRT.anchorMin = bRT.anchorMax = new Vector2(0f, 0.5f);
+            bRT.anchoredPosition = new Vector2(0f, 0f);
+            bRT.sizeDelta = new Vector2(180f, 56f);
+
+            var randomGO = (GameObject)Object.Instantiate(dbgPrefab, debugContainer.transform);
+            randomGO.name = "RandomCombatButton";
+            var rMB = randomGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (rMB != null) rMB.buttonText = "Random";
+            var rRT = randomGO.GetComponent<RectTransform>();
+            rRT.pivot     = new Vector2(0f, 0.5f);
+            rRT.anchorMin = rRT.anchorMax = new Vector2(0f, 0.5f);
+            rRT.anchoredPosition = new Vector2(196f, 0f);
+            rRT.sizeDelta = new Vector2(180f, 56f);
+        }
+        else
+        {
+            // Fallback — plain buttons without the Shift prefab
+            string[] dbgNames   = { "CombatDebugButton", "RandomCombatButton" };
+            string[] dbgLabels  = { "Battle",            "Random" };
+            float[]  dbgOffsets = { 0f,                   196f    };
+            for (int di = 0; di < dbgNames.Length; di++)
+            {
+                var go  = MakeImage(debugContainer.transform, dbgNames[di], BtnNormal);
+                go.AddComponent<Button>();
+                var lbl = MakeTMP(go.transform, "Label", dbgLabels[di], 20, TextWhite);
+                Stretch(lbl);
+                lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+                var rt  = go.GetComponent<RectTransform>();
+                rt.pivot     = new Vector2(0f, 0.5f);
+                rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.anchoredPosition = new Vector2(dbgOffsets[di], 0f);
+                rt.sizeDelta = new Vector2(180f, 56f);
+            }
+        }
 
         return bar;
     }
@@ -3051,7 +3282,8 @@ public static class GameSceneSetup
                                 GameObject header, GameObject body,
                                 GameObject navBar, GameObject poiDetail,
                                 GameObject combatView,
-                                GameObject recruitmentPanel, GameObject levelUpPanel)
+                                GameObject recruitmentPanel, GameObject levelUpPanel,
+                                GameObject researchView)
     {
         var so = new SerializedObject(ctrl);
 
@@ -3065,14 +3297,50 @@ public static class GameSceneSetup
         Set(so, "fuelWidgetGO",           header.transform.Find("FuelWidget")?.gameObject);
         Set(so, "loyaltyText",            Find<TMP_Text>(header, "LoyaltyWidget/LoyaltyText"));
         Set(so, "loyaltyWidgetGO",        header.transform.Find("LoyaltyWidget")?.gameObject);
+        Set(so, "iridiumText",            Find<TMP_Text>(header, "IridiumWidget/IridiumText"));
+        Set(so, "iridiumWidgetGO",        header.transform.Find("IridiumWidget")?.gameObject);
         Set(so, "combatHeaderStatsGroup", header.transform.Find("CombatHeaderStats")?.GetComponent<CanvasGroup>());
         Set(so, "systemMapArea",       FindRT(body, "SystemMap"));
         Set(so, "starNode",            Find<Image>(body, "SystemMap/StarNode"));
 
-        SetNavButton(so, "systemNavButton", navBar, "ButtonContainer/SystemButton");
-        SetNavButton(so, "galaxyNavButton", navBar, "ButtonContainer/GalaxyButton");
-        SetNavButton(so, "shipNavButton",   navBar, "ButtonContainer/ShipButton");
-        SetNavButton(so, "crewNavButton",   navBar, "ButtonContainer/CrewButton");
+        SetNavButton(so, "systemNavButton",   navBar, "ButtonContainer/SystemButton");
+        SetNavButton(so, "galaxyNavButton",   navBar, "ButtonContainer/GalaxyButton");
+        SetNavButton(so, "shipNavButton",     navBar, "ButtonContainer/ShipButton");
+        SetNavButton(so, "crewNavButton",     navBar, "ButtonContainer/CrewButton");
+        SetNavButton(so, "researchNavButton", navBar, "ButtonContainer/ResearchButton");
+
+        // Research view
+        if (researchView != null)
+        {
+            so.FindProperty("researchViewPanel").objectReferenceValue = researchView;
+            var rvc = researchView.GetComponent<ResearchViewController>();
+            if (rvc != null)
+            {
+                so.FindProperty("researchViewController").objectReferenceValue = rvc;
+
+                var rvcSo = new SerializedObject(rvc);
+                Set(rvcSo, "treeContent",      FindRT(researchView, "TreeScrollRect/Viewport/TreeContent"));
+                Set(rvcSo, "connectionLayer",  researchView.transform.Find("TreeScrollRect/Viewport/TreeContent/ConnectionLayer")?.gameObject);
+                Set(rvcSo, "nodeLayer",        researchView.transform.Find("TreeScrollRect/Viewport/TreeContent/NodeLayer")?.gameObject);
+
+                var detailPanel = researchView.transform.Find("DetailPanel");
+                if (detailPanel != null)
+                {
+                    Set(rvcSo, "detailPanelGroup",   detailPanel.GetComponent<CanvasGroup>());
+                    Set(rvcSo, "detailNameText",     Find<TMP_Text>(detailPanel.gameObject, "DetailNameText"));
+                    Set(rvcSo, "detailCategoryText", Find<TMP_Text>(detailPanel.gameObject, "DetailCategoryText"));
+                    Set(rvcSo, "detailDescText",     Find<TMP_Text>(detailPanel.gameObject, "DetailDescText"));
+                    Set(rvcSo, "detailCostText",     Find<TMP_Text>(detailPanel.gameObject, "DetailCostText"));
+                    Set(rvcSo, "unlockButton",       detailPanel.Find("UnlockButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "closeDetailButton",  detailPanel.Find("CloseDetailButton")?.GetComponentInChildren<Button>(true));
+                }
+                else Debug.LogWarning("[GameSceneSetup] DetailPanel not found under ResearchView.");
+
+                rvcSo.ApplyModifiedProperties();
+            }
+            else Debug.LogWarning("[GameSceneSetup] ResearchViewController not found on ResearchView.");
+        }
+        else Debug.LogWarning("[GameSceneSetup] ResearchView not found under Body.");
 
         so.FindProperty("poiDetailPanel").objectReferenceValue = poiDetail;
         Set(so, "poiDetailNameText", Find<TMP_Text>(poiDetail, "Card/POIDetailNameText"));
@@ -3577,21 +3845,21 @@ public static class GameSceneSetup
         else
             Debug.LogWarning("[GameSceneSetup] CanvasGroup not found on NavBar.");
 
-        // Debug combat button — in the header
-        var combatDbgTf = header.transform.Find("CombatDebugButton");
+        // Debug combat buttons — now in NavBar/DebugButtonContainer (moved from header)
+        var dbgContainerTf = navBar.transform.Find("DebugButtonContainer");
+        var combatDbgTf = dbgContainerTf?.Find("CombatDebugButton");
         if (combatDbgTf != null)
             so.FindProperty("combatDebugButton").objectReferenceValue =
                 combatDbgTf.GetComponentInChildren<Button>(true);
         else
-            Debug.LogWarning("[GameSceneSetup] CombatDebugButton not found in Header.");
+            Debug.LogWarning("[GameSceneSetup] CombatDebugButton not found in NavBar/DebugButtonContainer.");
 
-        // Random combat button — next to BATTLE in the header
-        var randomDbgTf = header.transform.Find("RandomCombatButton");
+        var randomDbgTf = dbgContainerTf?.Find("RandomCombatButton");
         if (randomDbgTf != null)
             so.FindProperty("randomCombatButton").objectReferenceValue =
                 randomDbgTf.GetComponentInChildren<Button>(true);
         else
-            Debug.LogWarning("[GameSceneSetup] RandomCombatButton not found in Header.");
+            Debug.LogWarning("[GameSceneSetup] RandomCombatButton not found in NavBar/DebugButtonContainer.");
 
         // ── Recruitment panel ─────────────────────────────────────────────
         if (recruitmentPanel != null)

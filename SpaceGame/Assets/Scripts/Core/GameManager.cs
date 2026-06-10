@@ -427,6 +427,22 @@ public class GameManager : MonoBehaviour
         return before - CurrentSave.Fuel;
     }
 
+    /// <summary>Adds iridium up to the cap and persists.</summary>
+    public void AddIridium(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Iridium = Mathf.Min(Constants.Resources.MaxIridium, CurrentSave.Iridium + amount);
+        SaveGame();
+    }
+
+    /// <summary>Removes iridium (clamped to 0) and persists.</summary>
+    public void RemoveIridium(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Iridium = Mathf.Max(0, CurrentSave.Iridium - amount);
+        SaveGame();
+    }
+
     /// <summary>Adds crew loyalty up to the cap and persists.</summary>
     public void AddLoyalty(int amount)
     {
