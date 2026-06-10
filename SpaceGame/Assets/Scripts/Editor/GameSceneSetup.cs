@@ -2998,6 +2998,21 @@ public static class GameSceneSetup
         if (stationSprite != null) Set(so, "stationSprite", stationSprite);
         else Debug.LogWarning("[GameSceneSetup] SpaceStation.png not found at " + StationSpritePath);
 
+        const string PlanetRingsSpritePath = "Assets/Art/Sprites/planet_rings.png";
+        {
+            var imp = AssetImporter.GetAtPath(PlanetRingsSpritePath) as TextureImporter;
+            if (imp != null && imp.spriteImportMode != SpriteImportMode.Single)
+            {
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.spritePivot      = new Vector2(0.5f, 0.5f);
+                AssetDatabase.ImportAsset(PlanetRingsSpritePath, ImportAssetOptions.ForceUpdate);
+                Debug.Log("[GameSceneSetup] Re-imported planet_rings.png as Single sprite.");
+            }
+            var ringsSprite = AssetDatabase.LoadAssetAtPath<Sprite>(PlanetRingsSpritePath);
+            if (ringsSprite != null) Set(so, "planetRingsSprite", ringsSprite);
+            else Debug.LogWarning("[GameSceneSetup] planet_rings.png not found at " + PlanetRingsSpritePath);
+        }
+
         const string DerelictPrefabPath =
             "Assets/2DSpaceshipsFreeTrial/Prefabs/2DSpaceshipsFreeTrialTopView/" +
             "2DScifiFrigateCorsairTopViewMasterPrefab.prefab";

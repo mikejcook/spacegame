@@ -95,7 +95,7 @@ public class EnemyShipConfig
     private (int shields, int hull, int pilot, int weapon, int beamTier, int torpedoTier, int shieldTier, int armorTier)
         ClassDefaults => shipClass switch
     {
-        DGBShipClass.Fighter     => (10,  18, 1, 1, 1, 1, 1, 1),
+        DGBShipClass.Fighter     => (10,  18, 1, 1, 0, 0, 0, 0),
         DGBShipClass.Corvette    => (10,  30, 2, 2, 1, 1, 1, 1),
         DGBShipClass.Cruiser     => (35,  55, 3, 3, 2, 2, 2, 2),
         DGBShipClass.Battleship  => (50,  80, 4, 4, 3, 3, 3, 3),

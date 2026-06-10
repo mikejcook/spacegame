@@ -77,6 +77,8 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Sprite stationSprite;
     [Tooltip("Sprite used for Derelict Ship POI nodes — extracted from FrigateCorsair prefab by GameSceneSetup.")]
     [SerializeField] private Sprite derelictSprite;
+    [Tooltip("Planetary ring overlay sprite — wired by GameSceneSetup. Applied to all gaseous planets.")]
+    [SerializeField] private Sprite planetRingsSprite;
 
     [Header("Galaxy View")]
     [Tooltip("Root GalaxyView panel — toggled when the Galaxy nav button is pressed.")]
@@ -628,9 +630,102 @@ public class SystemViewController : MonoBehaviour
         return baseSize * Mathf.Lerp(0.82f, 1.18f, t);
     }
 
+    /// <summary>
+    /// Returns true for planet types that should display a ring overlay.
+    /// All gas giants get rings; they're large enough to make them worthwhile.
+    /// </summary>
+    /// GaseousOrange maps to Jupiter, which has rings in reality but isn't visually
+    /// associated with them. All other gas giants display rings.
+    private static bool HasRings(PlanetType type) =>
+        type.IsGaseous() && type != PlanetType.GaseousOrange;
+
+    /// <summary>
+    /// Spawns a single ring-layer Image (RingBack or the masked container for RingFront)
+    /// as a child of systemMapArea at the same position as the planet node.
+    ///
+    /// For RingBack: isFront=false — full ring image behind the planet.
+    /// For RingFront: isFront=true — masked container showing only the bottom half,
+    /// so the ring appears to pass in front of the planet's lower hemisphere.
+    /// </summary>
+    private GameObject SpawnRingLayer(string name, Vector2 anchoredPos,
+                                      float ringW, float ringH, bool isFront)
+    {
+        if (isFront)
+        {
+            // Masked container — clips to bottom half of ring rect.
+            // Container is shifted down by ringH/4 so its top edge sits at the
+            // planet centre; the child image is offset up so its centre also
+            // sits at the planet centre.
+            var maskGO = new GameObject(name, typeof(RectTransform));
+            maskGO.transform.SetParent(systemMapArea, false);
+            var maskRT = maskGO.GetComponent<RectTransform>();
+            maskRT.anchorMin        = new Vector2(0.5f, 0.5f);
+            maskRT.anchorMax        = new Vector2(0.5f, 0.5f);
+            maskRT.pivot            = new Vector2(0.5f, 0.5f);
+            maskRT.anchoredPosition = new Vector2(anchoredPos.x, anchoredPos.y - ringH * 0.25f);
+            maskRT.sizeDelta        = new Vector2(ringW, ringH * 0.5f);
+            maskGO.AddComponent<RectMask2D>();
+
+            var imgGO = new GameObject("RingImg", typeof(RectTransform));
+            imgGO.transform.SetParent(maskGO.transform, false);
+            var imgRT = imgGO.GetComponent<RectTransform>();
+            imgRT.anchorMin        = new Vector2(0.5f, 0.5f);
+            imgRT.anchorMax        = new Vector2(0.5f, 0.5f);
+            imgRT.pivot            = new Vector2(0.5f, 0.5f);
+            imgRT.anchoredPosition = new Vector2(0f, ringH * 0.25f);
+            imgRT.sizeDelta        = new Vector2(ringW, ringH);
+            var img = imgGO.AddComponent<Image>();
+            img.sprite         = planetRingsSprite;
+            img.color          = Color.white;
+            img.preserveAspect = false;
+            img.type           = Image.Type.Simple;
+            img.raycastTarget  = false;
+
+            return maskGO;
+        }
+        else
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(systemMapArea, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0.5f, 0.5f);
+            rt.anchorMax        = new Vector2(0.5f, 0.5f);
+            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta        = new Vector2(ringW, ringH);
+            var img = go.AddComponent<Image>();
+            img.sprite         = planetRingsSprite;
+            img.color          = Color.white;
+            img.preserveAspect = false;
+            img.type           = Image.Type.Simple;
+            img.raycastTarget  = false;
+            return go;
+        }
+    }
+
     private GameObject SpawnPOINode(PointOfInterest poi,
                                     float orbitPx, float angle, float nodeSize)
     {
+        var anchoredPos = new Vector2(orbitPx * Mathf.Cos(angle),
+                                      orbitPx * Mathf.Sin(angle));
+
+        // ── Planet rings — back layer (rendered before the planet) ─────────
+        bool isRinged = poi.POIType == Constants.POI.Types.Planet
+                     && HasRings(poi.PlanetType)
+                     && planetRingsSprite != null;
+
+        if (isRinged)
+        {
+            float aspect = planetRingsSprite.rect.height > 0
+                ? planetRingsSprite.rect.width / planetRingsSprite.rect.height
+                : 2.8f;
+            float ringW = nodeSize * 2.2f;
+            float ringH = ringW / aspect;
+            var ringBack = SpawnRingLayer(poi.Name + "_RingBack", anchoredPos,
+                                          ringW, ringH, isFront: false);
+            _poiNodes.Add(ringBack);
+        }
+
         // ── Container: anchored to map centre, offset along the orbit ─────
         var nodeGO = new GameObject(poi.Name, typeof(RectTransform));
         nodeGO.transform.SetParent(systemMapArea, false);
@@ -639,8 +734,7 @@ public class SystemViewController : MonoBehaviour
         rt.anchorMin        = new Vector2(0.5f, 0.5f);
         rt.anchorMax        = new Vector2(0.5f, 0.5f);
         rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(orbitPx * Mathf.Cos(angle),
-                                          orbitPx * Mathf.Sin(angle));
+        rt.anchoredPosition = anchoredPos;
         rt.sizeDelta        = new Vector2(nodeSize, nodeSize);
 
         bool isPlanet = poi.POIType == Constants.POI.Types.Planet;
@@ -710,6 +804,19 @@ public class SystemViewController : MonoBehaviour
 
         var capturedPoi = poi;
         btn.onClick.AddListener(() => OnPOIClicked(capturedPoi));
+
+        // ── Planet rings — front layer (rendered after/above the planet) ───
+        if (isRinged)
+        {
+            float aspect = planetRingsSprite.rect.height > 0
+                ? planetRingsSprite.rect.width / planetRingsSprite.rect.height
+                : 2.8f;
+            float ringW = nodeSize * 2.2f;
+            float ringH = ringW / aspect;
+            var ringFront = SpawnRingLayer(poi.Name + "_RingFront", anchoredPos,
+                                           ringW, ringH, isFront: true);
+            _poiNodes.Add(ringFront);
+        }
 
         return nodeGO;
     }
