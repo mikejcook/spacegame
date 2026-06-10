@@ -103,11 +103,13 @@ public class GameManager : MonoBehaviour
             // Build the save record
             CurrentSave = new SaveGame
             {
-                CaptainName = captainName,
-                ShipName    = shipName,
-                Credits     = Constants.Economy.StartingCredits,
-                CreatedAt   = System.DateTime.Now,
-                LastSavedAt = System.DateTime.Now
+                CaptainName  = captainName,
+                ShipName     = shipName,
+                Credits      = Constants.Economy.StartingCredits,
+                Fuel         = Constants.Resources.StartingFuel,
+                CrewLoyalty  = Constants.Resources.StartingLoyalty,
+                CreatedAt    = System.DateTime.Now,
+                LastSavedAt  = System.DateTime.Now
             };
             Database.SaveGames.Insert(CurrentSave);
             Debug.Log($"[GameManager] Save record created (Id={CurrentSave.Id}).");
@@ -382,6 +384,67 @@ public class GameManager : MonoBehaviour
         if (captain != null) Database.Characters.Update(captain);
 
         Debug.Log("[GameManager] Game saved.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Resource management
+    // -----------------------------------------------------------------------
+
+    /// <summary>Adds salvage and persists.</summary>
+    public void AddSalvage(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Salvage += amount;
+        SaveGame();
+    }
+
+    /// <summary>Removes salvage (clamped to 0) and persists.</summary>
+    public void RemoveSalvage(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Salvage = Mathf.Max(0, CurrentSave.Salvage - amount);
+        SaveGame();
+    }
+
+    /// <summary>Adds fuel up to the cap and persists.</summary>
+    public void AddFuel(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Fuel = Mathf.Min(Constants.Resources.MaxFuel, CurrentSave.Fuel + amount);
+        SaveGame();
+    }
+
+    /// <summary>
+    /// Consumes fuel (clamped to 0) and persists.
+    /// Returns the actual amount consumed (may be less than requested if tank is low).
+    /// </summary>
+    public int ConsumeFuel(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return 0;
+        int before = CurrentSave.Fuel;
+        CurrentSave.Fuel = Mathf.Max(0, CurrentSave.Fuel - amount);
+        SaveGame();
+        return before - CurrentSave.Fuel;
+    }
+
+    /// <summary>Adds crew loyalty up to the cap and persists.</summary>
+    public void AddLoyalty(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.CrewLoyalty = Mathf.Min(Constants.Resources.MaxLoyalty, CurrentSave.CrewLoyalty + amount);
+        SaveGame();
+    }
+
+    /// <summary>
+    /// Reduces crew loyalty (clamped to 0) and persists.
+    /// Returns true if loyalty hit or crossed the mutiny threshold.
+    /// </summary>
+    public bool RemoveLoyalty(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return false;
+        CurrentSave.CrewLoyalty = Mathf.Max(0, CurrentSave.CrewLoyalty - amount);
+        SaveGame();
+        return CurrentSave.CrewLoyalty <= Constants.Resources.MutinyThreshold;
     }
 
     // -----------------------------------------------------------------------

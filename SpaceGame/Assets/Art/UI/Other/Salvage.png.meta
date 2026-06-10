@@ -3,68 +3,68 @@ guid: 2eba64029a47cc945b3af98a32d20bdb
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -1324915269525015147
-    second: Salvage_0
+      213: -6998137533083352337
+    second: salvage_0
   - first:
-      213: -2904685943992228075
-    second: Salvage_1
+      213: 5915262752764672733
+    second: salvage_1
   - first:
-      213: -8297880903567898838
-    second: Salvage_2
+      213: -5286891882177661434
+    second: salvage_2
   - first:
-      213: -359698362423494574
-    second: Salvage_3
+      213: -1450876174442576702
+    second: salvage_3
   - first:
-      213: -7377462809143983875
-    second: Salvage_4
+      213: -853516182144979159
+    second: salvage_4
   - first:
-      213: 594335944928270321
-    second: Salvage_5
+      213: 8015204263682602140
+    second: salvage_5
   - first:
-      213: -2834541199852116522
-    second: Salvage_6
+      213: 8286975357417976695
+    second: salvage_6
   - first:
-      213: -2486623161170727389
-    second: Salvage_7
+      213: -1021379799750681105
+    second: salvage_7
   - first:
-      213: 9154078398071194514
-    second: Salvage_8
+      213: 2670944462182700560
+    second: salvage_8
   - first:
-      213: -5416514941730384594
-    second: Salvage_9
+      213: -3162988200613107436
+    second: salvage_9
   - first:
-      213: -4758364319029501120
-    second: Salvage_10
+      213: -2015947864748752797
+    second: salvage_10
   - first:
-      213: 597401989281818982
-    second: Salvage_11
+      213: 1776622300855614490
+    second: salvage_11
   - first:
-      213: -9115695519803888214
-    second: Salvage_12
+      213: -4167703724524281594
+    second: salvage_12
   - first:
-      213: 7141331152197425644
-    second: Salvage_13
+      213: 5977868698347505194
+    second: salvage_13
   - first:
-      213: 5253885178490155265
-    second: Salvage_14
+      213: -1284760294719523873
+    second: salvage_14
   - first:
-      213: 5039776998653335972
-    second: Salvage_15
+      213: 8772959801614840999
+    second: salvage_15
   - first:
-      213: -3945582685954868321
-    second: Salvage_16
+      213: 4897997326277004025
+    second: salvage_16
   - first:
-      213: -3563976535409578020
-    second: Salvage_17
+      213: 6188429786856233965
+    second: salvage_17
   - first:
-      213: -4892825675191698579
-    second: Salvage_18
+      213: 2137547131965747413
+    second: salvage_18
   - first:
-      213: -3899667830863753555
-    second: Salvage_19
+      213: 6139401837892925470
+    second: salvage_19
   - first:
-      213: -4784776891001427057
-    second: Salvage_20
+      213: 7675662526376489580
+    second: salvage_20
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -186,7 +186,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Salvage_0
+      name: salvage_0
       rect:
         serializedVersion: 2
         x: 150
@@ -201,14 +201,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 59578720594fc9de0800000000000000
-      internalID: -1324915269525015147
+      spriteID: fe20d3bcdfe91ee90800000000000000
+      internalID: -6998137533083352337
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_1
+      name: salvage_1
       rect:
         serializedVersion: 2
         x: 198
@@ -223,14 +223,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 517e54c068b70b7d0800000000000000
-      internalID: -2904685943992228075
+      spriteID: dda33ab122c371250800000000000000
+      internalID: 5915262752764672733
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_2
+      name: salvage_2
       rect:
         serializedVersion: 2
         x: 246
@@ -245,14 +245,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a278652484108dc80800000000000000
-      internalID: -8297880903567898838
+      spriteID: 60677e428df21a6b0800000000000000
+      internalID: -5286891882177661434
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_3
+      name: salvage_3
       rect:
         serializedVersion: 2
         x: 294
@@ -267,14 +267,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2583571ce38120bf0800000000000000
-      internalID: -359698362423494574
+      spriteID: 2c4c5417ec37ddbe0800000000000000
+      internalID: -1450876174442576702
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_4
+      name: salvage_4
       rect:
         serializedVersion: 2
         x: 342
@@ -289,14 +289,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: df0415d99acfd9990800000000000000
-      internalID: -7377462809143983875
+      spriteID: 92f6331fd83b724f0800000000000000
+      internalID: -853516182144979159
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_5
+      name: salvage_5
       rect:
         serializedVersion: 2
         x: 21
@@ -311,14 +311,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1f712ba94618f3800800000000000000
-      internalID: 594335944928270321
+      spriteID: c947ffabfc9bb3f60800000000000000
+      internalID: 8015204263682602140
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_6
+      name: salvage_6
       rect:
         serializedVersion: 2
         x: 72
@@ -333,14 +333,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6d5ea99fbcfa9a8d0800000000000000
-      internalID: -2834541199852116522
+      spriteID: 77370596e20410370800000000000000
+      internalID: 8286975357417976695
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_7
+      name: salvage_7
       rect:
         serializedVersion: 2
         x: 457
@@ -355,14 +355,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 32ee82cd86dbd7dd0800000000000000
-      internalID: -2486623161170727389
+      spriteID: fedd91fcb7453d1f0800000000000000
+      internalID: -1021379799750681105
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_8
+      name: salvage_8
       rect:
         serializedVersion: 2
         x: 21
@@ -377,14 +377,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2934c1b7dc1d90f70800000000000000
-      internalID: 9154078398071194514
+      spriteID: 016523b46d9111520800000000000000
+      internalID: 2670944462182700560
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_9
+      name: salvage_9
       rect:
         serializedVersion: 2
         x: 457
@@ -399,14 +399,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: e259091cb5ca4d4b0800000000000000
-      internalID: -5416514941730384594
+      spriteID: 41924b16dfeca14d0800000000000000
+      internalID: -3162988200613107436
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_10
+      name: salvage_10
       rect:
         serializedVersion: 2
         x: 21
@@ -421,14 +421,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 0436a5cdcd4e6fdb0800000000000000
-      internalID: -4758364319029501120
+      spriteID: 36081f3191ae504e0800000000000000
+      internalID: -2015947864748752797
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_11
+      name: salvage_11
       rect:
         serializedVersion: 2
         x: 457
@@ -443,14 +443,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 669214fa1f56a4800800000000000000
-      internalID: 597401989281818982
+      spriteID: a1c3986d194d7a810800000000000000
+      internalID: 1776622300855614490
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_12
+      name: salvage_12
       rect:
         serializedVersion: 2
         x: 21
@@ -465,14 +465,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: aad2875c83b8e7180800000000000000
-      internalID: -9115695519803888214
+      spriteID: 60168a24b875926c0800000000000000
+      internalID: -4167703724524281594
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_13
+      name: salvage_13
       rect:
         serializedVersion: 2
         x: 457
@@ -487,14 +487,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ce99826b8da1b1360800000000000000
-      internalID: 7141331152197425644
+      spriteID: a260ee6b8e7a5f250800000000000000
+      internalID: 5977868698347505194
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_14
+      name: salvage_14
       rect:
         serializedVersion: 2
         x: 21
@@ -509,14 +509,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 101789acbbc89e840800000000000000
-      internalID: 5253885178490155265
+      spriteID: fd377b3a15d9b2ee0800000000000000
+      internalID: -1284760294719523873
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_15
+      name: salvage_15
       rect:
         serializedVersion: 2
         x: 457
@@ -531,14 +531,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4a99ae77a72e0f540800000000000000
-      internalID: 5039776998653335972
+      spriteID: 7a4b80c5570dfb970800000000000000
+      internalID: 8772959801614840999
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_16
+      name: salvage_16
       rect:
         serializedVersion: 2
         x: 150
@@ -553,14 +553,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f9b7ab3a3797e39c0800000000000000
-      internalID: -3945582685954868321
+      spriteID: 9facd871e9e29f340800000000000000
+      internalID: 4897997326277004025
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_17
+      name: salvage_17
       rect:
         serializedVersion: 2
         x: 198
@@ -575,14 +575,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: cdfa51b49363a8ec0800000000000000
-      internalID: -3563976535409578020
+      spriteID: deb130b7a18b1e550800000000000000
+      internalID: 6188429786856233965
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_18
+      name: salvage_18
       rect:
         serializedVersion: 2
         x: 246
@@ -597,14 +597,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d6bb942c8f0391cb0800000000000000
-      internalID: -4892825675191698579
+      spriteID: 5d039739ac71aad10800000000000000
+      internalID: 2137547131965747413
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_19
+      name: salvage_19
       rect:
         serializedVersion: 2
         x: 294
@@ -619,14 +619,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dae0957e4c891e9c0800000000000000
-      internalID: -3899667830863753555
+      spriteID: e18fcf09179833550800000000000000
+      internalID: 6139401837892925470
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Salvage_20
+      name: salvage_20
       rect:
         serializedVersion: 2
         x: 342
@@ -641,8 +641,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f8bac5ab4ce099db0800000000000000
-      internalID: -4784776891001427057
+      spriteID: c62b27c766e658a60800000000000000
+      internalID: 7675662526376489580
       vertices: []
       indices: 
       edges: []
@@ -661,27 +661,27 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Salvage_0: -1324915269525015147
-      Salvage_1: -2904685943992228075
-      Salvage_10: -4758364319029501120
-      Salvage_11: 597401989281818982
-      Salvage_12: -9115695519803888214
-      Salvage_13: 7141331152197425644
-      Salvage_14: 5253885178490155265
-      Salvage_15: 5039776998653335972
-      Salvage_16: -3945582685954868321
-      Salvage_17: -3563976535409578020
-      Salvage_18: -4892825675191698579
-      Salvage_19: -3899667830863753555
-      Salvage_2: -8297880903567898838
-      Salvage_20: -4784776891001427057
-      Salvage_3: -359698362423494574
-      Salvage_4: -7377462809143983875
-      Salvage_5: 594335944928270321
-      Salvage_6: -2834541199852116522
-      Salvage_7: -2486623161170727389
-      Salvage_8: 9154078398071194514
-      Salvage_9: -5416514941730384594
+      salvage_0: -6998137533083352337
+      salvage_1: 5915262752764672733
+      salvage_10: -2015947864748752797
+      salvage_11: 1776622300855614490
+      salvage_12: -4167703724524281594
+      salvage_13: 5977868698347505194
+      salvage_14: -1284760294719523873
+      salvage_15: 8772959801614840999
+      salvage_16: 4897997326277004025
+      salvage_17: 6188429786856233965
+      salvage_18: 2137547131965747413
+      salvage_19: 6139401837892925470
+      salvage_2: -5286891882177661434
+      salvage_20: 7675662526376489580
+      salvage_3: -1450876174442576702
+      salvage_4: -853516182144979159
+      salvage_5: 8015204263682602140
+      salvage_6: 8286975357417976695
+      salvage_7: -1021379799750681105
+      salvage_8: 2670944462182700560
+      salvage_9: -3162988200613107436
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

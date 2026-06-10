@@ -49,8 +49,12 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text    systemNameText;
     [SerializeField] private TMP_Text    daysText;
     [SerializeField] private TMP_Text    salvageText;
+    [SerializeField] private TMP_Text    fuelText;
+    [SerializeField] private TMP_Text    loyaltyText;
     [SerializeField] private GameObject  salvageWidgetGO;
     [SerializeField] private GameObject  daysWidgetGO;
+    [SerializeField] private GameObject  fuelWidgetGO;
+    [SerializeField] private GameObject  loyaltyWidgetGO;
     [SerializeField] private CanvasGroup combatHeaderStatsGroup;
 
     [Header("System Map")]
@@ -411,6 +415,8 @@ public class SystemViewController : MonoBehaviour
             systemNameText.text = ToTitleCase(_currentSystem.Name);
         RefreshSalvage();
         RefreshDays();
+        RefreshFuel();
+        RefreshLoyalty();
     }
 
     public void RefreshSalvage()
@@ -425,6 +431,20 @@ public class SystemViewController : MonoBehaviour
         if (daysText == null) return;
         var save = GameManager.Instance?.CurrentSave;
         daysText.text = save != null ? Mathf.FloorToInt(save.DaysPassed).ToString() : "0";
+    }
+
+    public void RefreshFuel()
+    {
+        if (fuelText == null) return;
+        var save = GameManager.Instance?.CurrentSave;
+        fuelText.text = save != null ? save.Fuel.ToString() : "0";
+    }
+
+    public void RefreshLoyalty()
+    {
+        if (loyaltyText == null) return;
+        var save = GameManager.Instance?.CurrentSave;
+        loyaltyText.text = save != null ? save.CrewLoyalty.ToString() : "0";
     }
 
     // ── Star visual ──────────────────────────────────────────────────────────
@@ -1314,6 +1334,8 @@ public class SystemViewController : MonoBehaviour
         if (systemNameText != null) systemNameText.gameObject.SetActive(false);
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(false);
         if (daysWidgetGO != null) daysWidgetGO.SetActive(false);
+        if (fuelWidgetGO != null) fuelWidgetGO.SetActive(false);
+        if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(false);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 1f;
@@ -1383,6 +1405,8 @@ public class SystemViewController : MonoBehaviour
         if (systemNameText != null) systemNameText.gameObject.SetActive(true);
         if (salvageWidgetGO != null) salvageWidgetGO.SetActive(true);
         if (daysWidgetGO != null) daysWidgetGO.SetActive(true);
+        if (fuelWidgetGO != null) fuelWidgetGO.SetActive(true);
+        if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(true);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 0f;

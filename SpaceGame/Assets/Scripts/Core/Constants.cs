@@ -234,6 +234,15 @@ public static class Constants
         public const int StartingCredits = 1000;
     }
 
+    public static class Resources
+    {
+        public const int StartingFuel    = 100;
+        public const int MaxFuel         = 100;
+        public const int StartingLoyalty = 75;
+        public const int MaxLoyalty      = 100;
+        public const int MutinyThreshold = 0;   // loyalty <= this triggers game over
+    }
+
     public static class Interludes
     {
         /// <summary>Resources path to the single story collection file (no extension).</summary>

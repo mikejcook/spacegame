@@ -339,7 +339,7 @@ public static class GameSceneSetup
                 AssetDatabase.ImportAsset(DaysIconPath, ImportAssetOptions.ForceUpdate);
             }
             var daysSprite = AssetDatabase.LoadAssetAtPath<Sprite>(DaysIconPath);
-            if (daysSprite != null) { daysIconImg.sprite = daysSprite; SizeIconToHeight(daysIconImg, 48f); }
+            if (daysSprite != null) { daysIconImg.sprite = daysSprite; SizeIconToHeight(daysIconImg, 36f); }
             else Debug.LogWarning("[GameSceneSetup] days.png not found at " + DaysIconPath);
         }
 
@@ -394,7 +394,7 @@ public static class GameSceneSetup
                 AssetDatabase.ImportAsset(SalvageIconPath, ImportAssetOptions.ForceUpdate);
             }
             var salvageSprite = AssetDatabase.LoadAssetAtPath<Sprite>(SalvageIconPath);
-            if (salvageSprite != null) { salvageIconImg.sprite = salvageSprite; SizeIconToHeight(salvageIconImg, 48f); }
+            if (salvageSprite != null) { salvageIconImg.sprite = salvageSprite; SizeIconToHeight(salvageIconImg, 36f); }
             else Debug.LogWarning("[GameSceneSetup] salvage.png not found at " + SalvageIconPath);
         }
 
@@ -442,7 +442,7 @@ public static class GameSceneSetup
                 AssetDatabase.ImportAsset(FuelIconPath, ImportAssetOptions.ForceUpdate);
             }
             var fuelSprite = AssetDatabase.LoadAssetAtPath<Sprite>(FuelIconPath);
-            if (fuelSprite != null) { fuelIconImg.sprite = fuelSprite; SizeIconToHeight(fuelIconImg, 48f); }
+            if (fuelSprite != null) { fuelIconImg.sprite = fuelSprite; SizeIconToHeight(fuelIconImg, 36f); }
             else Debug.LogWarning("[GameSceneSetup] fuel.png not found at " + FuelIconPath);
         }
 
@@ -489,7 +489,7 @@ public static class GameSceneSetup
                 AssetDatabase.ImportAsset(LoyaltyIconPath, ImportAssetOptions.ForceUpdate);
             }
             var loyaltySprite = AssetDatabase.LoadAssetAtPath<Sprite>(LoyaltyIconPath);
-            if (loyaltySprite != null) { loyaltyIconImg.sprite = loyaltySprite; SizeIconToHeight(loyaltyIconImg, 48f); }
+            if (loyaltySprite != null) { loyaltyIconImg.sprite = loyaltySprite; SizeIconToHeight(loyaltyIconImg, 36f); }
             else Debug.LogWarning("[GameSceneSetup] loyalty.png not found at " + LoyaltyIconPath);
         }
 
