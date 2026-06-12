@@ -759,7 +759,7 @@ public class SystemViewController : MonoBehaviour
             float ringH = ringW / aspect;
             var ringBack = SpawnRingLayer(poi.Name + "_RingBack", anchoredPos,
                                           ringW, ringH, isFront: false);
-            _poiNodes.Add(ringBack);
+            _orbitRings.Add(ringBack);
         }
 
         // ── Container: anchored to map centre, offset along the orbit ─────
@@ -851,7 +851,7 @@ public class SystemViewController : MonoBehaviour
             float ringH = ringW / aspect;
             var ringFront = SpawnRingLayer(poi.Name + "_RingFront", anchoredPos,
                                            ringW, ringH, isFront: true);
-            _poiNodes.Add(ringFront);
+            _orbitRings.Add(ringFront);
         }
 
         return nodeGO;

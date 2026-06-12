@@ -267,15 +267,15 @@ public static class Constants
         /// </summary>
         public const float FtlLyPerDay = 1_000f;
 
-        /// <summary>Minimum travel time for any jump, regardless of distance.</summary>
-        public const float MinTravelDays = 0.25f;
+        /// <summary>Minimum travel time for any in-system hop, regardless of distance.</summary>
+        public const float MinTravelDays = 0.5f;
 
         /// <summary>
         /// In-system sublight travel speed expressed as days per normalised system unit.
         /// System coords are 0-1 centred at (0.5, 0.5); orbital radii run 0.07 (Mercury)
         /// to 0.46 (Neptune). At this rate a 0.17-unit hop (e.g. Earth→Mars same side)
-        /// hits the MinTravelDays floor; a 0.35-unit cross-system trip costs ~0.5 days.
+        /// hits the MinTravelDays floor; a 0.35-unit cross-system trip costs ~1.05 days.
         /// </summary>
-        public const float SubLightDaysPerSystemUnit = 1.5f;
+        public const float SubLightDaysPerSystemUnit = 3.0f;
     }
 }
