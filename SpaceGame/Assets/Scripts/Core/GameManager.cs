@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -106,7 +107,7 @@ public class GameManager : MonoBehaviour
                 CaptainName  = captainName,
                 ShipName     = shipName,
                 Credits      = Constants.Economy.StartingCredits,
-                Fuel         = Constants.Resources.StartingFuel,
+                Helium3      = Constants.Resources.StartingHelium3,
                 CrewLoyalty  = Constants.Resources.StartingLoyalty,
                 CreatedAt    = System.DateTime.Now,
                 LastSavedAt  = System.DateTime.Now
@@ -406,25 +407,54 @@ public class GameManager : MonoBehaviour
         SaveGame();
     }
 
-    /// <summary>Adds fuel up to the cap and persists.</summary>
-    public void AddFuel(int amount)
+    /// <summary>
+    /// Maximum He3 the ship can carry, derived from the installed Cargo Hold tier.
+    /// Falls back to the starting capacity if the ship or slot is unavailable.
+    /// </summary>
+    public int MaxHelium3
+    {
+        get
+        {
+            if (PlayerShip == null || Database == null)
+                return Constants.Resources.StartingHelium3;
+
+            var hold = Database.Equipment.Query()
+                .Where(e => e.InstalledOnShipId == PlayerShip.Id
+                         && e.InstalledInSlot   == Constants.Ship.EquipmentSlots.CargoHold)
+                .FirstOrDefault();
+
+            int level = hold != null ? (int)hold.Tier : 1;
+            return Constants.CargoBay.GetHelium3Capacity(level);
+        }
+    }
+
+    /// <summary>Adds Helium-3 up to the cargo-bay cap and persists.</summary>
+    public void AddHelium3(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.Fuel = Mathf.Min(Constants.Resources.MaxFuel, CurrentSave.Fuel + amount);
+        CurrentSave.Helium3 = Mathf.Min(MaxHelium3, CurrentSave.Helium3 + amount);
         SaveGame();
     }
 
     /// <summary>
-    /// Consumes fuel (clamped to 0) and persists.
+    /// Consumes Helium-3 (clamped to 0) and persists.
     /// Returns the actual amount consumed (may be less than requested if tank is low).
     /// </summary>
-    public int ConsumeFuel(int amount)
+    public int ConsumeHelium3(int amount)
     {
         if (CurrentSave == null || amount <= 0) return 0;
-        int before = CurrentSave.Fuel;
-        CurrentSave.Fuel = Mathf.Max(0, CurrentSave.Fuel - amount);
+        int before = CurrentSave.Helium3;
+        CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - amount);
         SaveGame();
-        return before - CurrentSave.Fuel;
+        return before - CurrentSave.Helium3;
+    }
+
+    /// <summary>Fills the He3 tank to capacity and persists. Used for Earth Station free refuel.</summary>
+    public void RefillHelium3()
+    {
+        if (CurrentSave == null) return;
+        CurrentSave.Helium3 = MaxHelium3;
+        SaveGame();
     }
 
     /// <summary>Adds iridium up to the cap and persists.</summary>
@@ -486,18 +516,19 @@ public class GameManager : MonoBehaviour
 
     /// <summary>
     /// Adds the FTL travel time from <paramref name="from"/> to <paramref name="to"/>
-    /// to DaysPassed and persists the save.
+    /// to DaysPassed, consumes the corresponding Helium-3, and persists the save.
     /// </summary>
     public void AddTravelTime(StarSystem from, StarSystem to)
     {
         if (CurrentSave == null) return;
         CurrentSave.DaysPassed += CalculateTravelDays(from, to);
+        CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateFtlFuelCost(from, to));
         SaveGame();
     }
 
     /// <summary>
-    /// Adds the minimum travel time for an in-system sublight hop (POI to POI).
-    /// Adds sublight travel time for an in-system hop between two POIs.
+    /// Adds sublight travel time for an in-system hop between two POIs, consumes
+    /// the corresponding Helium-3, and persists the save.
     /// Distance is computed from their normalised SystemX/Y positions (centre = 0.5,0.5).
     /// A null <paramref name="from"/> is treated as the star centre (0.5, 0.5).
     /// Result is clamped to a minimum of <see cref="Constants.Travel.MinTravelDays"/>.
@@ -506,7 +537,16 @@ public class GameManager : MonoBehaviour
     {
         if (CurrentSave == null) return;
         CurrentSave.DaysPassed += CalculateInSystemTravelDays(from, to);
+        if (!IsInSolSystem())
+            CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateSubLightFuelCost(from, to));
         SaveGame();
+    }
+
+    /// <summary>Returns true when the player is currently in the Sol system.</summary>
+    public bool IsInSolSystem()
+    {
+        if (CurrentSave == null || Database == null) return false;
+        return Database.StarSystems.Get(CurrentSave.CurrentSystemId)?.Name == "Sol";
     }
 
     public static float CalculateInSystemTravelDays(PointOfInterest from, PointOfInterest to)
@@ -521,6 +561,35 @@ public class GameManager : MonoBehaviour
         float dist = Mathf.Sqrt(dx * dx + dy * dy);
         float days = dist * Constants.Travel.SubLightDaysPerSystemUnit;
         return Mathf.Max(Constants.Travel.MinTravelDays, days);
+    }
+
+    /// <summary>
+    /// Helium-3 cost for an FTL jump between two star systems.
+    /// Uses raw Euclidean galaxy-unit distance (not the y-weighted travel-time formula)
+    /// so fuel cost reflects true distance rather than apparent travel days.
+    /// </summary>
+    public static int CalculateFtlFuelCost(StarSystem from, StarSystem to)
+    {
+        if (from == null || to == null) return 0;
+        float dx   = to.GalaxyX - from.GalaxyX;
+        float dy   = to.GalaxyY - from.GalaxyY;
+        float dist = Mathf.Sqrt(dx * dx + dy * dy);
+        return Mathf.RoundToInt(dist * Constants.Travel.FtlFuelPerGalaxyUnit);
+    }
+
+    /// <summary>
+    /// Helium-3 cost for a sub-light hop between two POIs within the same system.
+    /// A null <paramref name="from"/> is treated as the star centre (0.5, 0.5).
+    /// </summary>
+    public static int CalculateSubLightFuelCost(PointOfInterest from, PointOfInterest to)
+    {
+        if (to == null) return 0;
+        float fromX = from?.SystemX ?? 0.5f;
+        float fromY = from?.SystemY ?? 0.5f;
+        float dx    = to.SystemX - fromX;
+        float dy    = to.SystemY - fromY;
+        float dist  = Mathf.Sqrt(dx * dx + dy * dy);
+        return Mathf.RoundToInt(dist * Constants.Travel.SubLightFuelPerSystemUnit);
     }
 
     public void ReturnToMainMenu()

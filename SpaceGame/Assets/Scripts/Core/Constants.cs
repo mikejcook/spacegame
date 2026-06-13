@@ -236,12 +236,27 @@ public static class Constants
 
     public static class Resources
     {
-        public const int StartingFuel    = 100;
-        public const int MaxFuel         = 100;
-        public const int StartingLoyalty = 75;
-        public const int MaxLoyalty      = 100;
-        public const int MutinyThreshold = 0;   // loyalty <= this triggers game over
-        public const int MaxIridium      = 9999;
+        public const int StartingHelium3  = 100;
+        public const int StartingLoyalty  = 75;
+        public const int MaxLoyalty       = 100;
+        public const int MutinyThreshold  = 0;   // loyalty <= this triggers game over
+        public const int MaxIridium       = 9999;
+    }
+
+    public static class CargoBay
+    {
+        /// <summary>
+        /// Helium-3 capacity at each cargo bay upgrade level (index = level - 1).
+        /// Capacity increases linearly by 100 per level.
+        /// </summary>
+        public static readonly int[] Helium3Capacity = { 100, 200, 300, 400, 500, 600 };
+
+        /// <summary>Returns the He3 capacity for a given bay level (clamped to valid range).</summary>
+        public static int GetHelium3Capacity(int level)
+        {
+            int idx = UnityEngine.Mathf.Clamp(level - 1, 0, Helium3Capacity.Length - 1);
+            return Helium3Capacity[idx];
+        }
     }
 
     public static class Interludes
@@ -277,5 +292,17 @@ public static class Constants
         /// hits the MinTravelDays floor; a 0.35-unit cross-system trip costs ~1.05 days.
         /// </summary>
         public const float SubLightDaysPerSystemUnit = 3.0f;
+
+        /// <summary>
+        /// Helium-3 consumed per normalised galaxy unit of FTL travel.
+        /// Adjacent systems (~0.10 units) cost ~20 He3; far systems (~0.40 units) cost ~80 He3.
+        /// </summary>
+        public const float FtlFuelPerGalaxyUnit = 200f;
+
+        /// <summary>
+        /// Helium-3 consumed per normalised system unit of sub-light travel.
+        /// A short hop (0.10 units) costs ~4 He3; a cross-system trip (0.35 units) costs ~14 He3.
+        /// </summary>
+        public const float SubLightFuelPerSystemUnit = 40f;
     }
 }

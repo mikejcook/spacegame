@@ -27,11 +27,12 @@ public class SaveGame
     // Progression
     public int   Credits      { get; set; } = Constants.Economy.StartingCredits;
     public int   Salvage      { get; set; } = 0;
-    public int   Fuel         { get; set; } = Constants.Resources.StartingFuel;
+    public int   Helium3      { get; set; } = Constants.Resources.StartingHelium3;
     public int   Iridium      { get; set; } = 0;
     public int   CrewLoyalty  { get; set; } = Constants.Resources.StartingLoyalty;
     public float DaysPassed   { get; set; } = 0f;
     public float PlayTime     { get; set; } = 0f; // seconds
+
 
     // Timestamps
     public DateTime CreatedAt   { get; set; }

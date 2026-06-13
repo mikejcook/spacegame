@@ -134,6 +134,8 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button     poiDetailCloseButton;
     [SerializeField] private Button     poiDetailNavigateButton;
     [SerializeField] private TMP_Text   poiDetailScannerText;
+    [SerializeField] private TMP_Text   poiDetailFuelCostText;
+    [SerializeField] private TMP_Text   poiDetailDaysText;
 
     [Header("Crew Recruitment")]
     [Tooltip("Recruitment overlay — shown automatically when the ship docks at a functioning space station.")]
@@ -446,7 +448,7 @@ public class SystemViewController : MonoBehaviour
     {
         if (fuelText == null) return;
         var save = GameManager.Instance?.CurrentSave;
-        fuelText.text = save != null ? save.Fuel.ToString() : "0";
+        fuelText.text = save != null ? save.Helium3.ToString() : "0";
     }
 
     public void RefreshIridium()
@@ -1046,6 +1048,7 @@ public class SystemViewController : MonoBehaviour
             SetNavButtonsInteractable(true);
             GameManager.Instance?.AddInSystemTravelTime(fromPoi, target);
             RefreshDays();
+            RefreshFuel();
             MarkVisited(target);
             OnArrivedAtOrTappedPOI(target);
             yield break;
@@ -1134,6 +1137,7 @@ public class SystemViewController : MonoBehaviour
         SetNavButtonsInteractable(true);
         GameManager.Instance?.AddInSystemTravelTime(fromPoi, target);
         RefreshDays();
+        RefreshFuel();
         MarkVisited(target);
         OnArrivedAtOrTappedPOI(target);
     }
@@ -1655,9 +1659,29 @@ public class SystemViewController : MonoBehaviour
             }
         }
 
-        // Navigate button hidden when ship is already at this POI
+        // Navigate button and travel labels hidden when ship is already at this POI
+        bool showNavigate = poi != _shipCurrentPoi;
         if (poiDetailNavigateButton != null)
-            poiDetailNavigateButton.gameObject.SetActive(poi != _shipCurrentPoi);
+            poiDetailNavigateButton.gameObject.SetActive(showNavigate);
+
+        // He-3 and Days LabelControls are two levels up from the wired TMP_Text (Normal/Text → Normal → LabelControl)
+        poiDetailFuelCostText?.transform.parent?.parent?.gameObject.SetActive(showNavigate);
+        poiDetailDaysText?.transform.parent?.parent?.gameObject.SetActive(showNavigate);
+
+        if (showNavigate)
+        {
+            bool inSol = GameManager.Instance?.IsInSolSystem() ?? false;
+            if (poiDetailFuelCostText != null)
+                poiDetailFuelCostText.text = inSol
+                    ? "Free"
+                    : $"{GameManager.CalculateSubLightFuelCost(_shipCurrentPoi, poi)}";
+
+            if (poiDetailDaysText != null)
+            {
+                float days = GameManager.CalculateInSystemTravelDays(_shipCurrentPoi, poi);
+                poiDetailDaysText.text = days.ToString("0.#");
+            }
+        }
 
         poiDetailPanel.SetActive(true);
     }

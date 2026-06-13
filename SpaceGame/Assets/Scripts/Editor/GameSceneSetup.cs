@@ -819,6 +819,37 @@ public static class GameSceneSetup
             rt.anchoredPosition = new Vector2(-16f, 16f);
         }
 
+        // HE-3 + DAYS labels — LabelControl prefabs, side-by-side above the Set Course button
+        // Button bottom edge is at y=16, top at y=68. Labels sit just above at y=76.
+        const string LabelControlPrefabPath = "Assets/Prefabs/UI/LabelControl.prefab";
+        var labelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LabelControlPrefabPath);
+        if (labelPrefab != null)
+        {
+            // He-3 fuel cost
+            var fuelLabel = (GameObject)Object.Instantiate(labelPrefab, card.transform);
+            fuelLabel.name = "SystemInfoFuelCostLabel";
+            var fuelRT     = fuelLabel.GetComponent<RectTransform>();
+            fuelRT.anchorMin = fuelRT.anchorMax = new Vector2(0f, 0f);
+            fuelRT.pivot     = new Vector2(0f, 0f);
+            fuelRT.anchoredPosition = new Vector2(16f, 76f);
+            var fuelTitle = fuelLabel.transform.Find("Normal/Border/Title")?.GetComponent<TMP_Text>();
+            if (fuelTitle != null) fuelTitle.text = "He-3";
+
+            // Days travel time
+            var daysLabel = (GameObject)Object.Instantiate(labelPrefab, card.transform);
+            daysLabel.name = "SystemInfoDaysLabel";
+            var daysRT     = daysLabel.GetComponent<RectTransform>();
+            daysRT.anchorMin = daysRT.anchorMax = new Vector2(0f, 0f);
+            daysRT.pivot     = new Vector2(0f, 0f);
+            daysRT.anchoredPosition = new Vector2(164f, 76f);
+            var daysTitle = daysLabel.transform.Find("Normal/Border/Title")?.GetComponent<TMP_Text>();
+            if (daysTitle != null) daysTitle.text = "Days";
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] LabelControl prefab not found at " + LabelControlPrefabPath);
+        }
+
         return panel;
     }
 
@@ -2815,20 +2846,20 @@ public static class GameSceneSetup
 
         var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
 
-        // NAVIGATE button — bottom-left
+        // SET COURSE button — bottom-left
         GameObject navigateGO;
         if (btnPrefab != null)
         {
             navigateGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
             navigateGO.name = "POIDetailNavigateButton";
             var mb = navigateGO.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "Navigate";
+            if (mb != null) mb.buttonText = "Set Course";
         }
         else
         {
             navigateGO = MakeImage(card.transform, "POIDetailNavigateButton", BtnNormal);
             navigateGO.AddComponent<Button>();
-            var lbl = MakeTMP(navigateGO.transform, "Label", "Navigate", 22, TextWhite);
+            var lbl = MakeTMP(navigateGO.transform, "Label", "Set Course", 22, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
@@ -2864,6 +2895,37 @@ public static class GameSceneSetup
             closeLbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
         PlaceRect(closeGO, anchor(1f, 0f), anchor(1f, 0f), v2(-102f, 36f), v2(180f, 48f));
+
+        // HE-3 + DAYS labels — LabelControl prefabs, side-by-side above the Set Course button
+        // Button bottom edge is at y=12, top at y=60. Labels sit just above at y=68.
+        const string LabelControlPrefabPath = "Assets/Prefabs/UI/LabelControl.prefab";
+        var labelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LabelControlPrefabPath);
+        if (labelPrefab != null)
+        {
+            // He-3 fuel cost
+            var fuelLabel = (GameObject)Object.Instantiate(labelPrefab, card.transform);
+            fuelLabel.name = "POIDetailFuelCostLabel";
+            var fuelRT     = fuelLabel.GetComponent<RectTransform>();
+            fuelRT.anchorMin = fuelRT.anchorMax = new Vector2(0f, 0f);
+            fuelRT.pivot     = new Vector2(0f, 0f);
+            fuelRT.anchoredPosition = new Vector2(20f, 68f);
+            var fuelTitle = fuelLabel.transform.Find("Normal/Border/Title")?.GetComponent<TMP_Text>();
+            if (fuelTitle != null) fuelTitle.text = "He-3";
+
+            // Days travel time
+            var daysLabel = (GameObject)Object.Instantiate(labelPrefab, card.transform);
+            daysLabel.name = "POIDetailDaysLabel";
+            var daysRT     = daysLabel.GetComponent<RectTransform>();
+            daysRT.anchorMin = daysRT.anchorMax = new Vector2(0f, 0f);
+            daysRT.pivot     = new Vector2(0f, 0f);
+            daysRT.anchoredPosition = new Vector2(168f, 68f);
+            var daysTitle = daysLabel.transform.Find("Normal/Border/Title")?.GetComponent<TMP_Text>();
+            if (daysTitle != null) daysTitle.text = "Days";
+        }
+        else
+        {
+            Debug.LogWarning("[GameSceneSetup] LabelControl prefab not found at " + LabelControlPrefabPath);
+        }
 
         return panel;
     }
@@ -3351,6 +3413,8 @@ public static class GameSceneSetup
         Set(so, "poiDetailCloseButton",    closeTf?.GetComponentInChildren<Button>(true));
         var navigateTf = poiDetail.transform.Find("Card/POIDetailNavigateButton");
         Set(so, "poiDetailNavigateButton", navigateTf?.GetComponentInChildren<Button>(true));
+        Set(so, "poiDetailFuelCostText", Find<TMP_Text>(poiDetail, "Card/POIDetailFuelCostLabel/Normal/Text"));
+        Set(so, "poiDetailDaysText",     Find<TMP_Text>(poiDetail, "Card/POIDetailDaysLabel/Normal/Text"));
 
         // Audio
         var svcAudioSrc   = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();
@@ -3457,6 +3521,8 @@ public static class GameSceneSetup
                     Set(gvcSo, "systemInfoTravelButton", travelTf?.GetComponentInChildren<Button>(true));
                     var infoCloseTf   = infoPanel.transform.Find("Card/SystemInfoCloseButton");
                     Set(gvcSo, "systemInfoCloseButton", infoCloseTf?.GetComponentInChildren<Button>(true));
+                    Set(gvcSo, "systemInfoFuelCostText", Find<TMP_Text>(infoPanel, "Card/SystemInfoFuelCostLabel/Normal/Text"));
+                    Set(gvcSo, "systemInfoDaysText",     Find<TMP_Text>(infoPanel, "Card/SystemInfoDaysLabel/Normal/Text"));
                 }
                 else Debug.LogWarning("[GameSceneSetup] SystemInfoPanel not found under GalaxyView.");
 

@@ -60,6 +60,8 @@ public class GalaxyViewController : MonoBehaviour
     [SerializeField] private TMP_Text   systemInfoPOIText;
     [SerializeField] private Button     systemInfoTravelButton;
     [SerializeField] private Button     systemInfoCloseButton;
+    [SerializeField] private TMP_Text   systemInfoFuelCostText;
+    [SerializeField] private TMP_Text   systemInfoDaysText;
 
     [Header("Audio")]
     [SerializeField] private AudioSource sfxSource;
@@ -492,6 +494,19 @@ public class GalaxyViewController : MonoBehaviour
         // POI summary from database (gated by scanner level)
         if (systemInfoPOIText != null)
             systemInfoPOIText.text = BuildPOISummary(system, GetPlayerScannerTier());
+
+        // Fuel cost and travel days
+        bool canTravel = !ftlLocked && _shipCurrentSystem != null;
+
+        if (systemInfoFuelCostText != null)
+            systemInfoFuelCostText.text = canTravel
+                ? $"{GameManager.CalculateFtlFuelCost(_shipCurrentSystem, system)}"
+                : "";
+
+        if (systemInfoDaysText != null)
+            systemInfoDaysText.text = canTravel
+                ? GameManager.CalculateTravelDays(_shipCurrentSystem, system).ToString("0.#")
+                : "";
 
         // Show via CanvasGroup (Shift buttons stay active, animators stay bound)
         if (_infoPanelCG != null)
