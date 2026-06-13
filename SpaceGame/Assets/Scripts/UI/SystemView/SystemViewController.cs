@@ -441,7 +441,7 @@ public class SystemViewController : MonoBehaviour
     {
         if (daysText == null) return;
         var save = GameManager.Instance?.CurrentSave;
-        daysText.text = save != null ? Mathf.FloorToInt(save.DaysPassed).ToString() : "0";
+        daysText.text = save != null ? save.DaysPassed.ToString("0.#") : "0";
     }
 
     public void RefreshFuel()
