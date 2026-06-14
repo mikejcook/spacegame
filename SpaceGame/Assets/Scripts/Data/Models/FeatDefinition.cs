@@ -91,15 +91,15 @@ public static class FeatRegistry
                 EffectMagnitude    = 3
             },
 
-            ["beam_weapon_specialist"] = new FeatDefinition
+            ["particle_cannon_specialist"] = new FeatDefinition
             {
-                Id          = "beam_weapon_specialist",
-                Name        = "Beam Weapon Specialist",
-                Description = "+4 to attack rolls with beam weapons. Beam attacks may ignore 2 points of enemy shielding.",
+                Id          = "particle_cannon_specialist",
+                Name        = "Particle Cannon Specialist",
+                Description = "+4 to attack rolls with particle cannons. Particle cannon attacks may ignore 2 points of enemy shielding.",
                 RequiredSkillRanks = new() { [Constants.Skills.Gunnery] = 3 },
                 RequiredLevel      = 3,
                 AvailableToRoles   = new() { Constants.Crew.Roles.Gunner, Constants.Crew.Roles.Captain },
-                EffectType         = "beam_weapon_bonus",
+                EffectType         = "particle_cannon_bonus",
                 EffectMagnitude    = 4
             },
 

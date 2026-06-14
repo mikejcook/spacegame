@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Renders a sci-fi beam weapon attack as two UI elements inside the
+/// Renders a sci-fi particle cannon attack as two UI elements inside the
 /// ProjectileLayer:
 ///
 ///   • BeamLine  — a RawImage using laser_noise00.png, stretched and rotated
@@ -13,7 +13,7 @@ using UnityEngine.UI;
 /// Animation: fade-in → hold → fade-out.  The whole GameObject destroys
 /// itself when the animation finishes.
 ///
-/// Usage (called by CombatViewController.LaunchBeamWeapon):
+/// Usage (called by CombatViewController.LaunchParticleCannon):
 ///
 ///   var go     = new GameObject("BeamEffect", typeof(RectTransform));
 ///   go.transform.SetParent(projectileContainer, worldPositionStays: false);

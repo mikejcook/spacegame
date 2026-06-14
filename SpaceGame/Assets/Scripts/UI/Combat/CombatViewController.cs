@@ -34,7 +34,7 @@ using UnityEngine.UI;
 ///     Centre = 180 °  (faces straight down)
 ///     Right  ≈ 125 °  (faces down-left toward the player)
 ///
-/// ── Beam / torpedo origin points ──────────────────────────────────────────
+/// ── Particle cannon / torpedo origin points ──────────────────────────────────────────
 ///
 ///   All projectiles and beams originate and terminate at each ship's
 ///   "nose" — the world-space position of the sprite's local +Y tip after
@@ -99,7 +99,7 @@ public class CombatViewController : MonoBehaviour
 
     [Header("Action Bar Buttons — wired by GameSceneSetup")]
     [SerializeField] private Button fireTorpedesButton;
-    [SerializeField] private Button fireBeamWeaponButton;
+    [SerializeField] private Button fireParticleCannonButton;
 
     [Header("Torpedo Count Label — wired by GameSceneSetup")]
     [Tooltip("Small label below the Fire Torpedoes button showing remaining count (e.g. ×8).")]
@@ -144,8 +144,8 @@ public class CombatViewController : MonoBehaviour
     [Tooltip("missile_1 sprite — used for torpedo fire.")]
     [SerializeField] private Sprite missileSprite;
 
-    [Header("Beam Weapon — wired by GameSceneSetup")]
-    [Tooltip("laser_noise00 texture stretched along the beam line.")]
+    [Header("Particle Cannon — wired by GameSceneSetup")]
+    [Tooltip("laser_noise00 texture stretched along the particle cannon beam line.")]
     [SerializeField] private Texture2D beamTexture;
     [Tooltip("glow_round00 sprite used for the impact circle and muzzle flash.")]
     [SerializeField] private Sprite beamGlowSprite;
@@ -161,7 +161,7 @@ public class CombatViewController : MonoBehaviour
 
     [Header("Audio — wired by GameSceneSetup")]
     [SerializeField] private AudioSource sfxSource;
-    [SerializeField] private AudioClip   beamWeaponClip;
+    [SerializeField] private AudioClip   particleCannonClip;
     [SerializeField] private AudioClip   torpedoClip;
     [Tooltip("Played when an enemy ship is destroyed. Assign in Inspector — add a clip at Assets/Audio/SFX/explosion.mp3.")]
     [SerializeField] private AudioClip   explosionClip;
@@ -261,7 +261,7 @@ public class CombatViewController : MonoBehaviour
         enemyRightButton?.onClick.AddListener( () => SetTarget(enemyRightSlotRT));
 
         fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
-        fireBeamWeaponButton?.onClick.AddListener(FireBeamWeapon);
+        fireParticleCannonButton?.onClick.AddListener(FireParticleCannon);
 
         // Pilot maneuver dropdown
         if (pilotManeuverDropdown != null)
@@ -323,35 +323,35 @@ public class CombatViewController : MonoBehaviour
         StartCoroutine(PlayerTorpedoRoutine(target));
     }
 
-    /// <summary>Fire beam weapon at the current target.</summary>
-    public void FireBeamWeapon()
+    /// <summary>Fire particle cannon at the current target.</summary>
+    public void FireParticleCannon()
     {
         if (_currentTargetRT == null || _combatState == null) return;
         if (_combatState.Phase != CombatPhase.PlayerTurn) return;
         var target = GetTargetCombatState();
         if (target == null) return;
-        StartCoroutine(PlayerBeamRoutine(target));
+        StartCoroutine(PlayerCannonRoutine(target));
     }
 
     // -----------------------------------------------------------------------
     // Player action coroutines
     // -----------------------------------------------------------------------
 
-    private IEnumerator PlayerBeamRoutine(EnemyCombatState target)
+    private IEnumerator PlayerCannonRoutine(EnemyCombatState target)
     {
         SetFireButtonsEnabled(false);
         SyncManeuverBonuses();
 
         // Resolve dice immediately (damage is tracked internally).
-        var result = CombatResolver.PlayerFireBeam(_combatState, target);
+        var result = CombatResolver.PlayerFireParticleCannon(_combatState, target);
         Debug.Log($"[Combat] {result.Description}");
         AppendLog(FormatPlayerAttack(result));
         AppendDetailLog($"<color={ColPlayer}>YOU</color>  {result.Description}");
 
         // Fire the visual and sound.
         PulseCrosshair();
-        sfxSource?.PlayOneShot(beamWeaponClip);
-        LaunchBeamWeapon();
+        sfxSource?.PlayOneShot(particleCannonClip);
+        LaunchParticleCannon();
 
         // If the attack hits, spawn an impact flash after the beam's fade-in completes.
         if (result.IsHit)
@@ -481,7 +481,7 @@ public class CombatViewController : MonoBehaviour
             var slotRT = GetSlotForEnemy(enemy);
             float waitTime = 0f;
             if (slotRT != null && playerShipImage != null)
-                waitTime = LaunchEnemyAttackEffect(slotRT, result.IsBeamAttack, result.IsHit);
+                waitTime = LaunchEnemyAttackEffect(slotRT, result.IsParticleCannonAttack, result.IsHit);
 
             yield return new WaitForSeconds(waitTime);
 
@@ -537,10 +537,10 @@ public class CombatViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Spawns the beam or torpedo visual from an enemy slot toward the player ship,
+    /// Spawns the particle cannon or torpedo visual from an enemy slot toward the player ship,
     /// plays the matching sound, and returns the animation duration to wait for.
     /// </summary>
-    private float LaunchEnemyAttackEffect(RectTransform enemySlotRT, bool isBeam, bool isHit)
+    private float LaunchEnemyAttackEffect(RectTransform enemySlotRT, bool isParticleCannon, bool isHit)
     {
         if (projectileContainer == null || playerShipImage == null) return 0f;
 
@@ -551,9 +551,9 @@ public class CombatViewController : MonoBehaviour
         // Target: nose (top-centre) of the player ship.
         Vector3 toWorld = GetNoseWorld(playerShipImage);
 
-        if (isBeam)
+        if (isParticleCannon)
         {
-            sfxSource?.PlayOneShot(beamWeaponClip);
+            sfxSource?.PlayOneShot(particleCannonClip);
             var go = new GameObject("EnemyBeamEffect", typeof(RectTransform));
             go.transform.SetParent(projectileContainer, worldPositionStays: false);
             // Impact glow scaled to the player (target); muzzle scaled to the firing enemy.
@@ -641,8 +641,8 @@ public class CombatViewController : MonoBehaviour
 
     private void SetFireButtonsEnabled(bool enabled)
     {
-        if (fireBeamWeaponButton != null)
-            fireBeamWeaponButton.interactable = enabled;
+        if (fireParticleCannonButton != null)
+            fireParticleCannonButton.interactable = enabled;
 
         // Torpedo button also disabled when out of torpedoes.
         if (fireTorpedesButton != null)
@@ -834,7 +834,7 @@ public class CombatViewController : MonoBehaviour
     private static string FormatPlayerAttack(CombatResolver.AttackResult r)
     {
         if (r.AttackerRoll == 0) return null;    // no weapon — nothing to log
-        string wpn   = r.IsBeamAttack ? "Beam" : "Torpedo";
+        string wpn   = r.IsParticleCannonAttack ? "Particle cannon" : "Torpedo";
         string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
             return $"<color={ColPlayer}>You</color> {wpn} miss {rolls}";
@@ -846,7 +846,7 @@ public class CombatViewController : MonoBehaviour
     private static string FormatEnemyAttack(CombatResolver.AttackResult r)
     {
         if (r.AttackerRoll == 0) return null;
-        string wpn   = r.IsBeamAttack ? "Beam" : "Torpedo";
+        string wpn   = r.IsParticleCannonAttack ? "Particle cannon" : "Torpedo";
         string rolls = $"<color={ColRolls}>({r.AttackerTotal} vs {r.DefenderTotal})</color>";
         if (!r.IsHit)
             return $"<color={ColEnemy}>Enemy</color> {wpn} miss {rolls}";
@@ -880,7 +880,7 @@ public class CombatViewController : MonoBehaviour
     /// <summary>
     /// Spawn a CombatBeamEffect from the player ship's nose to the targeted enemy's nose.
     /// </summary>
-    private void LaunchBeamWeapon()
+    private void LaunchParticleCannon()
     {
         if (projectileContainer == null || playerShipImage == null || _currentTargetRT == null)
             return;

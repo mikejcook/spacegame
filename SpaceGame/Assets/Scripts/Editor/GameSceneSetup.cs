@@ -873,7 +873,7 @@ public static class GameSceneSetup
         BuildComponentColumn(shipView.transform, "LeftComponentColumn", isLeft: true,
             "Reactor", "FTL Drive", "Engines", "Shields", "Armor");
         BuildComponentColumn(shipView.transform, "RightComponentColumn", isLeft: false,
-            "Beam Weapons", "Torpedoes", "Scanner", "Cargo Hold", "Crew Quarters");
+            "Particle Cannons", "Torpedoes", "Scanner", "Cargo Hold", "Crew Quarters");
 
         // ── Layer 3: ship sprite — native pixel size (56×72), centred.
         // The DGB corvette sprite is 56×72 px pixel art. Any upscaling blurs it
@@ -2033,11 +2033,11 @@ public static class GameSceneSetup
     //      │     ├─ TargetShieldText   ("SHIELDS  100%")
     //      │     ├─ DividerText        ("|")
     //      │     └─ TargetHullText     ("HULL  100%")
-    //      ├─ PilotManeuverContainer   (right-anchored, 220 px — left of beam button)
+    //      ├─ PilotManeuverContainer   (right-anchored, 220 px — left of cannon button)
     //      │  ├─ ManeuverLabel         (TMP_Text — "PILOT MANEUVER")
     //      │  └─ PilotManeuverDropdown (Shift Dropdown — Standard / Evasive / Attack Pattern)
-    //      └─ FireBeamWeaponContainer  (right-anchored, 300 px)
-    //         └─ FireBeamWeaponButton  (Shift MainButton — "FIRE BEAM WEAPON")
+    //      └─ FireParticleCannonContainer  (right-anchored, 300 px)
+    //         └─ FireParticleCannonButton  (Shift MainButton — "FIRE PARTICLE CANNONS")
 
     static GameObject BuildCombatView(Transform parent)
     {
@@ -2124,8 +2124,8 @@ public static class GameSceneSetup
         //       TargetShieldText    ("SHIELDS  100%")
         //       DividerText         ("|")
         //       TargetHullText      ("HULL  100%")
-        //   FireBeamWeaponContainer (300 px, right-anchored)
-        //     FireBeamWeaponButton  (Shift MainButton — "FIRE BEAM WEAPON")
+        //   FireParticleCannonContainer (300 px, right-anchored)
+        //     FireParticleCannonButton  (Shift MainButton — "FIRE PARTICLE CANNONS")
         var actionBar = MakeImage(combatView.transform, "CombatActionBar", HeaderBar);
         PlaceRect(actionBar, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 48f), v2(0f, 96f));
 
@@ -2142,8 +2142,8 @@ public static class GameSceneSetup
 
         const float WeaponBtnWidth  = 300f;
         const float ActionBarPad    = 40f;   // padding from each edge of the action bar
-        const float DropdownWidth   = 220f;  // pilot maneuver dropdown, to the left of beam button
-        const float DropdownGap     = 12f;   // gap between dropdown container and beam container
+        const float DropdownWidth   = 220f;  // pilot maneuver dropdown, to the left of cannon button
+        const float DropdownGap     = 12f;   // gap between dropdown container and cannon container
         const string DropdownPrefabPath = "Assets/Shift - Complete Sci-Fi UI/Prefabs/Dropdown/Dropdown.prefab";
 
         // ── Left weapon button ────────────────────────────────────────────
@@ -2261,7 +2261,7 @@ public static class GameSceneSetup
             le.flexibleWidth  = 0f;
         }
 
-        // ── Pilot maneuver dropdown — to the left of the beam button ─────
+        // ── Pilot maneuver dropdown — to the left of the cannon button ─────
         // Uses the Shift Dropdown prefab (styled TMP_Dropdown, 300×40 default).
         // Anchored from the right edge: position = -(ActionBarPad + WeaponBtnWidth + DropdownGap),
         // width = DropdownWidth. A label above names the control.
@@ -2316,9 +2316,9 @@ public static class GameSceneSetup
         }
 
         // ── Right weapon button ───────────────────────────────────────────
-        var beamContainer = MakeUIGO("FireBeamWeaponContainer", actionBar.transform);
+        var cannonContainer = MakeUIGO("FireParticleCannonContainer", actionBar.transform);
         {
-            var rt              = beamContainer.GetComponent<RectTransform>();
+            var rt              = cannonContainer.GetComponent<RectTransform>();
             rt.anchorMin        = new Vector2(1f, 0f);
             rt.anchorMax        = new Vector2(1f, 1f);
             rt.pivot            = new Vector2(1f, 0.5f);
@@ -2328,17 +2328,17 @@ public static class GameSceneSetup
         // Shift the right button inward by the device's right safe-area inset
         // (mirrors the _left inset on FireTorpedesContainer).
         {
-            var inset   = beamContainer.AddComponent<SafeAreaInset>();
+            var inset   = cannonContainer.AddComponent<SafeAreaInset>();
             var insetSo = new SerializedObject(inset);
             insetSo.FindProperty("_right").boolValue = true;
             insetSo.ApplyModifiedProperties();
         }
         if (weaponBtnPrefab != null)
         {
-            var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, beamContainer.transform);
-            go.name = "FireBeamWeaponButton";
+            var go  = (GameObject)Object.Instantiate(weaponBtnPrefab, cannonContainer.transform);
+            go.name = "FireParticleCannonButton";
             var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
-            if (mb != null) mb.buttonText = "Fire Beam Weapon";
+            if (mb != null) mb.buttonText = "Fire Particle Cannons";
             var rt  = go.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
@@ -2347,9 +2347,9 @@ public static class GameSceneSetup
         }
         else
         {
-            var go  = MakeImage(beamContainer.transform, "FireBeamWeaponButton", BtnNormal);
+            var go  = MakeImage(cannonContainer.transform, "FireParticleCannonButton", BtnNormal);
             go.AddComponent<Button>();
-            var lbl = MakeTMP(go.transform, "Label", "Fire Beam Weapon", 20, TextWhite);
+            var lbl = MakeTMP(go.transform, "Label", "Fire Particle Cannons", 20, TextWhite);
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
             Stretch(go);
@@ -2358,7 +2358,7 @@ public static class GameSceneSetup
         // ── Combat log panel — right side, between right enemy slot and action bar ──
         //
         // Anchored to the right edge, bottom-aligned with a gap above the action bar.
-        // SafeAreaInset(_right) mirrors the beam button inset.
+        // SafeAreaInset(_right) mirrors the cannon button inset.
         // CombatViewController.AppendLog() refreshes the TMP_Text child at runtime.
         var logPanel = MakeImage(combatView.transform, "CombatLogPanel",
             new Color(HeaderBar.r, HeaderBar.g, HeaderBar.b, 0.82f));
@@ -3694,11 +3694,11 @@ public static class GameSceneSetup
 
                 // Fire buttons — inside their containers (Shift prefab is the direct child)
                 var torpContainerTf = combatView.transform.Find("CombatActionBar/FireTorpedesContainer");
-                var beamContainerTf = combatView.transform.Find("CombatActionBar/FireBeamWeaponContainer");
+                var cannonContainerTf = combatView.transform.Find("CombatActionBar/FireParticleCannonContainer");
                 cvcSo.FindProperty("fireTorpedesButton").objectReferenceValue =
                     torpContainerTf?.GetComponentInChildren<Button>(true);
-                cvcSo.FindProperty("fireBeamWeaponButton").objectReferenceValue =
-                    beamContainerTf?.GetComponentInChildren<Button>(true);
+                cvcSo.FindProperty("fireParticleCannonButton").objectReferenceValue =
+                    cannonContainerTf?.GetComponentInChildren<Button>(true);
 
                 // Torpedo count — now in the header combat stats bar
                 cvcSo.FindProperty("torpedoCountText").objectReferenceValue =
@@ -3830,8 +3830,8 @@ public static class GameSceneSetup
                 else if (torpIconImg == null)
                     Debug.LogWarning("[GameSceneSetup] TorpedoIcon Image not found in CombatHeaderStats.");
 
-                // ── Beam weapon textures ──────────────────────────────────
-                // laser_noise00.png → beam line (RawImage — keep as Texture2D, not Sprite)
+                // ── Particle cannon textures ──────────────────────────────────
+                // laser_noise00.png → particle cannon beam line (RawImage — keep as Texture2D, not Sprite)
                 // glow_round00.png  → impact glow + muzzle flash (Image — import as Single Sprite)
                 const string LaserTexPath = EffectsFolder + "/laser_noise00.png";
                 const string GlowPath     = EffectsFolder + "/glow_round00.png";
@@ -3861,13 +3861,13 @@ public static class GameSceneSetup
                     }
                 }
 
-                var beamTex   = AssetDatabase.LoadAssetAtPath<Texture2D>(LaserTexPath);
+                var cannonTex   = AssetDatabase.LoadAssetAtPath<Texture2D>(LaserTexPath);
                 var glowSprite = AssetDatabase.LoadAssetAtPath<Sprite>(GlowPath);
 
-                if (beamTex   == null) Debug.LogWarning($"[GameSceneSetup] Beam texture not found: {LaserTexPath}");
+                if (cannonTex   == null) Debug.LogWarning($"[GameSceneSetup] Beam/glow texture not found: {LaserTexPath}");
                 if (glowSprite == null) Debug.LogWarning($"[GameSceneSetup] Glow sprite not found: {GlowPath}");
 
-                cvcSo.FindProperty("beamTexture").objectReferenceValue    = beamTex;
+                cvcSo.FindProperty("beamTexture").objectReferenceValue    = cannonTex;
                 cvcSo.FindProperty("beamGlowSprite").objectReferenceValue = glowSprite;
 
                 // ── Combat audio ──────────────────────────────────────────
@@ -3881,10 +3881,10 @@ public static class GameSceneSetup
                 EnsureAudioDecompressOnLoad("Assets/Audio/SFX/torpedo.mp3");
                 EnsureAudioDecompressOnLoad("Assets/Audio/SFX/explosion.mp3");
 
-                var beamClip      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/beam_weapon.mp3");
+                var cannonClip      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/beam_weapon.mp3");
                 var torpClip      = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/torpedo.mp3");
                 var explosionClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/SFX/explosion.mp3");
-                if (beamClip      != null) cvcSo.FindProperty("beamWeaponClip").objectReferenceValue = beamClip;
+                if (cannonClip      != null) cvcSo.FindProperty("particleCannonClip").objectReferenceValue = cannonClip;
                 else Debug.LogWarning("[GameSceneSetup] beam_weapon.mp3 not found at Assets/Audio/SFX/.");
                 if (torpClip      != null) cvcSo.FindProperty("torpedoClip").objectReferenceValue = torpClip;
                 else Debug.LogWarning("[GameSceneSetup] torpedo.mp3 not found at Assets/Audio/SFX/.");

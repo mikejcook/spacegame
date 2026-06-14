@@ -24,14 +24,14 @@ using UnityEngine;
 ///
 /// ── Damage ───────────────────────────────────────────────────────────────
 ///
-///   Beam weapons  : 2d6 + tier bonus
+///   particle cannons  : 2d6 + tier bonus
 ///   Torpedoes     : 3d6 + tier bonus
 ///
 /// ── DR (Damage Reduction) ────────────────────────────────────────────────
 ///
-///   Beams vs active shields   : no DR — beams are efficient at stripping shields
+///   Particle cannons vs active shields   : no DR — particle cannons are efficient at stripping shields
 ///   Torpedoes vs active shields: DR 10 — shields strongly resist torpedoes
-///   Beams vs hull             : DR 3  — armor resists beam weapons
+///   Particle cannons vs hull             : DR 3  — armor resists particle cannons
 ///   Torpedoes vs hull         : no DR — torpedoes crack hull effectively
 ///
 ///   While shields are up, hull takes zero damage regardless of weapon type.
@@ -39,7 +39,7 @@ using UnityEngine;
 ///
 /// ── Enemy attacks ────────────────────────────────────────────────────────
 ///
-///   Enemies randomly choose beam or torpedo each round.
+///   Enemies randomly choose particle cannon or torpedo each round.
 ///   The same DR rules apply symmetrically against the player.
 ///
 /// </summary>
@@ -49,15 +49,15 @@ public static class CombatResolver
 
     /// <summary>
     /// How much torpedo damage shields absorb. High by design — torpedoes are
-    /// the wrong tool against active shields; use beams to strip them first.
+    /// the wrong tool against active shields; use particle cannons to strip them first.
     /// </summary>
     public const int TorpedoVsShieldDR = 10;
 
     /// <summary>
-    /// How much beam damage hull armor absorbs. Low enough that beams still
+    /// How much particle cannon damage hull armor absorbs. Low enough that particle cannons still
     /// threaten hull, but torpedoes are clearly the better hull-cracker.
     /// </summary>
-    public const int BeamVsHullDR = 2;
+    public const int ParticleCannonVsHullDR = 2;
 
     /// <summary>DC for the engineer's end-of-turn repair check (d20 + Engineering).</summary>
     public const int RepairDC = 12;
@@ -78,7 +78,7 @@ public static class CombatResolver
         public bool IsHit;
         /// <summary>Damage before DR.</summary>
         public int  RawDamage;
-        /// <summary>DR applied to shields (0 for beams vs shields, TorpedoVsShieldDR for torpedoes vs shields).</summary>
+        /// <summary>DR applied to shields (0 for particle cannons vs shields, TorpedoVsShieldDR for torpedoes vs shields).</summary>
         public int  DR;
         /// <summary>Damage actually dealt to the primary target (shields or hull).</summary>
         public int  FinalDamage;
@@ -88,8 +88,8 @@ public static class CombatResolver
         public bool ShieldsBroken;
         /// <summary>Hull damage from overflow when shields were broken (after hull DR).</summary>
         public int  HullOverflow;
-        /// <summary>True = beam weapon; false = torpedo. Used by the view to pick the correct effect.</summary>
-        public bool IsBeamAttack;
+        /// <summary>True = particle cannons; false = torpedo. Used by the view to pick the correct effect.</summary>
+        public bool IsParticleCannonAttack;
         /// <summary>Human-readable description for a combat log.</summary>
         public string Description;
     }
@@ -114,19 +114,19 @@ public static class CombatResolver
     // ── Player fires ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Player fires beam weapons at the current target.
+    /// Player fires particle cannons at the current target.
     /// Returns a fully-populated AttackResult and modifies the target's HP in place.
     /// </summary>
-    public static AttackResult PlayerFireBeam(CombatState state, EnemyCombatState target)
+    public static AttackResult PlayerFireParticleCannon(CombatState state, EnemyCombatState target)
     {
-        if (state.PlayerBeamTier <= 0)
-            return NoWeapon("beam weapons");
+        if (state.PlayerParticleCannonTier <= 0)
+            return NoWeapon("particle cannons");
 
         var r = new AttackResult();
 
         // Attack roll
-        int skill       = GetPlayerWeaponSkill(state, isBeam: true);
-        int tierBonus   = TierBonus(state.PlayerBeamTier);
+        int skill       = GetPlayerWeaponSkill(state, isParticleCannon: true);
+        int tierBonus   = TierBonus(state.PlayerParticleCannonTier);
         r.AttackerRoll  = DiceRoller.D20();
         r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
 
@@ -136,27 +136,27 @@ public static class CombatResolver
         r.DefenderRoll     = 0;
         r.DefenderTotal    = 10 + pilotSkill + defenseBonus;
 
-        r.IsBeamAttack = true;
+        r.IsParticleCannonAttack = true;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;
 
         if (!r.IsHit)
         {
-            r.Description = $"Beam attack misses! ({r.AttackerTotal} vs {r.DefenderTotal})";
+            r.Description = $"Particle cannon misses! ({r.AttackerTotal} vs {r.DefenderTotal})";
             return r;
         }
 
-        r.RawDamage = DiceRoller.D6() + DiceRoller.D6() + TierBonus(state.PlayerBeamTier);
+        r.RawDamage = DiceRoller.D6() + DiceRoller.D6() + TierBonus(state.PlayerParticleCannonTier);
 
         if (target.ShieldsUp)
         {
-            // Beams are efficient against shields — no DR
+            // Particle cannons are efficient against shields — no DR
             r.DR        = 0;
             r.HitShields = true;
         }
         else
         {
-            // Hull armor resists beams
-            r.DR        = BeamVsHullDR;
+            // Hull armor resists particle cannons
+            r.DR        = ParticleCannonVsHullDR;
             r.HitShields = false;
         }
 
@@ -164,11 +164,11 @@ public static class CombatResolver
 
         bool hadShields = target.ShieldsUp;
         (_, r.HullOverflow) = ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields,
-                                                  hullDR: r.IsBeamAttack ? BeamVsHullDR : 0);
+                                                  hullDR: r.IsParticleCannonAttack ? ParticleCannonVsHullDR : 0);
         r.ShieldsBroken = hadShields && !target.ShieldsUp;
 
         string where = r.HitShields ? "shields" : "hull";
-        r.Description = BuildHitDescription("Beam", where, r);
+        r.Description = BuildHitDescription("Particle cannon", where, r);
         return r;
     }
 
@@ -184,7 +184,7 @@ public static class CombatResolver
 
         var r = new AttackResult();
 
-        int skill       = GetPlayerWeaponSkill(state, isBeam: false);
+        int skill       = GetPlayerWeaponSkill(state, isParticleCannon: false);
         int tierBonus   = TierBonus(state.PlayerTorpedoTier);
         r.AttackerRoll  = DiceRoller.D20();
         r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
@@ -195,7 +195,7 @@ public static class CombatResolver
         r.DefenderRoll   = 0;
         r.DefenderTotal  = 10 + pilotSkill + defenseBonus;
 
-        r.IsBeamAttack = false;
+        r.IsParticleCannonAttack = false;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;
 
         // Consume one torpedo regardless of hit or miss.
@@ -238,17 +238,17 @@ public static class CombatResolver
 
     /// <summary>
     /// Resolve a single enemy ship's attack against the player.
-    /// The enemy picks beam or torpedo randomly (50/50).
+    /// The enemy picks particle cannon or torpedo randomly (50/50).
     /// Modifies CombatState HP in place.
     /// </summary>
     public static AttackResult EnemyAttack(CombatState state, EnemyCombatState enemy)
     {
-        // Always use beams while player shields are up — beams strip shields with no DR,
+        // Always use particle cannons while player shields are up — particle cannons strip shields with no DR,
         // while torpedoes are strongly resisted (DR 10) making them wasteful.
         // Once shields are down, always use torpedoes to crack the hull.
-        bool useBeam = state.PlayerShieldsUp;
-        int  enemyTier   = useBeam ? enemy.Config.BeamTier : enemy.Config.TorpedoTier;
-        string weaponName = useBeam ? "beam" : "torpedo";
+        bool useParticleCannon = state.PlayerShieldsUp;
+        int  enemyTier   = useParticleCannon ? enemy.Config.ParticleCannonTier : enemy.Config.TorpedoTier;
+        string weaponName = useParticleCannon ? "particle cannon" : "torpedo";
 
         var r = new AttackResult();
 
@@ -262,7 +262,7 @@ public static class CombatResolver
         r.DefenderRoll   = 0;
         r.DefenderTotal  = 10 + pilotSkill + defenseBonus + state.ManeuverDefenseBonus;
 
-        r.IsBeamAttack = useBeam;
+        r.IsParticleCannonAttack = useParticleCannon;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;
 
         if (!r.IsHit)
@@ -272,10 +272,10 @@ public static class CombatResolver
         }
 
         // Damage
-        if (useBeam)
+        if (useParticleCannon)
         {
             r.RawDamage = DiceRoller.D6() + DiceRoller.D6() + TierBonus(enemyTier);
-            r.DR        = state.PlayerShieldsUp ? 0 : BeamVsHullDR;
+            r.DR        = state.PlayerShieldsUp ? 0 : ParticleCannonVsHullDR;
             r.HitShields = state.PlayerShieldsUp;
         }
         else
@@ -288,7 +288,7 @@ public static class CombatResolver
         r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
 
         bool playerHadShields = state.PlayerShieldsUp;
-        int  hullDR           = useBeam ? BeamVsHullDR : 0;
+        int  hullDR           = useParticleCannon ? ParticleCannonVsHullDR : 0;
         (_, r.HullOverflow) = ApplyDamageToPlayer(state, r.FinalDamage, r.HitShields, hullDR);
         r.ShieldsBroken = playerHadShields && !state.PlayerShieldsUp;
 
@@ -413,7 +413,7 @@ public static class CombatResolver
         return r;
     }
 
-    private static int GetPlayerWeaponSkill(CombatState state, bool isBeam)
+    private static int GetPlayerWeaponSkill(CombatState state, bool isParticleCannon)
     {
         if (state.Gunner != null)
             return state.Gunner.GetSkillRank(Constants.Skills.Gunnery);

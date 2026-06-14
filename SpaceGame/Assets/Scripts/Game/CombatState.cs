@@ -91,8 +91,8 @@ public class CombatState
     /// <summary>Added to defense roll when player shields are down.</summary>
     public int PlayerArmorDefenseRating  { get; set; }
 
-    /// <summary>Beam weapon tier (1 = Mk I … 6 = Mk VI). 0 = not installed.</summary>
-    public int PlayerBeamTier    { get; set; }
+    /// <summary>particle cannon tier (1 = Mk I … 6 = Mk VI). 0 = not installed.</summary>
+    public int PlayerParticleCannonTier    { get; set; }
     /// <summary>Torpedo tier (1–6). 0 = not installed.</summary>
     public int PlayerTorpedoTier { get; set; }
     /// <summary>
@@ -142,7 +142,7 @@ public class CombatState
         Character        gunner,
         Character        pilot,
         EnemyShipConfig[] enemies,
-        EquipmentItem    beamWeapon   = null,
+        EquipmentItem    particleCannon   = null,
         EquipmentItem    torpedoes    = null,
         EquipmentItem    shields      = null,
         EquipmentItem    armor        = null,
@@ -170,7 +170,7 @@ public class CombatState
             PlayerMaxHull        = maxHull,
             PlayerCurrentHull    = Mathf.Min(ship.HullPoints   + armorTierBonus,  maxHull),
 
-            PlayerBeamTier     = beamWeapon != null ? (int)beamWeapon.Tier : 0,
+            PlayerParticleCannonTier     = particleCannon != null ? (int)particleCannon.Tier : 0,
             PlayerTorpedoTier  = torpedoTier,
             PlayerTorpedoCount = torpedoCount,
 

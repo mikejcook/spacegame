@@ -91,7 +91,7 @@ public static class Constants
             public const string Engines      = "Engines";
             public const string Shields      = "Shields";
             public const string Armor        = "Armor";
-            public const string BeamWeapons  = "Beam Weapons";
+            public const string ParticleCannons  = "Particle Cannons";
             public const string Torpedoes    = "Torpedoes";
             public const string Scanner      = "Scanner";
             public const string CargoHold    = "Cargo Hold";
@@ -109,7 +109,7 @@ public static class Constants
                     [Engines]      = "Sublight propulsion system. Better engines improve combat maneuverability, evasion rating, and in-system transit speed.",
                     [Shields]      = "Energy-based defense layer that absorbs incoming damage before the hull is hit. Regenerates automatically between encounters.",
                     [Armor]        = "Reinforced hull plating that provides passive damage reduction on every hit and increases the ship's maximum hull points.",
-                    [BeamWeapons]  = "Directed-energy weapons that deal sustained damage. Highly effective against shields. Efficiency scales with reactor output.",
+                    [ParticleCannons]  = "Kinetic particle accelerators that deal sustained damage. Highly effective against shields. Efficiency scales with reactor output.",
                     [Torpedoes]    = "Guided projectile weapons with high burst damage. Effective against armored targets. Limited magazine requires resupply at stations.",
                     [Scanner]      = "Long-range sensor array for threat detection and resource mapping. Improves combat awareness and anomaly discovery range.",
                     [CargoHold]    = "Expanded storage modules for trade goods, salvage, and raw materials. Each upgrade tier increases maximum cargo capacity.",
@@ -128,7 +128,7 @@ public static class Constants
                     [Engines]      = "Engines",
                     [Shields]      = "Shields",
                     [Armor]        = "Armor",
-                    [BeamWeapons]  = "BeamWeapons",
+                    [ParticleCannons]  = "ParticleCannons",
                     [Torpedoes]    = "Torpedoes",
                     [Scanner]      = "Scanner",
                     [CargoHold]    = "CargoHold",
@@ -168,7 +168,7 @@ public static class Constants
             EquipmentSlots.Engines      => EquipmentType.Engine,
             EquipmentSlots.Shields      => EquipmentType.Shield,
             EquipmentSlots.Armor        => EquipmentType.Shield,
-            EquipmentSlots.BeamWeapons  => EquipmentType.Weapon,
+            EquipmentSlots.ParticleCannons  => EquipmentType.Weapon,
             EquipmentSlots.Torpedoes    => EquipmentType.Weapon,
             EquipmentSlots.Scanner      => EquipmentType.Sensor,
             EquipmentSlots.CargoHold    => EquipmentType.CargoExpansion,

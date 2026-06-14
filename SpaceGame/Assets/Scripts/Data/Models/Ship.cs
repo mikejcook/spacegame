@@ -137,7 +137,7 @@ public class Ship
             Name            = name,
             ShipClass       = ShipClass.Freighter,
             // HP tuned for the D20 combat system.
-            // Shields: beams do 2d6 (avg 7) with no DR → expect ~4 hits to strip shields.
+            // Shields: particle cannons do 2d6 (avg 7) with no DR → expect ~4 hits to strip shields.
             // Hull: torpedoes do 3d6 (avg 10.5) with no DR → expect ~5 hits after shields drop.
             MaxHullPoints   = 50,
             HullPoints      = 50,
@@ -157,7 +157,7 @@ public class Ship
             [Constants.Ship.EquipmentSlots.Engines]      = 0,
             [Constants.Ship.EquipmentSlots.Shields]      = 0,
             [Constants.Ship.EquipmentSlots.Armor]        = 0,
-            [Constants.Ship.EquipmentSlots.BeamWeapons]  = 0,
+            [Constants.Ship.EquipmentSlots.ParticleCannons]  = 0,
             [Constants.Ship.EquipmentSlots.Torpedoes]    = 0,
             [Constants.Ship.EquipmentSlots.Scanner]      = 0,
             [Constants.Ship.EquipmentSlots.CargoHold]    = 0,

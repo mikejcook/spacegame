@@ -13,8 +13,8 @@
 
     {
       "id": "weapons_1",
-      "displayName": "Beam Focus",
-      "description": "Improved targeting algorithms tighten beam coherence, increasing beam weapon damage by 10%.",
+      "displayName": "Particle Focus",
+      "description": "Improved targeting algorithms tighten coherence, increasing particle cannon damage by 10%.",
       "category": "Weapons",
       "cost": 2,
       "prerequisites": ["root"],
@@ -24,7 +24,7 @@
     {
       "id": "weapons_2",
       "displayName": "Overcharge Capacitors",
-      "description": "High-capacity power cells allow beam weapons to fire an overcharged burst once per combat.",
+      "description": "High-capacity power cells allow particle cannons to fire an overcharged burst once per combat.",
       "category": "Weapons",
       "cost": 4,
       "prerequisites": ["weapons_1"],

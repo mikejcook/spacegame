@@ -59,8 +59,8 @@ public class EnemyShipConfig
     /// <summary>Weapon operator's skill rank added to attack rolls. -1 = use class default.</summary>
     public int weaponSkill = -1;
 
-    /// <summary>Beam weapon tier (1–6). Adds (tier-1) to attack and damage. -1 = use class default.</summary>
-    public int beamTier    = -1;
+    /// <summary>Particle cannon tier (1–6). Adds (tier-1) to attack and damage. -1 = use class default.</summary>
+    public int particleCannonTier = -1;
     /// <summary>Torpedo tier (1–6). Adds (tier-1) to attack and damage. -1 = use class default.</summary>
     public int torpedoTier = -1;
 
@@ -75,13 +75,13 @@ public class EnemyShipConfig
     public int MaxHull             => maxHull             >= 0 ? maxHull             : ClassDefaults.hull;
     public int PilotSkill          => pilotSkill          >= 0 ? pilotSkill          : ClassDefaults.pilot;
     public int WeaponSkill         => weaponSkill         >= 0 ? weaponSkill         : ClassDefaults.weapon;
-    public int BeamTier            => beamTier            >= 0 ? beamTier            : ClassDefaults.beamTier;
+    public int ParticleCannonTier  => particleCannonTier  >= 0 ? particleCannonTier  : ClassDefaults.particleCannonTier;
     public int TorpedoTier         => torpedoTier         >= 0 ? torpedoTier         : ClassDefaults.torpedoTier;
     public int ShieldTier          => shieldTier          >= 0 ? shieldTier          : ClassDefaults.shieldTier;
     public int ArmorTier           => armorTier           >= 0 ? armorTier           : ClassDefaults.armorTier;
 
     // ── Class defaults ────────────────────────────────────────────────────────
-    // Tuning table: (maxShields, maxHull, pilotSkill, weaponSkill, beamTier, torpedoTier, shieldDR, armorDR)
+    // Tuning table: (maxShields, maxHull, pilotSkill, weaponSkill, particleCannonTier, torpedoTier, shieldDR, armorDR)
     //
     //   Fighter     — fast, fragile, aggressive pilot
     //   Corvette    — balanced starter-tier enemy
@@ -90,9 +90,9 @@ public class EnemyShipConfig
     //   Dreadnaught — boss-tier, built to survive
     //
     // Defense rolls: d20 + pilotSkill + shieldDR (shields up) or armorDR (shields down)
-    // Attack rolls:  d20 + weaponSkill + (beamTier - 1) or (torpedoTier - 1)
+    // Attack rolls:  d20 + weaponSkill + (particleCannonTier - 1) or (torpedoTier - 1)
 
-    private (int shields, int hull, int pilot, int weapon, int beamTier, int torpedoTier, int shieldTier, int armorTier)
+    private (int shields, int hull, int pilot, int weapon, int particleCannonTier, int torpedoTier, int shieldTier, int armorTier)
         ClassDefaults => shipClass switch
     {
         DGBShipClass.Fighter     => (10,  18, 1, 1, 0, 0, 0, 0),

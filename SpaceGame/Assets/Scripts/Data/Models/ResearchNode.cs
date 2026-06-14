@@ -8,7 +8,7 @@ using System.Collections.Generic;
 [Serializable]
 public class ResearchNode
 {
-    /// <summary>Unique identifier, e.g. "beam_weapons_1".</summary>
+    /// <summary>Unique identifier, e.g. "particle_cannons_1".</summary>
     public string id;
 
     /// <summary>Display name shown on the node.</summary>

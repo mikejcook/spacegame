@@ -1415,7 +1415,7 @@ public class SystemViewController : MonoBehaviour
                     return db?.Equipment.Get(id);
                 }
 
-                var beamItem    = GetSlotItem(Constants.Ship.EquipmentSlots.BeamWeapons);
+                var cannonItem    = GetSlotItem(Constants.Ship.EquipmentSlots.ParticleCannons);
                 var torpedoItem = GetSlotItem(Constants.Ship.EquipmentSlots.Torpedoes);
                 var shieldItem  = GetSlotItem(Constants.Ship.EquipmentSlots.Shields);
                 var armorItem   = GetSlotItem(Constants.Ship.EquipmentSlots.Armor);
@@ -1428,7 +1428,7 @@ public class SystemViewController : MonoBehaviour
                     gunner:     db?.GetCrewByRole(saveId, Constants.Crew.Roles.Gunner),
                     pilot:      db?.GetCrewByRole(saveId, Constants.Crew.Roles.Pilot),
                     enemies:    enemies,
-                    beamWeapon: beamItem,
+                    particleCannon: cannonItem,
                     torpedoes:  torpedoItem,
                     shields:    shieldItem,
                     armor:      armorItem,
@@ -1503,7 +1503,7 @@ public class SystemViewController : MonoBehaviour
             // Rebuild combat state with the new enemies so _combatState.Enemies
             // matches the new EnemyCombatState objects StartCombat puts in _slotToState.
             // Without this, GetSlotForEnemy's reference comparison fails and enemy
-            // attack effects (beams/torpedoes) never fire.
+            // attack effects (particle cannons/torpedoes) never fire.
             if (combatViewController != null)
             {
                 var gm = GameManager.Instance;
@@ -1525,7 +1525,7 @@ public class SystemViewController : MonoBehaviour
                         gunner:     db?.GetCrewByRole(saveId, Constants.Crew.Roles.Gunner),
                         pilot:      db?.GetCrewByRole(saveId, Constants.Crew.Roles.Pilot),
                         enemies:    enemies,
-                        beamWeapon: GetSlotItem(Constants.Ship.EquipmentSlots.BeamWeapons),
+                        particleCannon: GetSlotItem(Constants.Ship.EquipmentSlots.ParticleCannons),
                         torpedoes:  GetSlotItem(Constants.Ship.EquipmentSlots.Torpedoes),
                         shields:    GetSlotItem(Constants.Ship.EquipmentSlots.Shields),
                         armor:      GetSlotItem(Constants.Ship.EquipmentSlots.Armor),
