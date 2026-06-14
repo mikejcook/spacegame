@@ -1,148 +1,304 @@
 {
   "nodes": [
     {
-      "id": "root",
-      "displayName": "Research",
-      "description": "The foundation of all technological advancement.",
-      "category": "Core",
-      "cost": 0,
+      "id": "crew_1",
+      "displayName": "Training Program",
+      "description": "1 Additional Skill Point per Level (Retroactive)",
+      "category": "Crew",
+      "cost": 2,
       "prerequisites": [],
-      "posX": 0.5,
-      "posY": 0.5
-    },
-
-    {
-      "id": "weapons_1",
-      "displayName": "Particle Focus",
-      "description": "Improved targeting algorithms tighten coherence, increasing particle cannon damage by 10%.",
-      "category": "Weapons",
-      "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.25,
-      "posY": 0.72
+      "posX": 0.07,
+      "posY": 0.08
     },
     {
-      "id": "weapons_2",
-      "displayName": "Overcharge Capacitors",
-      "description": "High-capacity power cells allow particle cannons to fire an overcharged burst once per combat.",
-      "category": "Weapons",
+      "id": "crew_2",
+      "displayName": "Recreational Facilities",
+      "description": "Increased Loyalty earned per day when not on emergency power",
+      "category": "Crew",
       "cost": 4,
-      "prerequisites": ["weapons_1"],
-      "posX": 0.15,
-      "posY": 0.88
+      "prerequisites": ["crew_1"],
+      "posX": 0.07,
+      "posY": 0.28
     },
     {
-      "id": "torpedoes_1",
-      "displayName": "Warhead Chemistry",
-      "description": "Reformulated torpedo warheads increase explosive yield by 15%.",
-      "category": "Weapons",
+      "id": "crew_3",
+      "displayName": "Crew Quarters Improvement",
+      "description": "Increased Maximum Loyalty",
+      "category": "Crew",
+      "cost": 6,
+      "prerequisites": ["crew_2"],
+      "posX": 0.07,
+      "posY": 0.48
+    },
+    {
+      "id": "prop_1",
+      "displayName": "Plasma Exhaust Optimization",
+      "description": "Reduces Helium-3 cost of sub-light travel",
+      "category": "Propulsion",
       "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.35,
-      "posY": 0.72
+      "prerequisites": [],
+      "posX": 0.22,
+      "posY": 0.08
     },
     {
-      "id": "torpedoes_2",
-      "displayName": "Guided Payloads",
-      "description": "Miniaturised guidance fins improve torpedo accuracy against evasive targets.",
-      "category": "Weapons",
+      "id": "prop_2",
+      "displayName": "Slipstream Calibration",
+      "description": "Reduces Helium-3 cost of FTL jumps",
+      "category": "Propulsion",
       "cost": 4,
-      "prerequisites": ["torpedoes_1"],
-      "posX": 0.30,
-      "posY": 0.88
+      "prerequisites": ["prop_1"],
+      "posX": 0.22,
+      "posY": 0.28
     },
-
     {
-      "id": "engines_1",
-      "displayName": "Efficient Thrusters",
-      "description": "Refined combustion cycles cut sublight fuel consumption by 20%.",
-      "category": "Engines",
+      "id": "prop_3a",
+      "displayName": "Emergency Thrust Capacitors",
+      "description": "Allows pilot to engage emergency thrusters in combat (new combat ability)",
+      "category": "Propulsion",
+      "cost": 6,
+      "prerequisites": ["prop_2"],
+      "posX": 0.17,
+      "posY": 0.48
+    },
+    {
+      "id": "prop_3b",
+      "displayName": "Maneuvering Thruster Array",
+      "description": "Allows for performing more precise combat maneuvers (increases ship defense)",
+      "category": "Propulsion",
+      "cost": 6,
+      "prerequisites": ["prop_2"],
+      "posX": 0.27,
+      "posY": 0.48
+    },
+    {
+      "id": "prop_4",
+      "displayName": "Low-Emission Drive",
+      "description": "Reduces chance of being detected by enemy ships (reduces chance of random encounters)",
+      "category": "Propulsion",
+      "cost": 8,
+      "prerequisites": ["prop_3a", "prop_3b"],
+      "posX": 0.22,
+      "posY": 0.68
+    },
+    {
+      "id": "armor_1",
+      "displayName": "Reactive Plating",
+      "description": "Armor is more resistant to damage (damage reduction vs all weapons)",
+      "category": "Armor",
       "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.75,
-      "posY": 0.72
+      "prerequisites": [],
+      "posX": 0.40,
+      "posY": 0.08
     },
     {
-      "id": "engines_2",
-      "displayName": "Jump Capacitors",
-      "description": "Improved FTL capacitor banks reduce jump charge time by 25%.",
-      "category": "Engines",
+      "id": "armor_2",
+      "displayName": "Adaptive Composite",
+      "description": "Armor is more resistant to damage (increased damage reduction)",
+      "category": "Armor",
       "cost": 4,
-      "prerequisites": ["engines_1"],
-      "posX": 0.85,
+      "prerequisites": ["armor_1"],
+      "posX": 0.40,
+      "posY": 0.28
+    },
+    {
+      "id": "armor_3",
+      "displayName": "Ablative Plating",
+      "description": "Armor is more resistant to damage (increased damage reduction)",
+      "category": "Armor",
+      "cost": 6,
+      "prerequisites": ["armor_2"],
+      "posX": 0.40,
+      "posY": 0.48
+    },
+    {
+      "id": "armor_4",
+      "displayName": "Regenerative Hull Matrix",
+      "description": "Armor repairs itself automatically",
+      "category": "Armor",
+      "cost": 8,
+      "prerequisites": ["armor_3"],
+      "posX": 0.40,
+      "posY": 0.68
+    },
+    {
+      "id": "armor_5",
+      "displayName": "Null-Impact Shielding",
+      "description": "Armor has a chance to ignore all damage",
+      "category": "Armor",
+      "cost": 10,
+      "prerequisites": ["armor_4"],
+      "posX": 0.40,
       "posY": 0.88
     },
     {
       "id": "shields_1",
-      "displayName": "Shield Harmonics",
-      "description": "Resonance-tuned emitters improve shield regeneration rate by 15%.",
-      "category": "Engines",
+      "displayName": "Harmonic Shields",
+      "description": "Increases shield efficiency (increased defense against all weapons)",
+      "category": "Shields",
       "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.65,
-      "posY": 0.72
+      "prerequisites": [],
+      "posX": 0.54,
+      "posY": 0.08
     },
     {
       "id": "shields_2",
-      "displayName": "Adaptive Plating",
-      "description": "Smart armour plates redistribute incoming kinetic damage, reducing hull damage by 10%.",
-      "category": "Engines",
+      "displayName": "Adaptive Frequencies",
+      "description": "Increases shield efficiency (increased defense against all weapons)",
+      "category": "Shields",
       "cost": 4,
       "prerequisites": ["shields_1"],
-      "posX": 0.70,
+      "posX": 0.54,
+      "posY": 0.28
+    },
+    {
+      "id": "shields_3",
+      "displayName": "Tessellated Barrier",
+      "description": "Shields are more resistant to damage (damage reduction vs all weapons)",
+      "category": "Shields",
+      "cost": 6,
+      "prerequisites": ["shields_2"],
+      "posX": 0.54,
+      "posY": 0.48
+    },
+    {
+      "id": "shields_4",
+      "displayName": "Regenerative Field Emitters",
+      "description": "Shields recharge faster",
+      "category": "Shields",
+      "cost": 8,
+      "prerequisites": ["shields_3"],
+      "posX": 0.54,
+      "posY": 0.68
+    },
+    {
+      "id": "shields_5",
+      "displayName": "Phase-Inversion Shielding",
+      "description": "Shields have a chance to ignore all damage",
+      "category": "Shields",
+      "cost": 10,
+      "prerequisites": ["shields_4"],
+      "posX": 0.54,
       "posY": 0.88
     },
-
     {
-      "id": "crew_1",
-      "displayName": "Advanced Training",
-      "description": "Improved crew training protocols grant +1 to all skill checks during combat.",
-      "category": "Crew",
+      "id": "combat_1",
+      "displayName": "Predictive Targeting Algorithms",
+      "description": "Increases chance to hit with all weapons",
+      "category": "Combat",
       "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.25,
+      "prerequisites": [],
+      "posX": 0.70,
+      "posY": 0.08
+    },
+    {
+      "id": "combat_2a",
+      "displayName": "Coherence Amplifier",
+      "description": "Particle cannons better penetrate damage reduction",
+      "category": "Combat",
+      "cost": 4,
+      "prerequisites": ["combat_1"],
+      "posX": 0.66,
       "posY": 0.28
     },
     {
-      "id": "crew_2",
-      "displayName": "Combat Medic Protocol",
-      "description": "Crew members stabilise faster after taking injuries. Reduces recovery time between encounters.",
-      "category": "Crew",
+      "id": "combat_2b",
+      "displayName": "Shaped Charge Warheads",
+      "description": "Torpedoes better penetrate damage reduction",
+      "category": "Combat",
       "cost": 4,
-      "prerequisites": ["crew_1"],
-      "posX": 0.15,
-      "posY": 0.12
-    },
-    {
-      "id": "crew_3",
-      "displayName": "Command Network",
-      "description": "Shipwide comms improvements let the captain issue orders faster. +1 action point per combat round.",
-      "category": "Crew",
-      "cost": 4,
-      "prerequisites": ["crew_1"],
-      "posX": 0.35,
-      "posY": 0.12
-    },
-
-    {
-      "id": "scanner_1",
-      "displayName": "Deep Scan Array",
-      "description": "Long-range sensor upgrades reveal hidden POI details from greater distances.",
-      "category": "Scanner",
-      "cost": 2,
-      "prerequisites": ["root"],
-      "posX": 0.75,
+      "prerequisites": ["combat_1"],
+      "posX": 0.74,
       "posY": 0.28
     },
     {
-      "id": "scanner_2",
-      "displayName": "Anomaly Detection",
-      "description": "Passive subspace listeners flag anomalous readings automatically on the system map.",
-      "category": "Scanner",
+      "id": "combat_3a",
+      "displayName": "Shield Disruption Emitter",
+      "description": "Particle cannons have a chance to reduce enemy shield defense rating",
+      "category": "Combat",
+      "cost": 6,
+      "prerequisites": ["combat_2a"],
+      "posX": 0.66,
+      "posY": 0.48
+    },
+    {
+      "id": "combat_3b",
+      "displayName": "Warhead Miniaturization",
+      "description": "Smaller torpedo warheads allow for storing a larger quantity",
+      "category": "Combat",
+      "cost": 6,
+      "prerequisites": ["combat_2b"],
+      "posX": 0.74,
+      "posY": 0.48
+    },
+    {
+      "id": "combat_4",
+      "displayName": "Overcharge Capacitors",
+      "description": "Allows for temporarily increasing the power to particle cannons (new combat ability)",
+      "category": "Combat",
+      "cost": 8,
+      "prerequisites": ["combat_3a"],
+      "posX": 0.66,
+      "posY": 0.68
+    },
+    {
+      "id": "combat_5",
+      "displayName": "Split-Fire Targeting",
+      "description": "Particle cannons fire at one additional target",
+      "category": "Combat",
+      "cost": 10,
+      "prerequisites": ["combat_4"],
+      "posX": 0.66,
+      "posY": 0.88
+    },
+    {
+      "id": "upgrades_1",
+      "displayName": "Mark II Equipment",
+      "description": "Unlocks Mark II tier ship equipment, allowing installation of more advanced components across all ship systems.",
+      "category": "Starship Upgrades",
+      "cost": 2,
+      "prerequisites": [],
+      "posX": 0.90,
+      "posY": 0.08
+    },
+    {
+      "id": "upgrades_2",
+      "displayName": "Mark III Equipment",
+      "description": "Unlocks Mark III tier ship equipment, providing a significant boost to component performance.",
+      "category": "Starship Upgrades",
       "cost": 4,
-      "prerequisites": ["scanner_1"],
-      "posX": 0.85,
-      "posY": 0.12
+      "prerequisites": ["upgrades_1"],
+      "posX": 0.90,
+      "posY": 0.28
+    },
+    {
+      "id": "upgrades_3",
+      "displayName": "Mark IV Equipment",
+      "description": "Unlocks Mark IV tier ship equipment for elite-grade component upgrades.",
+      "category": "Starship Upgrades",
+      "cost": 6,
+      "prerequisites": ["upgrades_2"],
+      "posX": 0.90,
+      "posY": 0.48
+    },
+    {
+      "id": "upgrades_4",
+      "displayName": "Mark V Equipment",
+      "description": "Unlocks Mark V tier ship equipment, representing near-peak technological capability.",
+      "category": "Starship Upgrades",
+      "cost": 8,
+      "prerequisites": ["upgrades_3"],
+      "posX": 0.90,
+      "posY": 0.68
+    },
+    {
+      "id": "upgrades_5",
+      "displayName": "Mark VI Equipment",
+      "description": "Unlocks Mark VI tier ship equipment -- the pinnacle of known engineering.",
+      "category": "Starship Upgrades",
+      "cost": 10,
+      "prerequisites": ["upgrades_4"],
+      "posX": 0.90,
+      "posY": 0.88
     }
   ]
 }

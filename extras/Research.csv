@@ -1,0 +1,31 @@
+Node,Tier,Skill Name,Effect,Requires
+Crew,1,Training Program,1 Additional Skill Point per Level (Retroactive),
+Crew,2,Recreational Facilities,Increased Loyalty earned per day when not on emergency power,Training Program
+Crew,3,Crew Quarters Improvement,Increased Maximum Loyalty,Recreational Facilities
+Propulsion,1,Plasma Exhaust Optimization,Reduces Helium-3 cost of sub-light travel,
+Propulsion,2,Slipstream Calibration,Reduces Helium-3 cost of FTL jumps,Sub-Light Efficiency
+Propulsion,3,Emergency Thrust Capacitors,Allows pilot to engage emergency thrusters in combat (new combat ability),Slipstream Calibration
+Propulsion,3,Maneuvering Thruster Array,Allows for performing more precise combat maneuvers (increases ship defense),Slipstream Calibration
+Propulsion,4,Low-emission drive,Reduces chance of being detected by enemy ships (reduces chance of random encounters),Emergency Thrust Capacitors and Maneuvering Thruster Array
+Armor,1,Reactive Plating,Armor is more resistant to damage (damage reduction vs all weapons),
+Armor,2,Adaptive Composite,Armor is more resistant to damage (increased damage reduction),Reactive Plating
+Armor,3,Ablative Plating,Armor is more resistant to damage (increased damage reduction),Adaptive Composite
+Armor,4,Regenerative Hull Matrix,Armor repairs itself automatically,Ablative Plating
+Armor,5,Null-Impact Shielding,Armor has a chance to ignore all damage,Regenerative Hull Matrix
+Shields,1,Harmonic Shields,Increases shield efficiency (increased defense against all weapons),
+Shields,2,Adaptive Frequencies,Increases shield efficiency (increased defense against all weapons),Harmonic Shields
+Shields,3,Tessellated Barrier,Shields are more resistant to damage (damage reduction vs all weapons),Adaptive Frequencies
+Shields,4,Regenerative Field Emitters,Shields recharge faster,Tessellated Barrier
+Shields,5,Phase-Inversion Shielding,Shields have a chance to ignore all damage,Regenerative Field Emitters
+Combat,1,Predictive Targeting Algorithms,Increases chance to hit with all weapons,
+Combat,2,Coherence Amplifier,Particle cannons better penetrate damage reduction,Predictive Targeting Algorithms
+Combat,2,Shaped Charge Warheads,Torpedoes better penetrate damage reduction,Predictive Targeting Algorithms
+Combat,3,Warhead Miniaturization,Smaller torpedo warheads allow for storing a larger quantity,Shaped Charge Warheads
+Combat,3,Shield Disruption Emitter,Particle cannons have a chance to reduce enemy shield defense rating,Coherence Amplifier
+Combat,4,Overcharge Capacitors,Allows for temporarily increasing the power to particle cannons (new combat ability),Shield Disruption Emitter
+Combat,5,Split-Fire Targeting,Particle cannons fire at one additional target,Overcharge Capacitors
+Starship Upgrades,1,Mark II Equipment,,
+Starship Upgrades,2,Mark III Equipment,Mark II Equipment,
+Starship Upgrades,3,Mark IV Equipment,Mark III Equipment,
+Starship Upgrades,4,Mark V Equipment,Mark IV Equipment,
+Starship Upgrades,5,Mark VI Equipment,Mark V Equipment,

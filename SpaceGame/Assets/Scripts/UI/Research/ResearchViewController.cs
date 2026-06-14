@@ -65,8 +65,6 @@ public class ResearchViewController : MonoBehaviour
 
     private void Start()
     {
-        _unlockedIds.Add("root");
-
         unlockButton?.onClick.AddListener(OnUnlockClicked);
         closeDetailButton?.onClick.AddListener(HideDetail);
 
@@ -305,7 +303,6 @@ public class ResearchViewController : MonoBehaviour
     public void LoadState(HashSet<string> unlockedIds)
     {
         _unlockedIds = unlockedIds ?? new HashSet<string>();
-        _unlockedIds.Add("root");
         if (_collection != null) RefreshAllNodeVisuals();
     }
 
