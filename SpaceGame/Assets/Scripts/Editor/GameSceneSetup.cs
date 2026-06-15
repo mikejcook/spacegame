@@ -1914,10 +1914,26 @@ public static class GameSceneSetup
         var nodeLayer = MakeUIGO("NodeLayer", content.transform);
         Stretch(nodeLayer);
 
-        // ── Detail panel (right-side card, hidden until a node is tapped) ─────
-        var detailPanel = MakeImage(researchView.transform, "DetailPanel",
+        // ── Detail overlay root — CanvasGroup controls scrim + card together ──
+        // Full-screen so the scrim fills the view; the card is a centred child.
+        var detailRoot = MakeUIGO("DetailRoot", researchView.transform);
+        Stretch(detailRoot);
+
+        // Scrim — dims the tree behind the popup
+        var detailScrim = MakeImage(detailRoot.transform, "DetailScrim",
+                                    new Color(0f, 0f, 0f, 0.55f));
+        Stretch(detailScrim);
+
+        // Centred card
+        var detailPanel = MakeImage(detailRoot.transform, "DetailPanel",
                                     new Color(0.06f, 0.09f, 0.14f, 0.97f));
-        PlaceRect(detailPanel, anchor(1f, 0f), anchor(1f, 1f), v2(-360f, 80f), v2(340f, -80f));
+        {
+            var rt       = detailPanel.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(720f, 500f);
+        }
 
         var topAccent = MakeImage(detailPanel.transform, "TopAccent", AccentCyan);
         PlaceRect(topAccent, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
@@ -1965,12 +1981,13 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
+        // UNLOCK — anchored bottom-left
         {
-            var rt              = unlockGO.GetComponent<RectTransform>();
-            rt.pivot            = new Vector2(0.5f, 0f);
-            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 70f);
-            rt.sizeDelta        = new Vector2(220f, 52f);
+            var rt       = unlockGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.anchoredPosition = new Vector2(16f, 16f);
+            rt.sizeDelta = new Vector2(220f, 52f);
         }
 
         // Close detail button
@@ -1990,16 +2007,17 @@ public static class GameSceneSetup
             Stretch(lbl);
             lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
         }
+        // CLOSE — anchored bottom-right
         {
-            var rt              = closeDetailGO.GetComponent<RectTransform>();
-            rt.pivot            = new Vector2(0.5f, 0f);
-            rt.anchorMin        = rt.anchorMax = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 10f);
-            rt.sizeDelta        = new Vector2(180f, 52f);
+            var rt       = closeDetailGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(1f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.anchoredPosition = new Vector2(-16f, 16f);
+            rt.sizeDelta = new Vector2(180f, 52f);
         }
 
-        // Detail panel CanvasGroup
-        var detailCG = detailPanel.AddComponent<CanvasGroup>();
+        // CanvasGroup on the root — show/hide controls both scrim and card
+        var detailCG = detailRoot.AddComponent<CanvasGroup>();
         detailCG.alpha          = 0f;
         detailCG.blocksRaycasts = false;
         detailCG.interactable   = false;
@@ -3385,16 +3403,16 @@ public static class GameSceneSetup
                 Set(rvcSo, "connectionLayer",  researchView.transform.Find("TreeScrollRect/Viewport/TreeContent/ConnectionLayer")?.gameObject);
                 Set(rvcSo, "nodeLayer",        researchView.transform.Find("TreeScrollRect/Viewport/TreeContent/NodeLayer")?.gameObject);
 
-                var detailPanel = researchView.transform.Find("DetailPanel");
-                if (detailPanel != null)
+                var detailRoot = researchView.transform.Find("DetailRoot");
+                if (detailRoot != null)
                 {
-                    Set(rvcSo, "detailPanelGroup",   detailPanel.GetComponent<CanvasGroup>());
-                    Set(rvcSo, "detailNameText",     Find<TMP_Text>(detailPanel.gameObject, "DetailNameText"));
-                    Set(rvcSo, "detailCategoryText", Find<TMP_Text>(detailPanel.gameObject, "DetailCategoryText"));
-                    Set(rvcSo, "detailDescText",     Find<TMP_Text>(detailPanel.gameObject, "DetailDescText"));
-                    Set(rvcSo, "detailCostText",     Find<TMP_Text>(detailPanel.gameObject, "DetailCostText"));
-                    Set(rvcSo, "unlockButton",       detailPanel.Find("UnlockButton")?.GetComponentInChildren<Button>(true));
-                    Set(rvcSo, "closeDetailButton",  detailPanel.Find("CloseDetailButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "detailPanelGroup",   detailRoot.GetComponent<CanvasGroup>());
+                    Set(rvcSo, "detailNameText",     Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailNameText"));
+                    Set(rvcSo, "detailCategoryText", Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailCategoryText"));
+                    Set(rvcSo, "detailDescText",     Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailDescText"));
+                    Set(rvcSo, "detailCostText",     Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailCostText"));
+                    Set(rvcSo, "unlockButton",       detailRoot.Find("DetailPanel/UnlockButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "closeDetailButton",  detailRoot.Find("DetailPanel/CloseDetailButton")?.GetComponentInChildren<Button>(true));
                 }
                 else Debug.LogWarning("[GameSceneSetup] DetailPanel not found under ResearchView.");
 

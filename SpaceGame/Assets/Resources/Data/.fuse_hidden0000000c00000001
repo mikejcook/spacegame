@@ -9,7 +9,7 @@
       "prerequisites": [],
       "posX": 0.07,
       "posY": 0.08,
-      "iconPath": "UI/ResearchIcons/CrewQuarters"
+      "iconPath": "UI/EquipmentIcons/CrewQuarters"
     },
     {
       "id": "crew_2",
@@ -20,7 +20,7 @@
       "prerequisites": ["crew_1"],
       "posX": 0.07,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/CrewQuarters"
+      "iconPath": "UI/EquipmentIcons/CrewQuarters"
     },
     {
       "id": "crew_3",
@@ -31,7 +31,7 @@
       "prerequisites": ["crew_2"],
       "posX": 0.07,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/CrewQuarters"
+      "iconPath": "UI/EquipmentIcons/CrewQuarters"
     },
     {
       "id": "prop_1",
@@ -42,7 +42,7 @@
       "prerequisites": [],
       "posX": 0.22,
       "posY": 0.08,
-      "iconPath": "UI/ResearchIcons/Engines"
+      "iconPath": "UI/EquipmentIcons/Engines"
     },
     {
       "id": "prop_2",
@@ -53,7 +53,7 @@
       "prerequisites": ["prop_1"],
       "posX": 0.22,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/FtlDrive"
+      "iconPath": "UI/EquipmentIcons/FtlDrive"
     },
     {
       "id": "prop_3a",
@@ -64,7 +64,7 @@
       "prerequisites": ["prop_2"],
       "posX": 0.17,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/Engines"
+      "iconPath": "UI/EquipmentIcons/Engines"
     },
     {
       "id": "prop_3b",
@@ -75,7 +75,7 @@
       "prerequisites": ["prop_2"],
       "posX": 0.27,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/Engines"
+      "iconPath": "UI/EquipmentIcons/Engines"
     },
     {
       "id": "prop_4",
@@ -86,7 +86,7 @@
       "prerequisites": ["prop_3a", "prop_3b"],
       "posX": 0.22,
       "posY": 0.68,
-      "iconPath": "UI/ResearchIcons/Engines"
+      "iconPath": "UI/EquipmentIcons/Engines"
     },
     {
       "id": "armor_1",
@@ -97,7 +97,7 @@
       "prerequisites": [],
       "posX": 0.40,
       "posY": 0.08,
-      "iconPath": "UI/ResearchIcons/Armor"
+      "iconPath": "UI/EquipmentIcons/Armor"
     },
     {
       "id": "armor_2",
@@ -108,7 +108,7 @@
       "prerequisites": ["armor_1"],
       "posX": 0.40,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/Armor"
+      "iconPath": "UI/EquipmentIcons/Armor"
     },
     {
       "id": "armor_3",
@@ -119,7 +119,7 @@
       "prerequisites": ["armor_2"],
       "posX": 0.40,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/Armor"
+      "iconPath": "UI/EquipmentIcons/Armor"
     },
     {
       "id": "armor_4",
@@ -130,7 +130,7 @@
       "prerequisites": ["armor_3"],
       "posX": 0.40,
       "posY": 0.68,
-      "iconPath": "UI/ResearchIcons/Armor"
+      "iconPath": "UI/EquipmentIcons/Armor"
     },
     {
       "id": "armor_5",
@@ -141,7 +141,7 @@
       "prerequisites": ["armor_4"],
       "posX": 0.40,
       "posY": 0.88,
-      "iconPath": "UI/ResearchIcons/Armor"
+      "iconPath": "UI/EquipmentIcons/Armor"
     },
     {
       "id": "shields_1",
@@ -152,7 +152,7 @@
       "prerequisites": [],
       "posX": 0.54,
       "posY": 0.08,
-      "iconPath": "UI/ResearchIcons/Shields"
+      "iconPath": "UI/EquipmentIcons/Shields"
     },
     {
       "id": "shields_2",
@@ -163,7 +163,7 @@
       "prerequisites": ["shields_1"],
       "posX": 0.54,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/Shields"
+      "iconPath": "UI/EquipmentIcons/Shields"
     },
     {
       "id": "shields_3",
@@ -174,7 +174,7 @@
       "prerequisites": ["shields_2"],
       "posX": 0.54,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/Shields"
+      "iconPath": "UI/EquipmentIcons/Shields"
     },
     {
       "id": "shields_4",
@@ -185,7 +185,7 @@
       "prerequisites": ["shields_3"],
       "posX": 0.54,
       "posY": 0.68,
-      "iconPath": "UI/ResearchIcons/Shields"
+      "iconPath": "UI/EquipmentIcons/Shields"
     },
     {
       "id": "shields_5",
@@ -196,7 +196,7 @@
       "prerequisites": ["shields_4"],
       "posX": 0.54,
       "posY": 0.88,
-      "iconPath": "UI/ResearchIcons/Shields"
+      "iconPath": "UI/EquipmentIcons/Shields"
     },
     {
       "id": "combat_1",
@@ -207,7 +207,7 @@
       "prerequisites": [],
       "posX": 0.70,
       "posY": 0.08,
-      "iconPath": "UI/ResearchIcons/BeamWeapons"
+      "iconPath": "UI/EquipmentIcons/BeamWeapons"
     },
     {
       "id": "combat_2a",
@@ -218,7 +218,7 @@
       "prerequisites": ["combat_1"],
       "posX": 0.66,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/BeamWeapons"
+      "iconPath": "UI/EquipmentIcons/BeamWeapons"
     },
     {
       "id": "combat_2b",
@@ -229,7 +229,7 @@
       "prerequisites": ["combat_1"],
       "posX": 0.74,
       "posY": 0.28,
-      "iconPath": "UI/ResearchIcons/Torpedoes"
+      "iconPath": "UI/EquipmentIcons/Torpedoes"
     },
     {
       "id": "combat_3a",
@@ -240,7 +240,7 @@
       "prerequisites": ["combat_2a"],
       "posX": 0.66,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/BeamWeapons"
+      "iconPath": "UI/EquipmentIcons/BeamWeapons"
     },
     {
       "id": "combat_3b",
@@ -251,7 +251,7 @@
       "prerequisites": ["combat_2b"],
       "posX": 0.74,
       "posY": 0.48,
-      "iconPath": "UI/ResearchIcons/Torpedoes"
+      "iconPath": "UI/EquipmentIcons/Torpedoes"
     },
     {
       "id": "combat_4",
@@ -262,7 +262,7 @@
       "prerequisites": ["combat_3a"],
       "posX": 0.66,
       "posY": 0.68,
-      "iconPath": "UI/ResearchIcons/BeamWeapons"
+      "iconPath": "UI/EquipmentIcons/BeamWeapons"
     },
     {
       "id": "combat_5",
@@ -273,7 +273,7 @@
       "prerequisites": ["combat_4"],
       "posX": 0.66,
       "posY": 0.88,
-      "iconPath": "UI/ResearchIcons/BeamWeapons"
+      "iconPath": "UI/EquipmentIcons/BeamWeapons"
     },
     {
       "id": "upgrades_1",

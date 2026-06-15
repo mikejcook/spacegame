@@ -32,6 +32,12 @@ public class ResearchNode
     /// </summary>
     public float posX;
     public float posY;
+
+    /// <summary>
+    /// Resources-relative path to the icon sprite (no extension).
+    /// e.g. "UI/EquipmentIcons/Armor". Leave empty for no icon.
+    /// </summary>
+    public string iconPath;
 }
 
 /// <summary>

@@ -20,6 +20,12 @@ using TMPro;
 ///       Rule / DetailDescText / DetailCostText
 ///       UnlockButton / CloseDetailButton
 ///
+/// Node visual style matches the ShipView equipment slots:
+///   NodeRoot  dark bg + Button
+///     TierBorder  fills root — grey (unlearned) or white (researched)
+///       SlotInner  dark bg, inset 3 px — makes the border ring visible
+///         Icon  stretch-fills SlotInner, preserveAspect=true
+///
 /// Costs are paid in Salvage (GameManager.CurrentSave.Salvage).
 /// </summary>
 public class ResearchViewController : MonoBehaviour
@@ -42,23 +48,27 @@ public class ResearchViewController : MonoBehaviour
     [SerializeField] private Button        closeDetailButton;
 
     // ── Node visual settings ──────────────────────────────────────────────────
-    [SerializeField] private float nodeSize          = 120f;
-    [SerializeField] private Color unlockedColor     = new Color(0.30f, 0.85f, 1.00f, 1.00f);
-    [SerializeField] private Color availableColor    = new Color(0.20f, 0.55f, 0.80f, 1.00f);
-    [SerializeField] private Color lockedColor       = new Color(0.18f, 0.22f, 0.30f, 1.00f);
+    [SerializeField] private float nodeSize          = 140f;
     [SerializeField] private Color lineColorUnlocked = new Color(0.30f, 0.85f, 1.00f, 0.70f);
     [SerializeField] private Color lineColorLocked   = new Color(0.20f, 0.30f, 0.45f, 0.50f);
     [SerializeField] private float lineWidth         = 3f;
 
-    // ── Runtime state ──────────────────────────────────────────────────────────
+    // ── Node colours — matching ShipView equipment slot palette ──────────────
+    static readonly Color NodeBgColor      = new Color(0.06f, 0.10f, 0.18f, 0.90f);
+    static readonly Color NodeBgColorSolid = new Color(0.06f, 0.10f, 0.18f, 1.00f);
+    static readonly Color BorderUnlearned  = new Color(0.45f, 0.45f, 0.45f, 1.00f); // grey
+    static readonly Color BorderResearched = Color.white;
+
+    // ── Runtime state ─────────────────────────────────────────────────────────
     private ResearchCollection  _collection;
     private HashSet<string>     _unlockedIds = new HashSet<string>();
     private ResearchNode        _selectedNode;
-    private Dictionary<string, RectTransform> _nodeRTs = new Dictionary<string, RectTransform>();
+    private Dictionary<string, RectTransform> _nodeRTs     = new Dictionary<string, RectTransform>();
+    private Dictionary<string, Image>         _nodeBorders = new Dictionary<string, Image>();
+    private Dictionary<string, Image>         _nodeIcons   = new Dictionary<string, Image>();
 
-    // ── Colours ───────────────────────────────────────────────────────────────
+    // ── Text colours ─────────────────────────────────────────────────────────
     static readonly Color TextWhite  = new Color(0.92f, 0.95f, 1.00f, 1.00f);
-    static readonly Color TextSubtle = new Color(0.60f, 0.72f, 0.85f, 1.00f);
     static readonly Color TextAmber  = new Color(1.00f, 0.78f, 0.20f, 1.00f);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -91,13 +101,16 @@ public class ResearchViewController : MonoBehaviour
     {
         if (treeContent == null || _collection?.nodes == null) return;
 
-        foreach (Transform child in nodeLayer.transform)      Object.Destroy(child.gameObject);
+        foreach (Transform child in nodeLayer.transform)       Object.Destroy(child.gameObject);
         foreach (Transform child in connectionLayer.transform) Object.Destroy(child.gameObject);
         _nodeRTs.Clear();
+        _nodeBorders.Clear();
+        _nodeIcons.Clear();
 
         // ── Spawn node widgets ──────────────────────────────────────────────
         foreach (var node in _collection.nodes)
         {
+            // ── Root ───────────────────────────────────────────────────────
             var go = new GameObject(node.id, typeof(RectTransform));
             go.transform.SetParent(nodeLayer.transform, false);
 
@@ -108,34 +121,79 @@ public class ResearchViewController : MonoBehaviour
             rt.anchoredPosition = new Vector2(node.posX * TreeCanvasW, node.posY * TreeCanvasH);
 
             var bg   = go.AddComponent<Image>();
-            bg.color = lockedColor;
+            bg.color = NodeBgColor;
 
-            // Label below node
-            var labelGO = new GameObject("Label", typeof(RectTransform));
-            labelGO.transform.SetParent(go.transform, false);
-            var labelRT  = labelGO.GetComponent<RectTransform>();
-            labelRT.anchorMin        = new Vector2(0f, 0f);
-            labelRT.anchorMax        = new Vector2(1f, 0f);
-            labelRT.pivot            = new Vector2(0.5f, 1f);
-            labelRT.anchoredPosition = new Vector2(0f, -4f);
-            labelRT.sizeDelta        = new Vector2(180f, 42f);
-            var labelTMP             = labelGO.AddComponent<TextMeshProUGUI>();
-            labelTMP.text            = node.displayName;
-            labelTMP.fontSize        = 21f;
-            labelTMP.color           = TextWhite;
-            labelTMP.alignment       = TextAlignmentOptions.Center;
-            labelTMP.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            var btn = go.AddComponent<Button>();
+            var btnColors = btn.colors;
+            btnColors.normalColor      = Color.white;
+            btnColors.highlightedColor = new Color(0.55f, 0.90f, 1.00f, 1f);
+            btnColors.pressedColor     = new Color(0.30f, 0.55f, 0.70f, 1f);
+            btn.colors        = btnColors;
+            btn.targetGraphic = bg;
 
-            // Cost badge (top-right)
+            // ── TierBorder — fills root; its color IS the visible border ring ──
+            var borderGO  = new GameObject("TierBorder", typeof(RectTransform));
+            borderGO.transform.SetParent(go.transform, false);
+            var borderImg = borderGO.AddComponent<Image>();
+            borderImg.color         = BorderUnlearned;
+            borderImg.raycastTarget = false;
+            var borderRT  = borderGO.GetComponent<RectTransform>();
+            borderRT.anchorMin = Vector2.zero;
+            borderRT.anchorMax = Vector2.one;
+            borderRT.offsetMin = borderRT.offsetMax = Vector2.zero;
+            _nodeBorders[node.id] = borderImg;
+
+            // ── SlotInner — dark bg, inset 3 px — creates the border gap ───
+            var innerGO  = new GameObject("SlotInner", typeof(RectTransform));
+            innerGO.transform.SetParent(borderGO.transform, false);
+            var innerImg = innerGO.AddComponent<Image>();
+            innerImg.color         = NodeBgColorSolid;
+            innerImg.raycastTarget = false;
+            var innerRT  = innerGO.GetComponent<RectTransform>();
+            innerRT.anchorMin = Vector2.zero;
+            innerRT.anchorMax = Vector2.one;
+            innerRT.offsetMin = new Vector2( 3f,  3f);
+            innerRT.offsetMax = new Vector2(-3f, -3f);
+
+            // ── Icon — stretch-fills SlotInner ─────────────────────────────
+            // Load as Texture2D and create a sprite manually so the full
+            // texture is used regardless of the asset's sprite import mode.
+            // (Copying PNGs into Resources via the filesystem can leave them
+            // in Multiple mode, causing Resources.Load<Sprite> to return only
+            // a sub-sprite slice instead of the whole icon.)
+            if (!string.IsNullOrEmpty(node.iconPath))
+            {
+                var tex = Resources.Load<Texture2D>(node.iconPath);
+                if (tex != null)
+                {
+                    var sprite  = Sprite.Create(tex,
+                                      new Rect(0, 0, tex.width, tex.height),
+                                      new Vector2(0.5f, 0.5f), 100f);
+                    var iconGO  = new GameObject("Icon", typeof(RectTransform));
+                    iconGO.transform.SetParent(innerGO.transform, false);
+                    var iconImg = iconGO.AddComponent<Image>();
+                    iconImg.sprite          = sprite;
+                    iconImg.preserveAspect  = true;
+                    iconImg.raycastTarget   = false;
+                    iconImg.color           = new Color(1f, 1f, 1f, 0.25f); // start dim; refreshed below
+                    var iconRT  = iconGO.GetComponent<RectTransform>();
+                    iconRT.anchorMin = Vector2.zero;
+                    iconRT.anchorMax = Vector2.one;
+                    iconRT.offsetMin = iconRT.offsetMax = Vector2.zero;
+                    _nodeIcons[node.id] = iconImg;
+                }
+            }
+
+            // ── Cost badge (top-right corner, above TierBorder in draw order) ──
             if (node.cost > 0)
             {
                 var costGO  = new GameObject("Cost", typeof(RectTransform));
                 costGO.transform.SetParent(go.transform, false);
                 var costRT  = costGO.GetComponent<RectTransform>();
-                costRT.anchorMin = costRT.anchorMax = new Vector2(1f, 1f);
-                costRT.pivot     = new Vector2(0.5f, 0.5f);
+                costRT.anchorMin        = costRT.anchorMax = new Vector2(1f, 1f);
+                costRT.pivot            = new Vector2(0.5f, 0.5f);
                 costRT.anchoredPosition = Vector2.zero;
-                costRT.sizeDelta = new Vector2(48f, 28f);
+                costRT.sizeDelta        = new Vector2(48f, 28f);
                 var costTMP  = costGO.AddComponent<TextMeshProUGUI>();
                 costTMP.text      = node.cost.ToString();
                 costTMP.fontSize  = 18f;
@@ -143,9 +201,23 @@ public class ResearchViewController : MonoBehaviour
                 costTMP.alignment = TextAlignmentOptions.Center;
             }
 
-            // Click handler
-            var btn = go.AddComponent<Button>();
-            btn.targetGraphic = bg;
+            // ── Label below node ───────────────────────────────────────────
+            var labelGO = new GameObject("Label", typeof(RectTransform));
+            labelGO.transform.SetParent(go.transform, false);
+            var labelRT  = labelGO.GetComponent<RectTransform>();
+            labelRT.anchorMin        = new Vector2(0f, 0f);
+            labelRT.anchorMax        = new Vector2(1f, 0f);
+            labelRT.pivot            = new Vector2(0.5f, 1f);
+            labelRT.anchoredPosition = new Vector2(0f, -4f);
+            labelRT.sizeDelta        = new Vector2(200f, 48f);
+            var labelTMP             = labelGO.AddComponent<TextMeshProUGUI>();
+            labelTMP.text             = node.displayName;
+            labelTMP.fontSize         = 21f;
+            labelTMP.color            = TextWhite;
+            labelTMP.alignment        = TextAlignmentOptions.Center;
+            labelTMP.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+            // ── Click handler ──────────────────────────────────────────────
             string capturedId = node.id;
             btn.onClick.AddListener(() => OnNodeClicked(capturedId));
 
@@ -164,9 +236,7 @@ public class ResearchViewController : MonoBehaviour
                 var lineGO = new GameObject($"Line_{prereqId}_{node.id}", typeof(RectTransform));
                 lineGO.transform.SetParent(connectionLayer.transform, false);
 
-                var lineRT       = lineGO.GetComponent<RectTransform>();
-                // pivot (0,0) places local (0,0) at the bottom-left of ConnectionLayer,
-                // matching the anchor (0,0) origin used by node anchoredPositions.
+                var lineRT   = lineGO.GetComponent<RectTransform>();
                 lineRT.pivot     = Vector2.zero;
                 lineRT.anchorMin = Vector2.zero;
                 lineRT.anchorMax = Vector2.one;
@@ -193,16 +263,22 @@ public class ResearchViewController : MonoBehaviour
         if (_collection?.nodes == null) return;
         foreach (var node in _collection.nodes)
         {
-            if (!_nodeRTs.TryGetValue(node.id, out var rt)) continue;
-            var img = rt.GetComponent<Image>();
-            if (img == null) continue;
+            if (!_nodeRTs.ContainsKey(node.id)) continue;
 
-            if (_unlockedIds.Contains(node.id))
-                img.color = unlockedColor;
-            else if (IsAvailable(node))
-                img.color = availableColor;
-            else
-                img.color = lockedColor;
+            bool unlocked  = _unlockedIds.Contains(node.id);
+            bool available = IsAvailable(node);
+
+            // Border: white = researched, grey = everything else
+            if (_nodeBorders.TryGetValue(node.id, out var borderImg))
+                borderImg.color = unlocked ? BorderResearched : BorderUnlearned;
+
+            // Icon alpha: bright when unlocked, medium when available, dim when locked
+            if (_nodeIcons.TryGetValue(node.id, out var iconImg))
+            {
+                iconImg.color = unlocked  ? new Color(1f, 1f, 1f, 0.90f)
+                              : available ? new Color(1f, 1f, 1f, 0.60f)
+                                          : new Color(1f, 1f, 1f, 0.25f);
+            }
         }
 
         foreach (var lr in connectionLayer.GetComponentsInChildren<UILineRenderer>())
