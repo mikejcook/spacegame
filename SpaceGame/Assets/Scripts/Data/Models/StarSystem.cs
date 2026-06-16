@@ -109,5 +109,16 @@ public class PointOfInterest
     // Danger level (can exceed parent system danger for derelicts, anomalies)
     public int DangerLevel { get; set; } = 1;
 
+    // Collectable resources — only meaningful when POIType == Constants.POI.Types.Planet.
+    // Gas planets favour He-3; rocky planets favour Iridium and Salvage.
+    // At least one planet per system is guaranteed to carry each resource type.
+    // Amount fields are 0 when the corresponding Has* flag is false.
+    public bool HasHelium3 { get; set; }
+    public bool HasIridium { get; set; }
+    public bool HasSalvage { get; set; }
+    public int  Helium3Amount { get; set; }
+    public int  IridiumAmount { get; set; }
+    public int  SalvageAmount { get; set; }
+
     public string Description { get; set; }
 }

@@ -1000,7 +1000,14 @@ public class SystemViewController : MonoBehaviour
     private void OnArrivedAtOrTappedPOI(PointOfInterest poi)
     {
         if (poi.POIType == Constants.POI.Types.SpaceStation && crewViewController != null)
+        {
+            if (poi.Name == "Earth Station" && (GameManager.Instance?.IsInSolSystem() ?? false))
+            {
+                GameManager.Instance.RefillHelium3();
+                RefreshFuel();
+            }
             StartCoroutine(ShowRecruitmentAfterDelay(poi, GetCaptainLevel()));
+        }
         else
             ShowPOIDetail(poi);
     }

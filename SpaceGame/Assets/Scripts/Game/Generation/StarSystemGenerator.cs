@@ -508,7 +508,7 @@ public static class StarSystemGenerator
     {
         float x = Math.Clamp(0.5f + orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
         float y = Math.Clamp(0.5f + orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
-        return new PointOfInterest
+        var poi = new PointOfInterest
         {
             SaveGameId    = saveGameId,
             StarSystemId  = sol.Id,
@@ -523,6 +523,7 @@ public static class StarSystemGenerator
             DangerLevel   = 1,
             Description   = desc
         };
+        return poi;
     }
 
     private static PointOfInterest MakeSolPlanet(
@@ -533,8 +534,7 @@ public static class StarSystemGenerator
         float angle = (float)(rng.NextDouble() * Math.PI * 2);
         float x = Math.Clamp(0.5f + orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
         float y = Math.Clamp(0.5f + orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
-
-        return new PointOfInterest
+        var poi = new PointOfInterest
         {
             SaveGameId    = saveGameId,
             StarSystemId  = sol.Id,
@@ -549,6 +549,7 @@ public static class StarSystemGenerator
             DangerLevel   = 1,
             Description   = desc
         };
+        return poi;
     }
 
     // ---------------------------------------------------------------------------
@@ -593,7 +594,7 @@ public static class StarSystemGenerator
             float x     = Math.Clamp(0.5f + d.orbitalRadius * (float)Math.Cos(angle), 0.05f, 0.95f);
             float y     = Math.Clamp(0.5f + d.orbitalRadius * (float)Math.Sin(angle), 0.05f, 0.95f);
 
-            pois.Add(new PointOfInterest
+            var poi = new PointOfInterest
             {
                 SaveGameId    = saveGameId,
                 StarSystemId  = system.Id,
@@ -607,7 +608,8 @@ public static class StarSystemGenerator
                 SystemY       = y,
                 DangerLevel   = system.DangerLevel,
                 Description   = d.desc
-            });
+            };
+            pois.Add(poi);
         }
 
         // ── Station ───────────────────────────────────────────────────────────
@@ -644,7 +646,8 @@ public static class StarSystemGenerator
     /// a habitable world even if random generation doesn't produce one naturally.
     /// </param>
     public static List<PointOfInterest> GeneratePOIsForSystem(
-        StarSystem system, int saveGameId, bool guaranteeHabitable = false)
+        StarSystem system, int saveGameId, bool guaranteeHabitable = false,
+        bool generateResources = true)
     {
         var rng  = new Random(system.Seed + 1000);
         var pois = new List<PointOfInterest>();
@@ -652,10 +655,14 @@ public static class StarSystemGenerator
         // Planets (4-6)
         // Base angle randomises the whole system's orientation; individual planets are then
         // distributed evenly (with small jitter) so no two land in the same angular slot.
-        int   planetCount = rng.Next(4, 7);
+        int   planetCount = rng.Next(5, 10);
         float baseAngle   = (float)(rng.NextDouble() * Math.PI * 2);
         for (int i = 0; i < planetCount; i++)
-            pois.Add(GeneratePlanet(system, saveGameId, i, planetCount, rng, baseAngle));
+        {
+            var planet = GeneratePlanet(system, saveGameId, i, planetCount, rng, baseAngle);
+            if (generateResources) AssignPlanetResources(planet, system, rng);
+            pois.Add(planet);
+        }
 
         // Ensure at least one habitable planet if requested and none generated naturally.
         if (guaranteeHabitable && !pois.Exists(p => p.POIType == Constants.POI.Types.Planet && p.IsHabitable))
@@ -684,7 +691,94 @@ public static class StarSystemGenerator
         if (system.HasSpaceStation)
             pois.Add(GenerateSpaceStation(system, saveGameId, rng));
 
+        if (generateResources)
+            EnsureSystemResources(pois, system, rng);
         return pois;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Resource generation helpers
+    // ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// Rolls resource presence and amount for a single planet POI based on its type.
+    /// Gas planets heavily favour He-3; rocky planets favour Iridium and Salvage.
+    /// Amounts scale with the system's FTL tier so deeper systems have larger deposits.
+    /// </summary>
+    private static void AssignPlanetResources(PointOfInterest poi, StarSystem system, Random rng)
+    {
+        if (poi.POIType != Constants.POI.Types.Planet) return;
+
+        bool isGas   = poi.PlanetType.IsGaseous();
+        bool isRocky = poi.PlanetType.IsRocky();
+        int  tier    = system.FtlTierRequired;
+
+        poi.HasHelium3 = isGas   ? rng.Next(10) < 7
+                       : isRocky ? rng.Next(10) < 1
+                                 : rng.Next(10) < 1;
+
+        poi.HasIridium = isRocky  ? rng.Next(10) < 7
+                       : !isGas   ? rng.Next(10) < 2
+                                  : false;
+
+        poi.HasSalvage = isRocky ? rng.Next(10) < 4
+                                 : false;
+
+        if (poi.HasHelium3) poi.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
+        if (poi.HasIridium) poi.IridiumAmount = RollResourceAmount(Constants.CargoBay.GetIridiumCapacity(tier), rng);
+        if (poi.HasSalvage) poi.SalvageAmount = RollResourceAmount(Constants.CargoBay.GetSalvageCapacity(tier), rng);
+    }
+
+    /// <summary>
+    /// Rolls a resource deposit amount within a tier-capacity-relative band.
+    /// Distribution: 25% → [25%–50%], 65% → [50%–75%], 15% → [75%–100%].
+    /// The minimum possible result is 25% of capacity.
+    /// </summary>
+    private static int RollResourceAmount(int capacity, Random rng)
+    {
+        int roll = rng.Next(100);
+        double lo, hi;
+        if      (roll < 25) { lo = 0.25; hi = 0.50; }
+        else if (roll < 90) { lo = 0.50; hi = 0.75; }
+        else                { lo = 0.75; hi = 1.00; }
+        return Math.Max(1, (int)(capacity * (lo + rng.NextDouble() * (hi - lo))));
+    }
+
+    /// <summary>
+    /// Guarantees that at least one planet per system carries each resource type.
+    /// Prefers the most thematically appropriate planet type for each resource.
+    /// Also generates an amount for any resource forced on here.
+    /// </summary>
+    private static void EnsureSystemResources(List<PointOfInterest> pois, StarSystem system, Random rng)
+    {
+        var planets = pois.FindAll(p => p.POIType == Constants.POI.Types.Planet);
+        if (planets.Count == 0) return;
+
+        int tier = system.FtlTierRequired;
+
+        if (!planets.Exists(p => p.HasHelium3))
+        {
+            var gas = planets.FindAll(p => p.PlanetType.IsGaseous());
+            var p   = gas.Count > 0 ? gas[rng.Next(gas.Count)] : planets[rng.Next(planets.Count)];
+            p.HasHelium3    = true;
+            p.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
+        }
+
+        if (!planets.Exists(p => p.HasIridium))
+        {
+            var rocky = planets.FindAll(p => p.PlanetType.IsRocky());
+            var p     = rocky.Count > 0 ? rocky[rng.Next(rocky.Count)] : planets[rng.Next(planets.Count)];
+            p.HasIridium    = true;
+            p.IridiumAmount = RollResourceAmount(Constants.CargoBay.GetIridiumCapacity(tier), rng);
+        }
+
+        if (!planets.Exists(p => p.HasSalvage))
+        {
+            var rocky = planets.FindAll(p => p.PlanetType.IsRocky());
+            var p     = rocky.Count > 0 ? rocky[rng.Next(rocky.Count)] : planets[rng.Next(planets.Count)];
+            p.HasSalvage    = true;
+            p.SalvageAmount = RollResourceAmount(Constants.CargoBay.GetSalvageCapacity(tier), rng);
+        }
     }
 
     // ---------------------------------------------------------------------------

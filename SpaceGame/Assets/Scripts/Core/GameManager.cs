@@ -181,12 +181,10 @@ public class GameManager : MonoBehaviour
 
             CurrentSave.CurrentSystemId = sol.Id;
 
-            // ── Sol cluster — Alpha Centauri & Barnard's Star ─────────────
-            // These are settled, well-known systems — mark all POIs explored at game start.
+            // ── Sol cluster — Alpha Centauri ──────────────────────────────
+            // Settled, well-known system — mark all POIs explored at game start.
             InsertSystemWithPOIs(StarSystemGenerator.GenerateAlphaCentauri(), CurrentSave.Id,
                                   StarSystemGenerator.GenerateAlphaCentauriPOIs, preExplored: true);
-            InsertSystemWithPOIs(StarSystemGenerator.GenerateBarnardsStar(), CurrentSave.Id,
-                                  preExplored: true);
 
             // ── Procedural systems: 6 FTL-tier clusters from CSV catalogue ──
             //
@@ -210,10 +208,10 @@ public class GameManager : MonoBehaviour
             {
                 var catalogue = StarSystemGenerator.ParseSystemsCSV(catalogueAsset.text);
 
-                // Exclude the three hand-crafted systems.
+                // Exclude the two hand-crafted systems.
                 var excluded = new System.Collections.Generic.HashSet<string>(
                     System.StringComparer.OrdinalIgnoreCase)
-                    { "Sol", "Alpha Centauri", "Barnard's Star" };
+                    { "Sol", "Alpha Centauri" };
 
                 // Unique seed per run so repeated new-game calls produce different galaxies.
                 int galaxySeed = CurrentSave.Id ^ (int)System.DateTime.UtcNow.Ticks ^ 0x1337;
@@ -226,8 +224,7 @@ public class GameManager : MonoBehaviour
 
                 // Tier definitions: (innerR, outerR, systemCount, minSpacing)
                 // All radii are measured from Sol's position, not the galaxy centre.
-                // Tier 1 starts at 0.10 so it clears Alpha Centauri (~0.039) and
-                // Barnard's Star (~0.064) with a comfortable gap.
+                // Tier 1 starts at 0.10 so it clears Alpha Centauri (~0.039) with a comfortable gap.
                 // minSpacing increases with tier because outer rings have more angular room.
                 var tiers = new (float innerR, float outerR, int count, float minSpacing)[]
                 {
@@ -240,12 +237,11 @@ public class GameManager : MonoBehaviour
                 };
 
                 // Build a growing avoid-list so clusters don't overlap each other
-                // or the three hand-crafted systems.
+                // or the two hand-crafted systems.
                 var allPlaced = new System.Collections.Generic.List<(float gx, float gy)>
                 {
-                    (StarSystemGenerator.SolGX,     StarSystemGenerator.SolGY),
-                    (StarSystemGenerator.AlphaGX,   StarSystemGenerator.AlphaGY),
-                    (StarSystemGenerator.BarnardsGX, StarSystemGenerator.BarnardsGY),
+                    (StarSystemGenerator.SolGX,   StarSystemGenerator.SolGY),
+                    (StarSystemGenerator.AlphaGX, StarSystemGenerator.AlphaGY),
                 };
 
                 int catalogueIdx  = 0;
@@ -298,7 +294,7 @@ public class GameManager : MonoBehaviour
             else
             {
                 Debug.LogWarning("[GameManager] Data/systems.csv not found in Resources — " +
-                                 "only Sol, Alpha Centauri, and Barnard's Star were created.");
+                                 "only Sol and Alpha Centauri were created.");
             }
 
             Database.SaveGames.Update(CurrentSave);
@@ -511,19 +507,75 @@ public class GameManager : MonoBehaviour
         SaveGame();
     }
 
-    /// <summary>Adds iridium up to the cap and persists.</summary>
+    /// <summary>
+    /// Maximum Iridium the ship can carry, derived from the installed Cargo Hold tier.
+    /// </summary>
+    public int MaxIridium
+    {
+        get
+        {
+            if (PlayerShip == null || Database == null)
+                return Constants.CargoBay.IridiumCapacity[0];
+
+            var hold = Database.Equipment.Query()
+                .Where(e => e.InstalledOnShipId == PlayerShip.Id
+                         && e.InstalledInSlot   == Constants.Ship.EquipmentSlots.CargoHold)
+                .FirstOrDefault();
+
+            int level = hold != null ? (int)hold.Tier : 1;
+            return Constants.CargoBay.GetIridiumCapacity(level);
+        }
+    }
+
+    /// <summary>
+    /// Maximum Salvage the ship can carry, derived from the installed Cargo Hold tier.
+    /// </summary>
+    public int MaxSalvage
+    {
+        get
+        {
+            if (PlayerShip == null || Database == null)
+                return Constants.CargoBay.SalvageCapacity[0];
+
+            var hold = Database.Equipment.Query()
+                .Where(e => e.InstalledOnShipId == PlayerShip.Id
+                         && e.InstalledInSlot   == Constants.Ship.EquipmentSlots.CargoHold)
+                .FirstOrDefault();
+
+            int level = hold != null ? (int)hold.Tier : 1;
+            return Constants.CargoBay.GetSalvageCapacity(level);
+        }
+    }
+
+    /// <summary>Adds Iridium up to the cargo-bay cap and persists.</summary>
     public void AddIridium(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.Iridium = Mathf.Min(Constants.Resources.MaxIridium, CurrentSave.Iridium + amount);
+        CurrentSave.Iridium = Mathf.Min(MaxIridium, CurrentSave.Iridium + amount);
         SaveGame();
     }
 
-    /// <summary>Removes iridium (clamped to 0) and persists.</summary>
+    /// <summary>Removes Iridium (clamped to 0) and persists.</summary>
     public void RemoveIridium(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
         CurrentSave.Iridium = Mathf.Max(0, CurrentSave.Iridium - amount);
+        SaveGame();
+    }
+
+    /// <summary>Adds Salvage up to the cargo-bay cap and persists.</summary>
+    public void AddSalvage(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Salvage = Mathf.Min(MaxSalvage, CurrentSave.Salvage + amount);
+        SaveGame();
+    }
+
+    /// <summary>Removes Salvage (clamped to 0) and persists.</summary>
+    public void RemoveSalvage(int amount)
+    {
+        if (CurrentSave == null || amount <= 0) return;
+        CurrentSave.Salvage = Mathf.Max(0, CurrentSave.Salvage - amount);
         SaveGame();
     }
 

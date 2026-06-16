@@ -240,7 +240,6 @@ public static class Constants
         public const int StartingLoyalty  = 75;
         public const int MaxLoyalty       = 100;
         public const int MutinyThreshold  = 0;   // loyalty <= this triggers game over
-        public const int MaxIridium       = 9999;
     }
 
     public static class CargoBay
@@ -251,11 +250,32 @@ public static class Constants
         /// </summary>
         public static readonly int[] Helium3Capacity = { 100, 200, 300, 400, 500, 600 };
 
-        /// <summary>Returns the He3 capacity for a given bay level (clamped to valid range).</summary>
+        /// <summary>
+        /// Iridium and Salvage capacity at each cargo bay upgrade level (index = level - 1).
+        /// Each tier is ~1.5× the previous, starting at 150.
+        /// </summary>
+        public static readonly int[] IridiumCapacity = { 150, 225, 350, 525, 800, 1_200 };
+        public static readonly int[] SalvageCapacity = { 150, 225, 350, 525, 800, 1_200 };
+
+        /// <summary>Returns the He-3 capacity for a given bay level (clamped to valid range).</summary>
         public static int GetHelium3Capacity(int level)
         {
             int idx = UnityEngine.Mathf.Clamp(level - 1, 0, Helium3Capacity.Length - 1);
             return Helium3Capacity[idx];
+        }
+
+        /// <summary>Returns the Iridium capacity for a given bay level (clamped to valid range).</summary>
+        public static int GetIridiumCapacity(int level)
+        {
+            int idx = UnityEngine.Mathf.Clamp(level - 1, 0, IridiumCapacity.Length - 1);
+            return IridiumCapacity[idx];
+        }
+
+        /// <summary>Returns the Salvage capacity for a given bay level (clamped to valid range).</summary>
+        public static int GetSalvageCapacity(int level)
+        {
+            int idx = UnityEngine.Mathf.Clamp(level - 1, 0, SalvageCapacity.Length - 1);
+            return SalvageCapacity[idx];
         }
     }
 

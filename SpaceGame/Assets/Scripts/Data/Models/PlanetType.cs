@@ -58,6 +58,14 @@ public static class PlanetTypeExtensions
     public static bool IsGaseous(this PlanetType type) => type >= PlanetType.GaseousBlue;
 
     /// <summary>
+    /// Returns true for bare, airless rocky worlds — the primary source of Iridium and Salvage.
+    /// </summary>
+    public static bool IsRocky(this PlanetType type) =>
+        type == PlanetType.Airless  || type == PlanetType.Barren  ||
+        type == PlanetType.Cratered || type == PlanetType.Lunar   ||
+        type == PlanetType.Rocky    || type == PlanetType.Magma;
+
+    /// <summary>
     /// Base display diameter (canvas px) for a planet of this type, before any
     /// per-system size variation is applied. Five tiers:
     ///   tiny   (airless rocks)        ~40 px
