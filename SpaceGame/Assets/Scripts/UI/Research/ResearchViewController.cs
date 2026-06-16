@@ -31,8 +31,10 @@ using TMPro;
 public class ResearchViewController : MonoBehaviour
 {
     // ── Canvas size — must match GameSceneSetup.ResearchTreeW/H ──────────────
-    public const float TreeCanvasW = 2400f;
-    public const float TreeCanvasH = 1800f;
+    public const float TreeCanvasW  = 2400f;
+    public const float TreeCanvasH  = 1800f;
+    // Must match GameSceneSetup.ResearchPadding — empty border around the node area.
+    public const float TreePadding  = 300f;
 
     // ── Serialised references (wired by GameSceneSetup) ──────────────────────
     [SerializeField] private RectTransform treeContent;
@@ -57,7 +59,7 @@ public class ResearchViewController : MonoBehaviour
     static readonly Color NodeBgColor      = new Color(0.06f, 0.10f, 0.18f, 0.90f);
     static readonly Color NodeBgColorSolid = new Color(0.06f, 0.10f, 0.18f, 1.00f);
     static readonly Color BorderUnlearned  = new Color(0.45f, 0.45f, 0.45f, 1.00f); // grey
-    static readonly Color BorderResearched = Color.white;
+    static readonly Color BorderResearched = new Color(0.64f, 0.21f, 0.93f, 1.00f); // MkV purple
 
     // ── Runtime state ─────────────────────────────────────────────────────────
     private ResearchCollection  _collection;
@@ -118,7 +120,8 @@ public class ResearchViewController : MonoBehaviour
             rt.sizeDelta = new Vector2(nodeSize, nodeSize);
             rt.anchorMin = rt.anchorMax = Vector2.zero;
             rt.pivot     = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(node.posX * TreeCanvasW, node.posY * TreeCanvasH);
+            rt.anchoredPosition = new Vector2(TreePadding + node.posX * TreeCanvasW,
+                                              TreePadding + node.posY * TreeCanvasH);
 
             var bg   = go.AddComponent<Image>();
             bg.color = NodeBgColor;
@@ -184,32 +187,15 @@ public class ResearchViewController : MonoBehaviour
                 }
             }
 
-            // ── Cost badge (top-right corner, above TierBorder in draw order) ──
-            if (node.cost > 0)
-            {
-                var costGO  = new GameObject("Cost", typeof(RectTransform));
-                costGO.transform.SetParent(go.transform, false);
-                var costRT  = costGO.GetComponent<RectTransform>();
-                costRT.anchorMin        = costRT.anchorMax = new Vector2(1f, 1f);
-                costRT.pivot            = new Vector2(0.5f, 0.5f);
-                costRT.anchoredPosition = Vector2.zero;
-                costRT.sizeDelta        = new Vector2(48f, 28f);
-                var costTMP  = costGO.AddComponent<TextMeshProUGUI>();
-                costTMP.text      = node.cost.ToString();
-                costTMP.fontSize  = 18f;
-                costTMP.color     = TextAmber;
-                costTMP.alignment = TextAlignmentOptions.Center;
-            }
-
             // ── Label below node ───────────────────────────────────────────
             var labelGO = new GameObject("Label", typeof(RectTransform));
             labelGO.transform.SetParent(go.transform, false);
             var labelRT  = labelGO.GetComponent<RectTransform>();
-            labelRT.anchorMin        = new Vector2(0f, 0f);
-            labelRT.anchorMax        = new Vector2(1f, 0f);
+            labelRT.anchorMin        = new Vector2(0.5f, 0f);
+            labelRT.anchorMax        = new Vector2(0.5f, 0f);
             labelRT.pivot            = new Vector2(0.5f, 1f);
             labelRT.anchoredPosition = new Vector2(0f, -4f);
-            labelRT.sizeDelta        = new Vector2(200f, 48f);
+            labelRT.sizeDelta        = new Vector2(nodeSize + 20f, 80f);
             var labelTMP             = labelGO.AddComponent<TextMeshProUGUI>();
             labelTMP.text             = node.displayName;
             labelTMP.fontSize         = 21f;
@@ -314,24 +300,19 @@ public class ResearchViewController : MonoBehaviour
     {
         if (detailNameText     != null) detailNameText.text     = node.displayName;
         if (detailDescText     != null) detailDescText.text     = node.description;
-        if (detailCostText     != null) detailCostText.text     = node.cost > 0
-                                                                  ? $"Cost: {node.cost} salvage"
-                                                                  : "Free";
+        if (detailCostText     != null) detailCostText.gameObject.SetActive(false);
         if (detailCategoryText != null) detailCategoryText.text = node.category;
 
         bool unlocked  = _unlockedIds.Contains(node.id);
         bool available = IsAvailable(node);
-        int  salvage   = GameManager.Instance?.CurrentSave?.Salvage ?? 0;
-        bool canAfford = salvage >= node.cost;
 
         if (unlockButton != null)
         {
-            unlockButton.interactable = !unlocked && available && canAfford && node.cost > 0;
+            unlockButton.interactable = !unlocked && available;
             var lbl = unlockButton.GetComponentInChildren<TMP_Text>();
             if (lbl != null)
                 lbl.text = unlocked   ? "Unlocked"
                          : !available ? "Locked"
-                         : !canAfford ? $"Need {node.cost} salvage"
                                       : "Unlock";
         }
 
@@ -360,15 +341,10 @@ public class ResearchViewController : MonoBehaviour
         if (_unlockedIds.Contains(_selectedNode.id)) return;
         if (!IsAvailable(_selectedNode)) return;
 
-        var gm = GameManager.Instance;
-        int salvage = gm?.CurrentSave?.Salvage ?? 0;
-        if (salvage < _selectedNode.cost) return;
-
-        gm.RemoveSalvage(_selectedNode.cost);
         _unlockedIds.Add(_selectedNode.id);
 
         RefreshAllNodeVisuals();
-        ShowDetail(_selectedNode); // refresh button state
+        HideDetail();
     }
 
     // ─────────────────────────────────────────────────────────────────────────

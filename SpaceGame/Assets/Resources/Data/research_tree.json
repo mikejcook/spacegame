@@ -134,7 +134,7 @@
     },
     {
       "id": "armor_5",
-      "displayName": "Null-Impact Shielding",
+      "displayName": "Null-Impact Armor",
       "description": "Armor has a chance to ignore all damage",
       "category": "Armor",
       "cost": 10,
@@ -284,7 +284,7 @@
       "prerequisites": [],
       "posX": 0.90,
       "posY": 0.08,
-      "iconPath": ""
+      "iconPath": "UI/ResearchIcons/Equipment"
     },
     {
       "id": "upgrades_2",
@@ -295,7 +295,7 @@
       "prerequisites": ["upgrades_1"],
       "posX": 0.90,
       "posY": 0.28,
-      "iconPath": ""
+      "iconPath": "UI/ResearchIcons/Equipment"
     },
     {
       "id": "upgrades_3",
@@ -306,7 +306,7 @@
       "prerequisites": ["upgrades_2"],
       "posX": 0.90,
       "posY": 0.48,
-      "iconPath": ""
+      "iconPath": "UI/ResearchIcons/Equipment"
     },
     {
       "id": "upgrades_4",
@@ -317,7 +317,7 @@
       "prerequisites": ["upgrades_3"],
       "posX": 0.90,
       "posY": 0.68,
-      "iconPath": ""
+      "iconPath": "UI/ResearchIcons/Equipment"
     },
     {
       "id": "upgrades_5",
@@ -328,7 +328,7 @@
       "prerequisites": ["upgrades_4"],
       "posX": 0.90,
       "posY": 0.88,
-      "iconPath": ""
+      "iconPath": "UI/ResearchIcons/Equipment"
     }
   ]
 }

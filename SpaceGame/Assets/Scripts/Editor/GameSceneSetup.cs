@@ -1857,8 +1857,11 @@ public static class GameSceneSetup
     //     DetailPanel                  (CanvasGroup, right-anchored card)
 
     // TreeContent canvas size — must match ResearchViewController.TreeCanvasW/H
-    const float ResearchTreeW = 2400f;
-    const float ResearchTreeH = 1800f;
+    const float ResearchTreeW   = 2400f;
+    const float ResearchTreeH   = 1800f;
+    // Extra space added around all four edges so the player can pan past the
+    // outermost nodes without hitting a hard wall.
+    const float ResearchPadding = 300f;
 
     static GameObject BuildResearchView(Transform parent)
     {
@@ -1893,7 +1896,12 @@ public static class GameSceneSetup
 
         var viewport = MakeUIGO("Viewport", scrollGO.transform);
         Stretch(viewport);
-        viewport.AddComponent<RectMask2D>();
+        // Use stencil Mask (not RectMask2D) so UILineRenderer children — which don't
+        // implement IClippable — are properly clipped and never bleed over the header.
+        var viewportImg              = viewport.AddComponent<Image>();
+        viewportImg.color            = Color.white;          // alpha must be > 0 or mask is empty
+        var viewportMask             = viewport.AddComponent<Mask>();
+        viewportMask.showMaskGraphic = false;                // image shapes the mask but doesn't draw
         scrollRect.viewport = viewport.GetComponent<RectTransform>();
 
         // TreeContent: fixed large canvas — nodes placed by normalised (0–1) coords
@@ -1903,7 +1911,8 @@ public static class GameSceneSetup
         contentRT.anchorMax        = new Vector2(0f, 0f);
         contentRT.pivot            = new Vector2(0f, 0f);
         contentRT.anchoredPosition = Vector2.zero;
-        contentRT.sizeDelta        = new Vector2(ResearchTreeW, ResearchTreeH);
+        contentRT.sizeDelta        = new Vector2(ResearchTreeW + ResearchPadding * 2f,
+                                                  ResearchTreeH + ResearchPadding * 2f);
         scrollRect.content         = contentRT;
 
         // ConnectionLayer — lines drawn behind nodes
