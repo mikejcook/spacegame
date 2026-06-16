@@ -134,6 +134,7 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Button     poiDetailCloseButton;
     [SerializeField] private Button     poiDetailNavigateButton;
     [SerializeField] private Button     poiDetailCollectButton;
+    private CanvasGroup _collectButtonCG;
     [SerializeField] private TMP_Text   poiDetailScannerText;
     [SerializeField] private TMP_Text   poiDetailFuelCostText;
     [SerializeField] private TMP_Text   poiDetailDaysText;
@@ -202,6 +203,15 @@ public class SystemViewController : MonoBehaviour
         // Wire listeners
         poiDetailCloseButton?.onClick.AddListener(HidePOIDetail);
         poiDetailCollectButton?.onClick.AddListener(OnCollectClicked);
+        if (poiDetailCollectButton != null)
+        {
+            _collectButtonCG = poiDetailCollectButton.GetComponent<CanvasGroup>();
+            if (_collectButtonCG == null)
+                _collectButtonCG = poiDetailCollectButton.gameObject.AddComponent<CanvasGroup>();
+            _collectButtonCG.alpha        = 0f;
+            _collectButtonCG.blocksRaycasts = false;
+            _collectButtonCG.interactable   = false;
+        }
 
         // Zoom controller lives on the SystemMap GO
         _systemMapZoomController = systemMapArea?.GetComponent<SystemMapZoomController>();
@@ -1628,8 +1638,9 @@ public class SystemViewController : MonoBehaviour
         _detailPoi = poi;
 
         // Previously visited POIs always show full info regardless of scanner level.
-        bool fullAccess  = poi.IsExplored;
-        int  sensorLevel = fullAccess ? int.MaxValue : GetSensorLevel();
+        bool fullAccess       = poi.IsExplored;
+        int  actualSensorLevel = GetSensorLevel();
+        int  sensorLevel       = fullAccess ? int.MaxValue : actualSensorLevel;
 
         // ── Name (always visible) ─────────────────────────────────────────
         if (poiDetailNameText != null)
@@ -1700,9 +1711,9 @@ public class SystemViewController : MonoBehaviour
         // Planets only. Icons visible if: at the POI, or scanner ≥ 3.
         // Color coded if: (at POI and scanner ≥ 3) or scanner ≥ 5.
         // White = present but no grade info. Green/Blue/Purple = band 1/2/3.
-        bool isPlanet      = poi.POIType == Constants.POI.Types.Planet;
-        bool canSeeIcons   = isPlanet && (isAtPoi || sensorLevel >= 3);
-        bool canSeeColor   = isPlanet && ((isAtPoi && sensorLevel >= 3) || sensorLevel >= 5);
+        bool isPlanet    = poi.POIType == Constants.POI.Types.Planet;
+        bool canSeeIcons = isPlanet && (isAtPoi || actualSensorLevel >= 3);
+        bool canSeeColor = isPlanet && ((isAtPoi && actualSensorLevel >= 3) || actualSensorLevel >= 5);
 
         if (isPlanet && canSeeIcons)
         {
@@ -1728,8 +1739,12 @@ public class SystemViewController : MonoBehaviour
         // Shown instead of Set Course when ship is docked at a planet with resources.
         bool hasAnyResource = isPlanet && (poi.HasHelium3 || poi.HasIridium || poi.HasSalvage);
         bool showCollect    = isAtPoi && hasAnyResource;
-        if (poiDetailCollectButton != null)
-            poiDetailCollectButton.gameObject.SetActive(showCollect);
+        if (_collectButtonCG != null)
+        {
+            _collectButtonCG.alpha          = showCollect ? 1f : 0f;
+            _collectButtonCG.blocksRaycasts = showCollect;
+            _collectButtonCG.interactable   = showCollect;
+        }
 
         poiDetailPanel.SetActive(true);
     }

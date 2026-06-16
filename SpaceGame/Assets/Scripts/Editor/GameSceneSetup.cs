@@ -2956,7 +2956,7 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(200f, 48f);
             rt.anchoredPosition = new Vector2(20f, 12f);
         }
-        collectGO.SetActive(false);
+        // Keep active so the Shift MainButton Animator stays bound — hidden via CanvasGroup at runtime.
 
         // CLOSE button — bottom-right
         GameObject closeGO;

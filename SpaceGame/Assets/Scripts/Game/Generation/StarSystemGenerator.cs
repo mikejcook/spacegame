@@ -727,6 +727,26 @@ public static class StarSystemGenerator
         if (poi.HasHelium3) poi.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
         if (poi.HasIridium) poi.IridiumAmount = RollResourceAmount(Constants.CargoBay.GetIridiumCapacity(tier), rng);
         if (poi.HasSalvage) poi.SalvageAmount = RollResourceAmount(Constants.CargoBay.GetSalvageCapacity(tier), rng);
+
+        // Every planet must carry at least one resource.
+        if (!poi.HasHelium3 && !poi.HasIridium && !poi.HasSalvage)
+        {
+            if (isGas)
+            {
+                poi.HasHelium3    = true;
+                poi.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
+            }
+            else if (isRocky)
+            {
+                poi.HasIridium    = true;
+                poi.IridiumAmount = RollResourceAmount(Constants.CargoBay.GetIridiumCapacity(tier), rng);
+            }
+            else
+            {
+                poi.HasHelium3    = true;
+                poi.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
+            }
+        }
     }
 
     /// <summary>
