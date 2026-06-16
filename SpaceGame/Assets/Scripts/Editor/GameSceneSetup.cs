@@ -2864,12 +2864,46 @@ public static class GameSceneSetup
         var scannerHint = MakeTMP(card.transform, "POIDetailScannerText",
                                   "Upgrade Scanner to reveal more information", 22,
                                   new Color(1.00f, 0.80f, 0.20f, 1f)); // amber
-        PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 100f), v2(-60f, 32f));
+        PlaceRect(scannerHint, anchor(0f, 0f), anchor(1f, 0f), v2(0f, 124f), v2(-60f, 32f));
         var scannerHintTMP = scannerHint.GetComponent<TextMeshProUGUI>();
         scannerHintTMP.alignment          = TextAlignmentOptions.Center;
         scannerHintTMP.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
         scannerHintTMP.fontStyle          = FontStyles.Italic;
         scannerHint.SetActive(false); // hidden by default; shown at runtime when needed
+
+        // ── Resource icon strip — top-right corner ────────────────────────────
+        // Three 36×36 icons (He-3, Iridium, Salvage) side by side, shown/tinted
+        // at runtime by SystemViewController based on scanner tier and orbit state.
+        {
+            var iconPanel = MakeUIGO("POIDetailResourcePanel", card.transform);
+            var panelRT   = iconPanel.GetComponent<RectTransform>();
+            panelRT.anchorMin        = panelRT.anchorMax = new Vector2(1f, 1f);
+            panelRT.pivot            = new Vector2(1f, 1f);
+            panelRT.anchoredPosition = new Vector2(-20f, -10f);
+            panelRT.sizeDelta        = new Vector2(124f, 36f);
+            var hlg               = iconPanel.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing           = 8f;
+            hlg.childAlignment    = TextAnchor.MiddleRight;
+            hlg.childControlWidth = hlg.childControlHeight = false;
+            hlg.childForceExpandWidth = hlg.childForceExpandHeight = false;
+
+            void MakeResourceIcon(string goName, string spritePath)
+            {
+                var go  = MakeUIGO(goName, iconPanel.transform);
+                var rt  = go.GetComponent<RectTransform>() ?? go.AddComponent<RectTransform>();
+                rt.sizeDelta = new Vector2(36f, 36f);
+                var img = go.AddComponent<Image>();
+                img.preserveAspect = true;
+                var sp = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+                if (sp != null) img.sprite = sp;
+                else Debug.LogWarning($"[GameSceneSetup] Resource icon not found: {spritePath}");
+                go.SetActive(false); // shown at runtime when resource is present
+            }
+
+            MakeResourceIcon("POIDetailHe3Icon",     "Assets/Art/UI/Other/fuel.png");
+            MakeResourceIcon("POIDetailIridiumIcon", "Assets/Art/UI/Other/iridium.png");
+            MakeResourceIcon("POIDetailSalvageIcon", "Assets/Art/UI/Other/salvage.png");
+        }
 
         var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
 
@@ -2897,6 +2931,32 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(200f, 48f);
             rt.anchoredPosition = new Vector2(20f, 12f);
         }
+
+        // COLLECT button — bottom-left, same position as Set Course; shown when ship is at this POI
+        GameObject collectGO;
+        if (btnPrefab != null)
+        {
+            collectGO      = (GameObject)Object.Instantiate(btnPrefab, card.transform);
+            collectGO.name = "POIDetailCollectButton";
+            var mb = collectGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "Collect";
+        }
+        else
+        {
+            collectGO = MakeImage(card.transform, "POIDetailCollectButton", BtnNormal);
+            collectGO.AddComponent<Button>();
+            var lbl = MakeTMP(collectGO.transform, "Label", "Collect", 22, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt = collectGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(200f, 48f);
+            rt.anchoredPosition = new Vector2(20f, 12f);
+        }
+        collectGO.SetActive(false);
 
         // CLOSE button — bottom-right
         GameObject closeGO;
@@ -3442,6 +3502,11 @@ public static class GameSceneSetup
         Set(so, "poiDetailNavigateButton", navigateTf?.GetComponentInChildren<Button>(true));
         Set(so, "poiDetailFuelCostText", Find<TMP_Text>(poiDetail, "Card/POIDetailFuelCostLabel/Normal/Text"));
         Set(so, "poiDetailDaysText",     Find<TMP_Text>(poiDetail, "Card/POIDetailDaysLabel/Normal/Text"));
+        Set(so, "poiDetailHe3Icon",     Find<Image>(poiDetail, "Card/POIDetailResourcePanel/POIDetailHe3Icon"));
+        Set(so, "poiDetailIridiumIcon", Find<Image>(poiDetail, "Card/POIDetailResourcePanel/POIDetailIridiumIcon"));
+        Set(so, "poiDetailSalvageIcon", Find<Image>(poiDetail, "Card/POIDetailResourcePanel/POIDetailSalvageIcon"));
+        var collectTf = poiDetail.transform.Find("Card/POIDetailCollectButton");
+        Set(so, "poiDetailCollectButton", collectTf?.GetComponentInChildren<Button>(true));
 
         // Audio
         var svcAudioSrc   = GameObject.Find("UI Audio")?.GetComponent<AudioSource>();

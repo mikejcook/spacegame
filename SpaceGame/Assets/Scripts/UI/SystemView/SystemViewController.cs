@@ -133,9 +133,13 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text   poiDetailDescText;
     [SerializeField] private Button     poiDetailCloseButton;
     [SerializeField] private Button     poiDetailNavigateButton;
+    [SerializeField] private Button     poiDetailCollectButton;
     [SerializeField] private TMP_Text   poiDetailScannerText;
     [SerializeField] private TMP_Text   poiDetailFuelCostText;
     [SerializeField] private TMP_Text   poiDetailDaysText;
+    [SerializeField] private Image      poiDetailHe3Icon;
+    [SerializeField] private Image      poiDetailIridiumIcon;
+    [SerializeField] private Image      poiDetailSalvageIcon;
 
     [Header("Crew Recruitment")]
     [Tooltip("Recruitment overlay — shown automatically when the ship docks at a functioning space station.")]
@@ -197,6 +201,7 @@ public class SystemViewController : MonoBehaviour
 
         // Wire listeners
         poiDetailCloseButton?.onClick.AddListener(HidePOIDetail);
+        poiDetailCollectButton?.onClick.AddListener(OnCollectClicked);
 
         // Zoom controller lives on the SystemMap GO
         _systemMapZoomController = systemMapArea?.GetComponent<SystemMapZoomController>();
@@ -1667,7 +1672,8 @@ public class SystemViewController : MonoBehaviour
         }
 
         // Navigate button and travel labels hidden when ship is already at this POI
-        bool showNavigate = poi != _shipCurrentPoi;
+        bool isAtPoi      = poi == _shipCurrentPoi;
+        bool showNavigate = !isAtPoi;
         if (poiDetailNavigateButton != null)
             poiDetailNavigateButton.gameObject.SetActive(showNavigate);
 
@@ -1690,7 +1696,61 @@ public class SystemViewController : MonoBehaviour
             }
         }
 
+        // ── Resource icons ────────────────────────────────────────────────────
+        // Planets only. Icons visible if: at the POI, or scanner ≥ 3.
+        // Color coded if: (at POI and scanner ≥ 3) or scanner ≥ 5.
+        // White = present but no grade info. Green/Blue/Purple = band 1/2/3.
+        bool isPlanet      = poi.POIType == Constants.POI.Types.Planet;
+        bool canSeeIcons   = isPlanet && (isAtPoi || sensorLevel >= 3);
+        bool canSeeColor   = isPlanet && ((isAtPoi && sensorLevel >= 3) || sensorLevel >= 5);
+
+        if (isPlanet && canSeeIcons)
+        {
+            var gm     = GameManager.Instance;
+            var system = gm?.Database?.StarSystems.Get(poi.StarSystemId);
+            int tier   = system?.FtlTierRequired ?? 1;
+
+            RefreshResourceIcon(poiDetailHe3Icon,     poi.HasHelium3, poi.Helium3Amount,
+                                Constants.CargoBay.GetHelium3Capacity(tier), canSeeColor);
+            RefreshResourceIcon(poiDetailIridiumIcon, poi.HasIridium, poi.IridiumAmount,
+                                Constants.CargoBay.GetIridiumCapacity(tier), canSeeColor);
+            RefreshResourceIcon(poiDetailSalvageIcon, poi.HasSalvage, poi.SalvageAmount,
+                                Constants.CargoBay.GetSalvageCapacity(tier), canSeeColor);
+        }
+        else
+        {
+            if (poiDetailHe3Icon     != null) poiDetailHe3Icon.gameObject.SetActive(false);
+            if (poiDetailIridiumIcon != null) poiDetailIridiumIcon.gameObject.SetActive(false);
+            if (poiDetailSalvageIcon != null) poiDetailSalvageIcon.gameObject.SetActive(false);
+        }
+
+        // ── Collect button ────────────────────────────────────────────────────
+        // Shown instead of Set Course when ship is docked at a planet with resources.
+        bool hasAnyResource = isPlanet && (poi.HasHelium3 || poi.HasIridium || poi.HasSalvage);
+        bool showCollect    = isAtPoi && hasAnyResource;
+        if (poiDetailCollectButton != null)
+            poiDetailCollectButton.gameObject.SetActive(showCollect);
+
         poiDetailPanel.SetActive(true);
+    }
+
+    private static void RefreshResourceIcon(Image icon, bool hasResource, int amount, int capacity, bool showColor)
+    {
+        if (icon == null) return;
+        icon.gameObject.SetActive(hasResource);
+        if (!hasResource) return;
+
+        if (showColor)
+        {
+            float ratio = capacity > 0 ? (float)amount / capacity : 0f;
+            icon.color = ratio >= 0.75f ? new Color(0.70f, 0.25f, 1.00f) // purple — band 3
+                       : ratio >= 0.50f ? new Color(0.25f, 0.55f, 1.00f) // blue   — band 2
+                                        : new Color(0.25f, 0.85f, 0.35f); // green  — band 1
+        }
+        else
+        {
+            icon.color = Color.white;
+        }
     }
 
     /// <summary>
@@ -1722,6 +1782,47 @@ public class SystemViewController : MonoBehaviour
     {
         if (poiDetailPanel != null) poiDetailPanel.SetActive(false);
         UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
+    }
+
+    private void OnCollectClicked()
+    {
+        var poi = _detailPoi;
+        var gm  = GameManager.Instance;
+        if (poi == null || gm == null) return;
+
+        if (poi.HasHelium3 && poi.Helium3Amount > 0)
+        {
+            gm.AddHelium3(poi.Helium3Amount);
+            poi.HasHelium3    = false;
+            poi.Helium3Amount = 0;
+        }
+
+        if (poi.HasIridium && poi.IridiumAmount > 0)
+        {
+            gm.AddIridium(poi.IridiumAmount);
+            poi.HasIridium    = false;
+            poi.IridiumAmount = 0;
+        }
+
+        if (poi.HasSalvage && poi.SalvageAmount > 0)
+        {
+            gm.AddSalvage(poi.SalvageAmount);
+            poi.HasSalvage    = false;
+            poi.SalvageAmount = 0;
+        }
+
+        try { gm.Database?.POIs.Update(poi); }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[SystemViewController] Failed to persist collected resources for {poi.Name}: {e.Message}");
+        }
+
+        RefreshFuel();
+        RefreshSalvage();
+        RefreshIridium();
+
+        // Refresh the panel so icons and Collect button update immediately.
+        ShowPOIDetail(poi);
     }
 
     // -----------------------------------------------------------------------

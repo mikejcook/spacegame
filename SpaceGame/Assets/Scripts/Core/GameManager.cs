@@ -441,15 +441,15 @@ public class GameManager : MonoBehaviour
     // Resource management
     // -----------------------------------------------------------------------
 
-    /// <summary>Adds salvage and persists.</summary>
+    /// <summary>Adds Salvage up to the cargo-bay cap and persists.</summary>
     public void AddSalvage(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.Salvage += amount;
+        CurrentSave.Salvage = Mathf.Min(MaxSalvage, CurrentSave.Salvage + amount);
         SaveGame();
     }
 
-    /// <summary>Removes salvage (clamped to 0) and persists.</summary>
+    /// <summary>Removes Salvage (clamped to 0) and persists.</summary>
     public void RemoveSalvage(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
@@ -560,22 +560,6 @@ public class GameManager : MonoBehaviour
     {
         if (CurrentSave == null || amount <= 0) return;
         CurrentSave.Iridium = Mathf.Max(0, CurrentSave.Iridium - amount);
-        SaveGame();
-    }
-
-    /// <summary>Adds Salvage up to the cargo-bay cap and persists.</summary>
-    public void AddSalvage(int amount)
-    {
-        if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.Salvage = Mathf.Min(MaxSalvage, CurrentSave.Salvage + amount);
-        SaveGame();
-    }
-
-    /// <summary>Removes Salvage (clamped to 0) and persists.</summary>
-    public void RemoveSalvage(int amount)
-    {
-        if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.Salvage = Mathf.Max(0, CurrentSave.Salvage - amount);
         SaveGame();
     }
 
