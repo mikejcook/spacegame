@@ -38,6 +38,9 @@ public class SaveGame
     public DateTime CreatedAt   { get; set; }
     public DateTime LastSavedAt { get; set; }
 
+    // Unlocked research node IDs (JSON array of strings, e.g. ["crew_1","prop_1"])
+    public string UnlockedResearchJson { get; set; } = "[]";
+
     // Future: story/quest flag storage (JSON string)
     public string StoryFlagsJson { get; set; } = "{}";
 }

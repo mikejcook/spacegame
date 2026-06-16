@@ -92,6 +92,12 @@ public class ResearchViewController : MonoBehaviour
             if (_collection == null) return;
             BuildTree();
         }
+
+        // Sync unlock state from the save every time the panel opens, so a
+        // freshly loaded game always reflects its persisted research.
+        _unlockedIds = GameManager.Instance?.GetUnlockedResearchIds()
+                       ?? new HashSet<string>();
+
         RefreshAllNodeVisuals();
     }
 
@@ -341,23 +347,19 @@ public class ResearchViewController : MonoBehaviour
         if (_unlockedIds.Contains(_selectedNode.id)) return;
         if (!IsAvailable(_selectedNode)) return;
 
-        _unlockedIds.Add(_selectedNode.id);
+        var gm = GameManager.Instance;
+        if (gm != null)
+        {
+            if (!gm.UnlockResearch(_selectedNode.id, _selectedNode.cost)) return;
+            _unlockedIds = gm.GetUnlockedResearchIds();
+        }
+        else
+        {
+            // Editor / fallback: update in-memory state only.
+            _unlockedIds.Add(_selectedNode.id);
+        }
 
         RefreshAllNodeVisuals();
         HideDetail();
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Save / load integration (future)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// <summary>Restores unlock state from a saved game.</summary>
-    public void LoadState(HashSet<string> unlockedIds)
-    {
-        _unlockedIds = unlockedIds ?? new HashSet<string>();
-        if (_collection != null) RefreshAllNodeVisuals();
-    }
-
-    /// <summary>Returns current unlock state for saving.</summary>
-    public HashSet<string> GetUnlockedIds() => _unlockedIds;
 }

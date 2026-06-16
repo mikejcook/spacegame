@@ -44,6 +44,10 @@ public class GameManager : MonoBehaviour
     public SaveGame  CurrentSave    { get; private set; }
     public Ship      PlayerShip     { get; private set; }
 
+    // Tracks wall-clock time from the last session-start or save, so we can
+    // accumulate PlayTime into CurrentSave on each SaveGame() call.
+    private System.DateTime _sessionStart = System.DateTime.MinValue;
+
     /// <summary>
     /// True after PrepareNewGame until the player has spent their first-level skill points.
     /// SystemViewController checks this on Start() to show the captain level-up screen
@@ -349,7 +353,11 @@ public class GameManager : MonoBehaviour
     /// Transitions to the game scene. Call this after <see cref="PrepareNewGame"/>
     /// and any opening interlude have completed.
     /// </summary>
-    public void LaunchNewGame() => LoadGameScene();
+    public void LaunchNewGame()
+    {
+        _sessionStart = System.DateTime.UtcNow;
+        LoadGameScene();
+    }
 
     /// <summary>
     /// Convenience method: prepares a new game and immediately loads the game scene
@@ -370,6 +378,7 @@ public class GameManager : MonoBehaviour
         CurrentSave     = Database.SaveGames.Get(saveId);
         PlayerShip      = Database.Ships.Get(CurrentSave.ShipId);
 
+        _sessionStart = System.DateTime.UtcNow;
         LoadGameScene();
     }
 
@@ -378,6 +387,13 @@ public class GameManager : MonoBehaviour
     {
         if (CurrentSave == null) return;
 
+        // Accumulate wall-clock seconds since the last save (or session start).
+        if (_sessionStart != System.DateTime.MinValue)
+        {
+            CurrentSave.PlayTime += (float)(System.DateTime.UtcNow - _sessionStart).TotalSeconds;
+            _sessionStart = System.DateTime.UtcNow;
+        }
+
         CurrentSave.LastSavedAt = System.DateTime.Now;
         Database.SaveGames.Update(CurrentSave);
         Database.Ships.Update(PlayerShip);
@@ -385,6 +401,44 @@ public class GameManager : MonoBehaviour
         if (captain != null) Database.Characters.Update(captain);
 
         Debug.Log("[GameManager] Game saved.");
+    }
+
+    // -----------------------------------------------------------------------
+    // Research
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Returns the set of unlocked research node IDs from the current save.
+    /// </summary>
+    public HashSet<string> GetUnlockedResearchIds()
+    {
+        if (CurrentSave == null) return new HashSet<string>();
+        try
+        {
+            var list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(
+                CurrentSave.UnlockedResearchJson ?? "[]");
+            return list != null ? new HashSet<string>(list) : new HashSet<string>();
+        }
+        catch { return new HashSet<string>(); }
+    }
+
+    /// <summary>
+    /// Unlocks a research node: deducts its salvage cost, persists the updated
+    /// unlock list, and saves. Returns false if already unlocked.
+    /// </summary>
+    public bool UnlockResearch(string nodeId, int salvageCost)
+    {
+        if (CurrentSave == null || string.IsNullOrEmpty(nodeId)) return false;
+
+        var unlocked = GetUnlockedResearchIds();
+        if (unlocked.Contains(nodeId)) return false;
+
+        unlocked.Add(nodeId);
+        CurrentSave.UnlockedResearchJson =
+            Newtonsoft.Json.JsonConvert.SerializeObject(new List<string>(unlocked));
+        CurrentSave.Salvage = Mathf.Max(0, CurrentSave.Salvage - salvageCost);
+        SaveGame();
+        return true;
     }
 
     // -----------------------------------------------------------------------
@@ -594,6 +648,7 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToMainMenu()
     {
+        SaveGame();
         EventBus.Clear();
         SetState(GameState.MainMenu);
         SceneManager.LoadScene(Constants.Scenes.MainMenu);
