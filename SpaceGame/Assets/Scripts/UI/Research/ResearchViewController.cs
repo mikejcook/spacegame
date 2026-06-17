@@ -49,6 +49,9 @@ public class ResearchViewController : MonoBehaviour
     [SerializeField] private Button        unlockButton;
     [SerializeField] private Button        closeDetailButton;
 
+    [SerializeField] private GameObject    researchingOverlayPrefab;
+    private GameObject _researchingOverlay;
+
     // ── Node visual settings ──────────────────────────────────────────────────
     [SerializeField] private float nodeSize          = 140f;
     [SerializeField] private Color lineColorUnlocked = new Color(0.30f, 0.85f, 1.00f, 0.70f);
@@ -99,6 +102,8 @@ public class ResearchViewController : MonoBehaviour
                        ?? new HashSet<string>();
 
         RefreshAllNodeVisuals();
+
+        if (_selectedNode != null) ShowDetail(_selectedNode);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -253,6 +258,9 @@ public class ResearchViewController : MonoBehaviour
     private void RefreshAllNodeVisuals()
     {
         if (_collection?.nodes == null) return;
+
+        string inProgressId = GameManager.Instance?.CurrentSave?.InProgressResearchId;
+
         foreach (var node in _collection.nodes)
         {
             if (!_nodeRTs.ContainsKey(node.id)) continue;
@@ -280,6 +288,62 @@ public class ResearchViewController : MonoBehaviour
             if (parts.Length >= 3)
                 lr.color = _unlockedIds.Contains(parts[1]) ? lineColorUnlocked : lineColorLocked;
         }
+
+        RefreshResearchingOverlay(inProgressId);
+    }
+
+    /// <summary>Positions the shared "Researching" loading overlay under the in-progress node, if any.</summary>
+    private void RefreshResearchingOverlay(string inProgressId)
+    {
+        if (researchingOverlayPrefab == null) return;
+
+        if (string.IsNullOrEmpty(inProgressId) || !_nodeRTs.TryGetValue(inProgressId, out var nodeRT))
+        {
+            if (_researchingOverlay != null) _researchingOverlay.SetActive(false);
+            return;
+        }
+
+        if (_researchingOverlay == null)
+        {
+            _researchingOverlay = Object.Instantiate(researchingOverlayPrefab, nodeRT);
+
+            // The stock prefab is laid out for a wide horizontal loading bar
+            // (text box ~500px, pivoted/anchored off to the left of the spinner,
+            // plus a horizontal glow streak). Re-anchor the text to sit centred
+            // directly below the spinner, and drop the glow streak entirely.
+            var label = _researchingOverlay.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text      = "Researching";
+                label.alignment = TextAlignmentOptions.Center;
+                label.fontSize  = 18f;
+
+                var labelRT = label.GetComponent<RectTransform>();
+                labelRT.anchorMin        = new Vector2(0.5f, 0f);
+                labelRT.anchorMax        = new Vector2(0.5f, 0f);
+                labelRT.pivot            = new Vector2(0.5f, 1f);
+                labelRT.anchoredPosition = new Vector2(0f, -2f);
+                labelRT.sizeDelta        = new Vector2(160f, 26f);
+            }
+
+            var glow = _researchingOverlay.transform.Find("Glow");
+            if (glow != null) glow.gameObject.SetActive(false);
+        }
+        else
+        {
+            _researchingOverlay.transform.SetParent(nodeRT, false);
+        }
+
+        // Position the whole overlay centred under the node, clear of the
+        // node's own Label (which spans roughly y = -4 to y = -84).
+        var rt = _researchingOverlay.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0.5f, 0f);
+        rt.anchorMax        = new Vector2(0.5f, 0f);
+        rt.pivot            = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -92f);
+        rt.localScale       = new Vector3(0.7f, 0.7f, 1f);
+
+        _researchingOverlay.SetActive(true);
     }
 
     private bool IsAvailable(ResearchNode node)
@@ -302,24 +366,37 @@ public class ResearchViewController : MonoBehaviour
         ShowDetail(node);
     }
 
+    private static int GetSalvageCost(ResearchNode node) =>
+        Constants.Research.GetCost(Mathf.Clamp(node.cost, 1, 6));
+
     private void ShowDetail(ResearchNode node)
     {
         if (detailNameText     != null) detailNameText.text     = node.displayName;
         if (detailDescText     != null) detailDescText.text     = node.description;
-        if (detailCostText     != null) detailCostText.gameObject.SetActive(false);
         if (detailCategoryText != null) detailCategoryText.text = node.category;
 
-        bool unlocked  = _unlockedIds.Contains(node.id);
-        bool available = IsAvailable(node);
+        bool unlocked    = _unlockedIds.Contains(node.id);
+        bool available   = IsAvailable(node);
+        string inProgressId = GameManager.Instance?.CurrentSave?.InProgressResearchId;
+        bool isThisInProgress  = inProgressId == node.id;
+        bool otherInProgress   = !string.IsNullOrEmpty(inProgressId) && !isThisInProgress;
+
+        if (detailCostText != null)
+        {
+            detailCostText.gameObject.SetActive(!unlocked);
+            detailCostText.text = $"Cost: {GetSalvageCost(node)} Salvage  •  {Constants.Research.DurationDays:0} days";
+        }
 
         if (unlockButton != null)
         {
-            unlockButton.interactable = !unlocked && available;
+            unlockButton.interactable = !unlocked && available && !isThisInProgress && !otherInProgress;
             var lbl = unlockButton.GetComponentInChildren<TMP_Text>();
             if (lbl != null)
-                lbl.text = unlocked   ? "Unlocked"
-                         : !available ? "Locked"
-                                      : "Unlock";
+                lbl.text = unlocked         ? "Researched"
+                         : isThisInProgress ? "Researching..."
+                         : otherInProgress  ? "Busy"
+                         : !available       ? "Locked"
+                                             : "Research";
         }
 
         if (detailPanelGroup != null)
@@ -348,18 +425,11 @@ public class ResearchViewController : MonoBehaviour
         if (!IsAvailable(_selectedNode)) return;
 
         var gm = GameManager.Instance;
-        if (gm != null)
-        {
-            if (!gm.UnlockResearch(_selectedNode.id, _selectedNode.cost)) return;
-            _unlockedIds = gm.GetUnlockedResearchIds();
-        }
-        else
-        {
-            // Editor / fallback: update in-memory state only.
-            _unlockedIds.Add(_selectedNode.id);
-        }
+        if (gm == null) return;
+        if (!gm.StartResearch(_selectedNode, GetSalvageCost(_selectedNode))) return;
 
         RefreshAllNodeVisuals();
         HideDetail();
     }
+
 }

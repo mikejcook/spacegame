@@ -279,6 +279,21 @@ public static class Constants
         }
     }
 
+    public static class Research
+    {
+        /// <summary>Salvage cost for a research node = this fraction of its tier's max Salvage capacity.</summary>
+        public const float CostPercentOfSalvageCap = 0.35f;
+
+        /// <summary>Flat number of in-game days a research item takes to complete.</summary>
+        public const float DurationDays = 10f;
+
+        /// <summary>Returns the Salvage cost to research a node of the given tier (1-6).</summary>
+        public static int GetCost(int tier)
+        {
+            return UnityEngine.Mathf.RoundToInt(CostPercentOfSalvageCap * CargoBay.GetSalvageCapacity(tier));
+        }
+    }
+
     public static class Interludes
     {
         /// <summary>Resources path to the single story collection file (no extension).</summary>

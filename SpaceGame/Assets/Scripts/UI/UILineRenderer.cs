@@ -13,7 +13,7 @@ using UnityEngine.UI;
 ///   line.color = Color.white;
 /// </summary>
 [RequireComponent(typeof(CanvasRenderer))]
-public class UILineRenderer : Graphic
+public class UILineRenderer : MaskableGraphic
 {
     [SerializeField] private float _lineWidth = 3f;
     [SerializeField] private Color _lineColor = Color.white;

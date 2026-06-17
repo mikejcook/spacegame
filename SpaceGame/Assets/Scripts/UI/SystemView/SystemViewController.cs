@@ -104,6 +104,14 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private GameObject            researchViewPanel;
     [SerializeField] private ResearchViewController researchViewController;
 
+    [Header("Research Complete Popup")]
+    [Tooltip("Global overlay shown from any view (System/Galaxy/etc.) when an in-progress research finishes.")]
+    [SerializeField] private CanvasGroup researchCompleteGroup;
+    [SerializeField] private TMP_Text    researchCompleteNameText;
+    [SerializeField] private TMP_Text    researchCompleteDescText;
+    [SerializeField] private Image       researchCompleteIconImage;
+    [SerializeField] private Button      researchCompleteOkButton;
+
     [Header("Combat View")]
     [Tooltip("Root CombatView panel — sibling of Body, covers full area below header including NavBar.")]
     [SerializeField] private GameObject           combatViewPanel;
@@ -158,6 +166,7 @@ public class SystemViewController : MonoBehaviour
 
     // ── POI detail state ──────────────────────────────────────────────────────
     private PointOfInterest _detailPoi; // POI currently shown in the detail panel
+    private PointOfInterest _pendingPoiDetailAfterResearchPopup; // shown once Research Complete popup is dismissed
 
     // ── Ship state ────────────────────────────────────────────────────────────
     private GameObject      _shipNodeGO;
@@ -231,6 +240,12 @@ public class SystemViewController : MonoBehaviour
         }));
 
         randomCombatButton?.onClick.AddListener(() => StartOrRestartCombat(BuildRandomEnemies()));
+
+        // Global "Research Complete" popup — works from any view since this
+        // controller (and this popup) stay active regardless of which sub-view
+        // (System/Galaxy/Ship/Crew/Research) is currently shown.
+        researchCompleteOkButton?.onClick.AddListener(HideResearchCompletePopup);
+        HideResearchCompletePopup();
 
         // Galaxy view → arriving at a system switches the System View to it.
         // Galaxy view → disable/re-enable nav buttons during warp flight.
@@ -434,8 +449,22 @@ public class SystemViewController : MonoBehaviour
 
     // ── Header ───────────────────────────────────────────────────────────────
 
+    private bool _researchCompletedSubscribed;
+
+    // GameManager.Instance may not exist yet when Start() runs (e.g. entering the
+    // game scene directly in debug mode), so subscribe lazily the first time we
+    // can confirm it's ready.
+    private void EnsureResearchCompletedSubscription()
+    {
+        if (_researchCompletedSubscribed || GameManager.Instance == null) return;
+        GameManager.Instance.OnResearchCompleted += ShowResearchCompletePopup;
+        _researchCompletedSubscribed = true;
+    }
+
     private void RefreshHeader()
     {
+        EnsureResearchCompletedSubscription();
+
         if (systemNameText)
             systemNameText.text = ToTitleCase(_currentSystem.Name);
         RefreshSalvage();
@@ -445,11 +474,17 @@ public class SystemViewController : MonoBehaviour
         RefreshLoyalty();
     }
 
+    private static readonly Color ResourceMaxColor    = new Color(1.00f, 0.25f, 0.25f, 1.00f);
+    private static readonly Color ResourceNormalColor = Color.white;
+
     public void RefreshSalvage()
     {
         if (salvageText == null) return;
-        var save = GameManager.Instance?.CurrentSave;
-        salvageText.text = save != null ? save.Salvage.ToString("N0") : "0";
+        var gm   = GameManager.Instance;
+        var save = gm?.CurrentSave;
+        salvageText.text  = save != null ? save.Salvage.ToString("N0") : "0";
+        salvageText.color = save != null && gm != null && save.Salvage >= gm.MaxSalvage
+            ? ResourceMaxColor : ResourceNormalColor;
     }
 
     public void RefreshDays()
@@ -462,15 +497,21 @@ public class SystemViewController : MonoBehaviour
     public void RefreshFuel()
     {
         if (fuelText == null) return;
-        var save = GameManager.Instance?.CurrentSave;
-        fuelText.text = save != null ? save.Helium3.ToString() : "0";
+        var gm   = GameManager.Instance;
+        var save = gm?.CurrentSave;
+        fuelText.text  = save != null ? save.Helium3.ToString() : "0";
+        fuelText.color = save != null && gm != null && save.Helium3 >= gm.MaxHelium3
+            ? ResourceMaxColor : ResourceNormalColor;
     }
 
     public void RefreshIridium()
     {
         if (iridiumText == null) return;
-        var save = GameManager.Instance?.CurrentSave;
-        iridiumText.text = save != null ? save.Iridium.ToString("N0") : "0";
+        var gm   = GameManager.Instance;
+        var save = gm?.CurrentSave;
+        iridiumText.text  = save != null ? save.Iridium.ToString("N0") : "0";
+        iridiumText.color = save != null && gm != null && save.Iridium >= gm.MaxIridium
+            ? ResourceMaxColor : ResourceNormalColor;
     }
 
     public void RefreshLoyalty()
@@ -1631,9 +1672,42 @@ public class SystemViewController : MonoBehaviour
         }
     }
 
+    private static readonly string[] SalvageWreckageNouns = { "ship", "satellite", "probe" };
+    private static readonly string[] SalvageFacilityNouns = { "base", "lab", "mine", "facility" };
+
+    // Word choice is derived from the POI's Id so it stays consistent across views/sessions.
+    // Gas giants only ever roll the orbital-wreckage message; rocky planets can roll either.
+    private static string GetSalvageFlavorText(PointOfInterest poi)
+    {
+        var rng = new System.Random(poi.Id);
+
+        if (!poi.PlanetType.IsRocky())
+        {
+            string wreckage = SalvageWreckageNouns[rng.Next(SalvageWreckageNouns.Length)];
+            return $"Your sensors identify wreckage from a {wreckage}.";
+        }
+
+        if (rng.Next(2) == 0)
+        {
+            string wreckage = SalvageWreckageNouns[rng.Next(SalvageWreckageNouns.Length)];
+            return $"Your sensors identify wreckage from a {wreckage}.";
+        }
+
+        string facility = SalvageFacilityNouns[rng.Next(SalvageFacilityNouns.Length)];
+        return $"Your sensors have located an abandoned {facility} on the planet surface.";
+    }
+
     private void ShowPOIDetail(PointOfInterest poi)
     {
         if (poiDetailPanel == null) return;
+
+        // Only one modal popup at a time — defer until the Research Complete
+        // popup (if currently showing) is dismissed.
+        if (researchCompleteGroup != null && researchCompleteGroup.alpha > 0f)
+        {
+            _pendingPoiDetailAfterResearchPopup = poi;
+            return;
+        }
 
         _detailPoi = poi;
 
@@ -1645,6 +1719,9 @@ public class SystemViewController : MonoBehaviour
         // ── Name (always visible) ─────────────────────────────────────────
         if (poiDetailNameText != null)
             poiDetailNameText.text = poi.Name;
+
+        // Navigate button and travel labels hidden when ship is already at this POI
+        bool isAtPoi = poi == _shipCurrentPoi;
 
         // ── Description body — gated by scanner level ─────────────────────
         //   Level 0/1 : limited detail
@@ -1662,6 +1739,9 @@ public class SystemViewController : MonoBehaviour
 
                 if (!string.IsNullOrEmpty(poi.Description))
                     sb.AppendLine(poi.Description);
+
+                if (poi.HasSalvage && (isAtPoi || actualSensorLevel >= 5))
+                    sb.AppendLine(GetSalvageFlavorText(poi));
 
                 poiDetailDescText.text = sb.ToString().TrimEnd();
             }
@@ -1682,8 +1762,6 @@ public class SystemViewController : MonoBehaviour
             }
         }
 
-        // Navigate button and travel labels hidden when ship is already at this POI
-        bool isAtPoi      = poi == _shipCurrentPoi;
         bool showNavigate = !isAtPoi;
         if (poiDetailNavigateButton != null)
             poiDetailNavigateButton.gameObject.SetActive(showNavigate);
@@ -1797,6 +1875,65 @@ public class SystemViewController : MonoBehaviour
     {
         if (poiDetailPanel != null) poiDetailPanel.SetActive(false);
         UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
+    }
+
+    private void OnDestroy()
+    {
+        if (_researchCompletedSubscribed && GameManager.Instance != null)
+            GameManager.Instance.OnResearchCompleted -= ShowResearchCompletePopup;
+    }
+
+    private void ShowResearchCompletePopup(string nodeId)
+    {
+        var node = ResearchCollection.LoadFromResources()?.GetNode(nodeId);
+        if (node == null) return;
+
+        // Only one modal popup at a time — if the POI detail panel (e.g. the
+        // "arrived at system" popup) is already showing, hide it and re-show
+        // it once this popup is dismissed instead of overlapping the two.
+        if (poiDetailPanel != null && poiDetailPanel.activeSelf)
+        {
+            _pendingPoiDetailAfterResearchPopup = _detailPoi;
+            poiDetailPanel.SetActive(false);
+        }
+
+        if (researchCompleteNameText != null) researchCompleteNameText.text = node.displayName;
+        if (researchCompleteDescText != null) researchCompleteDescText.text = node.description;
+        if (researchCompleteIconImage != null)
+        {
+            researchCompleteIconImage.gameObject.SetActive(!string.IsNullOrEmpty(node.iconPath));
+            if (!string.IsNullOrEmpty(node.iconPath))
+            {
+                var tex = Resources.Load<Texture2D>(node.iconPath);
+                if (tex != null)
+                    researchCompleteIconImage.sprite = Sprite.Create(tex,
+                        new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            }
+        }
+
+        if (researchCompleteGroup != null)
+        {
+            researchCompleteGroup.alpha          = 1f;
+            researchCompleteGroup.blocksRaycasts = true;
+            researchCompleteGroup.interactable   = true;
+        }
+    }
+
+    private void HideResearchCompletePopup()
+    {
+        if (researchCompleteGroup != null)
+        {
+            researchCompleteGroup.alpha          = 0f;
+            researchCompleteGroup.blocksRaycasts = false;
+            researchCompleteGroup.interactable   = false;
+        }
+
+        if (_pendingPoiDetailAfterResearchPopup != null)
+        {
+            var poi = _pendingPoiDetailAfterResearchPopup;
+            _pendingPoiDetailAfterResearchPopup = null;
+            ShowPOIDetail(poi);
+        }
     }
 
     private void OnCollectClicked()

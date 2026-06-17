@@ -191,6 +191,9 @@ public static class GameSceneSetup
         var combatView      = BuildCombatView(svcGO.transform);
         var recruitmentPanel = BuildRecruitmentPanel(svcGO.transform);
         var levelUpPanel     = BuildLevelUpPanel(svcGO.transform);
+        // Sibling of Body/NavBar so it's visible regardless of which sub-view
+        // (System/Galaxy/Ship/Crew/Research) is currently shown.
+        var researchCompletePopup = BuildResearchCompletePopup(svcGO.transform);
 
         // ── Wire UIElementSound audio source on all Shift buttons ─────────
         var uiAudio = uiAudioGO.GetComponent<AudioSource>();
@@ -222,7 +225,7 @@ public static class GameSceneSetup
         var researchView = body.transform.Find("ResearchView")?.gameObject;
 
         WireController(controller, bg, header, body, navBar, poiDetail, combatView,
-                       recruitmentPanel, levelUpPanel, researchView);
+                       recruitmentPanel, levelUpPanel, researchView, researchCompletePopup);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 
@@ -2034,6 +2037,89 @@ public static class GameSceneSetup
         return researchView;
     }
 
+    // ── Global "Research Complete" popup — shown from any view (System/Galaxy/etc.) ──
+    static GameObject BuildResearchCompletePopup(Transform parent)
+    {
+        var root = MakeUIGO("ResearchCompletePopup", parent);
+        Stretch(root);
+
+        var scrim = MakeImage(root.transform, "Scrim", new Color(0f, 0f, 0f, 0.55f));
+        Stretch(scrim);
+
+        var panel = MakeImage(root.transform, "Panel", new Color(0.06f, 0.09f, 0.14f, 0.97f));
+        {
+            var rt       = panel.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(560f, 460f);
+        }
+
+        var accent = MakeImage(panel.transform, "TopAccent", AccentCyan);
+        PlaceRect(accent, anchor(0f, 1f), anchor(1f, 1f), v2(0f, -2f), v2(0f, 4f));
+
+        var headerTMP = MakeTMP(panel.transform, "HeaderText", "Research Complete", 28, AccentCyan);
+        PlaceRect(headerTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -36f), v2(-32f, 36f));
+        headerTMP.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        headerTMP.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        var iconGO = MakeUIGO("Icon", panel.transform);
+        {
+            var rt       = iconGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 1f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -78f);
+            rt.sizeDelta = new Vector2(80f, 80f);
+        }
+        var iconImg = iconGO.AddComponent<Image>();
+        iconImg.preserveAspect = true;
+
+        var nameTMP = MakeTMP(panel.transform, "NameText", "Research Name", 30, TextWhite);
+        PlaceRect(nameTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -190f), v2(-32f, 40f));
+        nameTMP.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        nameTMP.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        var descTMP = MakeTMP(panel.transform, "DescText", "Description text.", 22, TextSubtle);
+        PlaceRect(descTMP, anchor(0f, 1f), anchor(1f, 1f), v2(16f, -290f), v2(-32f, 130f));
+        {
+            var tmp = descTMP.GetComponent<TextMeshProUGUI>();
+            tmp.alignment        = TextAlignmentOptions.Top;
+            tmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        }
+
+        var btnPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MainBtnPrefabPath);
+        GameObject okGO;
+        if (btnPrefab != null)
+        {
+            okGO      = (GameObject)Object.Instantiate(btnPrefab, panel.transform);
+            okGO.name = "OkButton";
+            var mb = okGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "OK";
+        }
+        else
+        {
+            okGO = MakeImage(panel.transform, "OkButton", BtnNormal);
+            okGO.AddComponent<Button>();
+            var lbl = MakeTMP(okGO.transform, "Label", "OK", 24, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        {
+            var rt       = okGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 16f);
+            rt.sizeDelta = new Vector2(200f, 52f);
+        }
+
+        var cg = root.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+
+        return root;
+    }
+
     // ── Combat view — full body area, starts hidden ──────────────────────────
     //
     // Hierarchy:
@@ -3432,9 +3518,19 @@ public static class GameSceneSetup
                                 GameObject navBar, GameObject poiDetail,
                                 GameObject combatView,
                                 GameObject recruitmentPanel, GameObject levelUpPanel,
-                                GameObject researchView)
+                                GameObject researchView, GameObject researchCompletePopup)
     {
         var so = new SerializedObject(ctrl);
+
+        if (researchCompletePopup != null)
+        {
+            Set(so, "researchCompleteGroup",     researchCompletePopup.GetComponent<CanvasGroup>());
+            Set(so, "researchCompleteNameText",  Find<TMP_Text>(researchCompletePopup, "Panel/NameText"));
+            Set(so, "researchCompleteDescText",  Find<TMP_Text>(researchCompletePopup, "Panel/DescText"));
+            Set(so, "researchCompleteIconImage", Find<Image>(researchCompletePopup, "Panel/Icon"));
+            var okTf = researchCompletePopup.transform.Find("Panel/OkButton");
+            Set(so, "researchCompleteOkButton",  okTf?.GetComponentInChildren<Button>(true));
+        }
 
         Set(so, "starfieldBackground",    background.GetComponent<RawImage>());
         Set(so, "systemNameText",         Find<TMP_Text>(header, "SystemNameText"));
@@ -3484,6 +3580,10 @@ public static class GameSceneSetup
                     Set(rvcSo, "closeDetailButton",  detailRoot.Find("DetailPanel/CloseDetailButton")?.GetComponentInChildren<Button>(true));
                 }
                 else Debug.LogWarning("[GameSceneSetup] DetailPanel not found under ResearchView.");
+
+                var loadingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/Shift - Complete Sci-Fi UI/Prefabs/Loader/Loading.prefab");
+                Set(rvcSo, "researchingOverlayPrefab", loadingPrefab);
 
                 rvcSo.ApplyModifiedProperties();
             }

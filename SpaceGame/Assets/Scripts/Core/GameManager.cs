@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -112,6 +113,7 @@ public class GameManager : MonoBehaviour
                 ShipName     = shipName,
                 Credits      = Constants.Economy.StartingCredits,
                 Helium3      = Constants.Resources.StartingHelium3,
+                Salvage      = 100, // DEBUG: start with Salvage for testing Research
                 CrewLoyalty  = Constants.Resources.StartingLoyalty,
                 CreatedAt    = System.DateTime.Now,
                 LastSavedAt  = System.DateTime.Now
@@ -418,23 +420,56 @@ public class GameManager : MonoBehaviour
         catch { return new HashSet<string>(); }
     }
 
+    /// <summary>Raised when an in-progress research finishes. Argument is the completed node's id.</summary>
+    public event Action<string> OnResearchCompleted;
+
+    /// <summary>True while a research item is actively being researched.</summary>
+    public bool HasResearchInProgress =>
+        CurrentSave != null && !string.IsNullOrEmpty(CurrentSave.InProgressResearchId);
+
     /// <summary>
-    /// Unlocks a research node: deducts its salvage cost, persists the updated
-    /// unlock list, and saves. Returns false if already unlocked.
+    /// Begins researching the given node: deducts its salvage cost up-front and
+    /// starts the flat research-duration countdown. Returns false if another
+    /// research is already in progress, the node is already unlocked, or there
+    /// isn't enough salvage.
     /// </summary>
-    public bool UnlockResearch(string nodeId, int salvageCost)
+    public bool StartResearch(ResearchNode node, int salvageCost)
     {
-        if (CurrentSave == null || string.IsNullOrEmpty(nodeId)) return false;
+        if (CurrentSave == null || node == null) return false;
+        if (HasResearchInProgress) return false;
+        if (GetUnlockedResearchIds().Contains(node.id)) return false;
+        if (CurrentSave.Salvage < salvageCost) return false;
 
-        var unlocked = GetUnlockedResearchIds();
-        if (unlocked.Contains(nodeId)) return false;
-
-        unlocked.Add(nodeId);
-        CurrentSave.UnlockedResearchJson =
-            Newtonsoft.Json.JsonConvert.SerializeObject(new List<string>(unlocked));
         CurrentSave.Salvage = Mathf.Max(0, CurrentSave.Salvage - salvageCost);
+        CurrentSave.InProgressResearchId  = node.id;
+        CurrentSave.ResearchDaysRemaining = Constants.Research.DurationDays;
         SaveGame();
         return true;
+    }
+
+    /// <summary>
+    /// Advances the in-progress research (if any) by the given number of in-game
+    /// days, completing and unlocking it once enough days have accumulated.
+    /// Called whenever DaysPassed advances (travel, in-system movement, etc).
+    /// </summary>
+    private void AdvanceResearch(float days)
+    {
+        if (CurrentSave == null || !HasResearchInProgress) return;
+
+        CurrentSave.ResearchDaysRemaining -= days;
+        if (CurrentSave.ResearchDaysRemaining > 0f) return;
+
+        string completedId = CurrentSave.InProgressResearchId;
+        var unlocked = GetUnlockedResearchIds();
+        unlocked.Add(completedId);
+        CurrentSave.UnlockedResearchJson =
+            Newtonsoft.Json.JsonConvert.SerializeObject(new List<string>(unlocked));
+
+        CurrentSave.InProgressResearchId  = "";
+        CurrentSave.ResearchDaysRemaining = 0f;
+        SaveGame();
+
+        OnResearchCompleted?.Invoke(completedId);
     }
 
     // -----------------------------------------------------------------------
@@ -611,8 +646,10 @@ public class GameManager : MonoBehaviour
     public void AddTravelTime(StarSystem from, StarSystem to)
     {
         if (CurrentSave == null) return;
-        CurrentSave.DaysPassed += CalculateTravelDays(from, to);
+        float days = CalculateTravelDays(from, to);
+        CurrentSave.DaysPassed += days;
         CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateFtlFuelCost(from, to));
+        AdvanceResearch(days);
         SaveGame();
     }
 
@@ -626,9 +663,11 @@ public class GameManager : MonoBehaviour
     public void AddInSystemTravelTime(PointOfInterest from, PointOfInterest to)
     {
         if (CurrentSave == null) return;
-        CurrentSave.DaysPassed += CalculateInSystemTravelDays(from, to);
+        float days = CalculateInSystemTravelDays(from, to);
+        CurrentSave.DaysPassed += days;
         if (!IsInSolSystem())
             CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateSubLightFuelCost(from, to));
+        AdvanceResearch(days);
         SaveGame();
     }
 

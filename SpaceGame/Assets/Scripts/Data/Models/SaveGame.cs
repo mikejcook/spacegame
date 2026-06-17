@@ -41,6 +41,10 @@ public class SaveGame
     // Unlocked research node IDs (JSON array of strings, e.g. ["crew_1","prop_1"])
     public string UnlockedResearchJson { get; set; } = "[]";
 
+    // Research currently in progress, if any. Empty string means no active research.
+    public string InProgressResearchId    { get; set; } = "";
+    public float  ResearchDaysRemaining   { get; set; } = 0f;
+
     // Future: story/quest flag storage (JSON string)
     public string StoryFlagsJson { get; set; } = "{}";
 }

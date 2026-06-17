@@ -721,7 +721,8 @@ public static class StarSystemGenerator
                        : !isGas   ? rng.Next(10) < 2
                                   : false;
 
-        poi.HasSalvage = isRocky ? rng.Next(10) < 4
+        poi.HasSalvage = isRocky ? rng.Next(10) < 5
+                       : isGas   ? rng.Next(10) < 2
                                  : false;
 
         if (poi.HasHelium3) poi.Helium3Amount = RollResourceAmount(Constants.CargoBay.GetHelium3Capacity(tier), rng);
