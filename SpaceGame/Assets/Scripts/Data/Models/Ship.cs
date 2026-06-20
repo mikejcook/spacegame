@@ -144,7 +144,8 @@ public class Ship
             MaxShieldPoints = 30,
             ShieldPoints    = 30,
             CargoCapacity   = 20,
-            MaxCrew         = 4,   // captain + 3 crew
+            MaxCrew         = 2,   // captain + 1 at Tier 1 crew quarters; authoritative
+                                   // capacity is GameManager.GetMaxCrewCapacity() (tier + 1)
             MaxPassengers   = 2,
             FTLSpeed        = 1.0f
         };

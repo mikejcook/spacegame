@@ -77,35 +77,6 @@ public static class CharacterFactory
         return pilot;
     }
 
-    public static Character CreateStartingEngineer(PortraitLibrary portraits = null, HashSet<string> usedPortraits = null)
-    {
-        var generated = NameGenerator.Generate();
-
-        var engineer = new Character
-        {
-            FirstName     = generated.firstName,
-            LastName      = generated.lastName,
-            Gender        = generated.gender,
-            Role          = Constants.Crew.Roles.Engineer,
-            Level         = 1,
-            MaxHealth     = 10,
-            CurrentHealth = 10,
-            PortraitId    = portraits != null
-                                ? portraits.RandomFileNameForGender(generated.gender, usedPortraits)
-                                : (generated.gender == Gender.Female ? "female_6.png" : "male_6.png"),
-            Background    = "Self-taught ship mechanic who can fix anything with duct tape and spite.",
-            Homeworld     = GenerateHomeworld(),
-        };
-
-        engineer.Skills = new Dictionary<string, int>
-        {
-            [Constants.Skills.Engineering] = 2,
-            [Constants.Skills.Science]     = 1
-        };
-
-        return engineer;
-    }
-
     // -------------------------------------------------------------------------
     // Procedural recruitment — used by space stations
     // -------------------------------------------------------------------------

@@ -52,11 +52,13 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private TMP_Text    fuelText;
     [SerializeField] private TMP_Text    iridiumText;
     [SerializeField] private TMP_Text    loyaltyText;
+    [SerializeField] private TMP_Text    crewText;
     [SerializeField] private GameObject  salvageWidgetGO;
     [SerializeField] private GameObject  daysWidgetGO;
     [SerializeField] private GameObject  fuelWidgetGO;
     [SerializeField] private GameObject  iridiumWidgetGO;
     [SerializeField] private GameObject  loyaltyWidgetGO;
+    [SerializeField] private GameObject  crewWidgetGO;
     [SerializeField] private CanvasGroup combatHeaderStatsGroup;
 
     [Header("System Map")]
@@ -149,10 +151,6 @@ public class SystemViewController : MonoBehaviour
     [SerializeField] private Image      poiDetailHe3Icon;
     [SerializeField] private Image      poiDetailIridiumIcon;
     [SerializeField] private Image      poiDetailSalvageIcon;
-
-    [Header("Crew Recruitment")]
-    [Tooltip("Recruitment overlay — shown automatically when the ship docks at a functioning space station.")]
-    [SerializeField] private RecruitmentController recruitmentController;
 
     // -----------------------------------------------------------------------
     // Private state
@@ -472,6 +470,7 @@ public class SystemViewController : MonoBehaviour
         RefreshFuel();
         RefreshIridium();
         RefreshLoyalty();
+        RefreshCrew();
     }
 
     private static readonly Color ResourceMaxColor    = new Color(1.00f, 0.25f, 0.25f, 1.00f);
@@ -519,6 +518,21 @@ public class SystemViewController : MonoBehaviour
         if (loyaltyText == null) return;
         var save = GameManager.Instance?.CurrentSave;
         loyaltyText.text = save != null ? save.CrewLoyalty.ToString() : "0";
+    }
+
+    /// <summary>
+    /// Shows current crew aboard vs. capacity (e.g. "2/3"), where capacity is the
+    /// Crew Quarters tier + 1.
+    /// </summary>
+    public void RefreshCrew()
+    {
+        if (crewText == null) return;
+        var gm = GameManager.Instance;
+        if (gm?.CurrentSave == null) { crewText.text = "0/0"; return; }
+
+        int count = gm.GetActiveCrewCount();
+        int max   = gm.GetMaxCrewCapacity();
+        crewText.text = $"{count}/{max}";
     }
 
     // ── Star visual ──────────────────────────────────────────────────────────
@@ -1451,6 +1465,7 @@ public class SystemViewController : MonoBehaviour
         if (fuelWidgetGO != null) fuelWidgetGO.SetActive(false);
         if (iridiumWidgetGO != null) iridiumWidgetGO.SetActive(false);
         if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(false);
+        if (crewWidgetGO != null) crewWidgetGO.SetActive(false);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 1f;
@@ -1523,6 +1538,7 @@ public class SystemViewController : MonoBehaviour
         if (fuelWidgetGO != null) fuelWidgetGO.SetActive(true);
         if (iridiumWidgetGO != null) iridiumWidgetGO.SetActive(true);
         if (loyaltyWidgetGO != null) loyaltyWidgetGO.SetActive(true);
+        if (crewWidgetGO != null) crewWidgetGO.SetActive(true);
         if (combatHeaderStatsGroup != null)
         {
             combatHeaderStatsGroup.alpha          = 0f;

@@ -566,21 +566,44 @@ public class CrewViewController : MonoBehaviour
         _hireButtonGO.SetActive(true);
 
         bool alreadyHired = _hired.Contains(index);
+        // Crew quarters cap total crew (including the captain) at tier + 1. Once the ship
+        // is full, remaining candidates can't be hired until quarters are upgraded.
+        bool crewFull = !alreadyHired && (GameManager.Instance?.IsCrewFull() ?? false);
+
         var hireBtn = _hireButtonGO.GetComponent<Button>();
         var hireLbl = _hireButtonGO.GetComponentInChildren<TextMeshProUGUI>();
         var hireBg  = _hireButtonGO.GetComponent<Image>();
 
-        if (hireLbl != null) hireLbl.text  = alreadyHired ? "HIRED" : "HIRE";
-        if (hireLbl != null) hireLbl.color = alreadyHired ? AccentCyan : TextWhite;
-        if (hireBg  != null) hireBg.color  = alreadyHired
-            ? new Color(0.04f, 0.14f, 0.10f, 1f)
-            : new Color(0.08f, 0.38f, 0.22f, 1f);
+        string hireText;
+        Color  hireTextColor;
+        Color  hireBgColor;
+        if (alreadyHired)
+        {
+            hireText      = "Hired";
+            hireTextColor = AccentCyan;
+            hireBgColor   = new Color(0.04f, 0.14f, 0.10f, 1f);
+        }
+        else if (crewFull)
+        {
+            hireText      = "Crew full";
+            hireTextColor = TextSubtle;
+            hireBgColor   = new Color(0.16f, 0.10f, 0.10f, 1f);
+        }
+        else
+        {
+            hireText      = "Hire";
+            hireTextColor = TextWhite;
+            hireBgColor   = new Color(0.08f, 0.38f, 0.22f, 1f);
+        }
+
+        if (hireLbl != null) { hireLbl.text = hireText; hireLbl.color = hireTextColor; }
+        if (hireBg  != null) hireBg.color = hireBgColor;
 
         if (hireBtn != null)
         {
-            hireBtn.interactable = !alreadyHired;
+            hireBtn.interactable = !alreadyHired && !crewFull;
             hireBtn.onClick.RemoveAllListeners();
-            if (!alreadyHired)
+            if (!alreadyHired && !crewFull)
             {
                 int capturedIdx = index;
                 var capturedCandidate = candidate;
@@ -593,6 +616,14 @@ public class CrewViewController : MonoBehaviour
     {
         var gm = GameManager.Instance;
         if (gm?.CurrentSave == null) { Debug.LogWarning("[CrewViewController] No save — cannot hire."); return; }
+
+        // Guard against hiring past crew capacity (button should already be disabled).
+        if (gm.IsCrewFull())
+        {
+            Debug.Log("[CrewViewController] Crew quarters full — cannot hire more crew.");
+            ShowOrHideHireButton(candidate, index);
+            return;
+        }
 
         // Promote from station recruit to active crew by clearing StationPoiId.
         // The record already exists in the DB (inserted during generation), so Update, not Insert.

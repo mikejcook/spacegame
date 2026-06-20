@@ -133,16 +133,13 @@ public class GameManager : MonoBehaviour
             if (!string.IsNullOrEmpty(captain.PortraitId))
                 usedPortraits.Add(captain.PortraitId);
 
-            // Create starting pilot and engineer with gender-appropriate, non-duplicate portraits
-            var pilot    = CharacterFactory.CreateStartingPilot(portraitLibrary, usedPortraits);
-            if (!string.IsNullOrEmpty(pilot.PortraitId))
-                usedPortraits.Add(pilot.PortraitId);
-            var engineer = CharacterFactory.CreateStartingEngineer(portraitLibrary, usedPortraits);
-            pilot.SaveGameId    = CurrentSave.Id;
-            engineer.SaveGameId = CurrentSave.Id;
+            // Create the starting pilot with a gender-appropriate, non-duplicate portrait.
+            // Tier 1 crew quarters cap the crew at captain + 1, so the ship launches with
+            // just the captain and a single pilot. (See GameManager.GetMaxCrewCapacity.)
+            var pilot = CharacterFactory.CreateStartingPilot(portraitLibrary, usedPortraits);
+            pilot.SaveGameId = CurrentSave.Id;
             Database.Characters.Insert(pilot);
-            Database.Characters.Insert(engineer);
-            Debug.Log($"[GameManager] Crew created: {pilot.Name}, {engineer.Name}.");
+            Debug.Log($"[GameManager] Crew created: {pilot.Name}.");
 
             // Create starting ship
             PlayerShip            = Ship.CreateStartingShip(shipName);
@@ -331,6 +328,41 @@ public class GameManager : MonoBehaviour
                            .FirstOrDefault();
         return item != null ? (int)item.Tier : 0;
     }
+
+    /// <summary>
+    /// Returns the tier (1–6) of the Crew Quarters currently installed on the player's ship.
+    /// Defaults to 1 when nothing is installed — every ship has baseline accommodations.
+    /// </summary>
+    public int GetCrewQuartersTier()
+    {
+        if (PlayerShip == null || Database == null) return 1;
+
+        var slots = PlayerShip.EquipmentSlots;
+        if (!slots.TryGetValue(Constants.Ship.EquipmentSlots.CrewQuarters, out int itemId) || itemId <= 0)
+            return 1;
+
+        var item = Database.Equipment.Query()
+                           .Where(e => e.Id == itemId)
+                           .FirstOrDefault();
+        return item != null ? (int)item.Tier : 1;
+    }
+
+    /// <summary>
+    /// Maximum total crew the ship can hold, INCLUDING the captain.
+    /// Equals the Crew Quarters tier + 1 (Tier 1 → captain + 1 crew).
+    /// </summary>
+    public int GetMaxCrewCapacity() => GetCrewQuartersTier() + 1;
+
+    /// <summary>Number of hired crew currently aboard (captain + assigned/unassigned crew).</summary>
+    public int GetActiveCrewCount()
+    {
+        if (Database == null || CurrentSave == null) return 0;
+        var crew = Database.GetCrewForSave(CurrentSave.Id);
+        return crew?.Count ?? 0;
+    }
+
+    /// <summary>True when the ship is at (or over) its crew capacity — no more recruiting allowed.</summary>
+    public bool IsCrewFull() => GetActiveCrewCount() >= GetMaxCrewCapacity();
 
     private void InsertSystemWithPOIs(StarSystem system, int saveGameId,
         System.Func<StarSystem, int, List<PointOfInterest>> poiGenerator = null,
