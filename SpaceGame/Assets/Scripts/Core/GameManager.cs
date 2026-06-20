@@ -452,6 +452,49 @@ public class GameManager : MonoBehaviour
         catch { return new HashSet<string>(); }
     }
 
+    /// <summary>True when the given research node id has been unlocked in the current save.</summary>
+    public bool IsResearched(string researchId)
+        => !string.IsNullOrEmpty(researchId) && GetUnlockedResearchIds().Contains(researchId);
+
+    /// <summary>
+    /// Highest equipment tier (1-6) the player may currently install/upgrade to.
+    /// Tier 1 is always available; each higher tier requires its Mark-N Equipment research.
+    /// </summary>
+    public int GetMaxEquipmentTier()
+    {
+        var unlocked = GetUnlockedResearchIds();
+        int max = 1;
+        for (int tier = 2; tier <= (int)Constants.Ship.MaxTier; tier++)
+        {
+            string id = Constants.Research.Effects.EquipmentTierResearchId(tier);
+            if (id != null && unlocked.Contains(id)) max = tier;
+            else break;   // tiers are sequential prerequisites — stop at the first gap
+        }
+        return max;
+    }
+
+    /// <summary>Extra skill points granted per character level from research (Training Program).</summary>
+    public int SkillPointsPerLevelBonus =>
+        IsResearched(Constants.Research.Ids.TrainingProgram)
+            ? Constants.Research.Effects.TrainingProgramPointsPerLevel
+            : 0;
+
+    /// <summary>
+    /// Awards XP to a character, applies any research-derived per-level skill-point bonus
+    /// for each level gained, and persists. Use this instead of calling
+    /// <see cref="Character.GainExperience"/> directly so the Training Program bonus is honoured.
+    /// </summary>
+    public void AwardExperience(Character character, int amount)
+    {
+        if (character == null) return;
+        int levelsGained = character.GainExperience(amount);
+        if (levelsGained > 0)
+            character.AvailableSkillPoints += SkillPointsPerLevelBonus * levelsGained;
+
+        try { Database?.Characters.Update(character); }
+        catch (Exception e) { Debug.LogError($"[GameManager] AwardExperience save failed: {e.Message}"); }
+    }
+
     /// <summary>Raised when an in-progress research finishes. Argument is the completed node's id.</summary>
     public event Action<string> OnResearchCompleted;
 
@@ -499,9 +542,67 @@ public class GameManager : MonoBehaviour
 
         CurrentSave.InProgressResearchId  = "";
         CurrentSave.ResearchDaysRemaining = 0f;
+
+        ApplyResearchCompletionEffects(completedId);
+
         SaveGame();
 
         OnResearchCompleted?.Invoke(completedId);
+    }
+
+    /// <summary>
+    /// <summary>
+    /// Debug helper: instantly unlocks a research node without consuming salvage or time.
+    /// Fires the same completion effects as normal research.
+    /// </summary>
+    public void DebugUnlockResearch(string researchId)
+    {
+        if (string.IsNullOrEmpty(researchId) || CurrentSave == null) return;
+        var unlocked = GetUnlockedResearchIds();
+        if (unlocked.Contains(researchId)) return;
+        unlocked.Add(researchId);
+        CurrentSave.UnlockedResearchJson = Newtonsoft.Json.JsonConvert.SerializeObject(
+            new System.Collections.Generic.List<string>(unlocked));
+        if (CurrentSave.InProgressResearchId == researchId)
+        {
+            CurrentSave.InProgressResearchId  = "";
+            CurrentSave.ResearchDaysRemaining = 0f;
+        }
+        ApplyResearchCompletionEffects(researchId);
+        SaveGame();
+        OnResearchCompleted?.Invoke(researchId);
+    }
+
+    /// Applies one-time effects that fire the moment a research completes.
+    /// Most research is read passively each time it's needed (equipment tier gating,
+    /// combat modifiers); this handles the retroactive cases that must mutate stored data.
+    /// </summary>
+    private void ApplyResearchCompletionEffects(string completedId)
+    {
+        if (string.IsNullOrEmpty(completedId) || Database == null || CurrentSave == null) return;
+
+        // Training Program — "1 additional skill point per level (retroactive)".
+        // Grant every existing crew member skill points equal to their current level,
+        // so the bonus applies to levels they already earned. Future level-ups pick up
+        // the +1/level via AwardExperience / SkillPointsPerLevelBonus.
+        if (completedId == Constants.Research.Ids.TrainingProgram)
+        {
+            int perLevel = Constants.Research.Effects.TrainingProgramPointsPerLevel;
+            try
+            {
+                var crew = Database.GetCrewForSave(CurrentSave.Id);
+                foreach (var c in crew)
+                {
+                    c.AvailableSkillPoints += perLevel * Mathf.Max(1, c.Level);
+                    Database.Characters.Update(c);
+                }
+                Debug.Log($"[GameManager] Training Program applied retroactively to {crew.Count} crew.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[GameManager] Failed to apply Training Program: {e.Message}");
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -630,12 +731,34 @@ public class GameManager : MonoBehaviour
         SaveGame();
     }
 
+    /// <summary>Maximum loyalty the crew can accumulate, increased by Crew Quarters Improvement research.</summary>
+    public int MaxLoyalty =>
+        Constants.Resources.MaxLoyalty +
+        (IsResearched(Constants.Research.Ids.CrewQuartersImprovement)
+            ? Constants.Research.Effects.CrewQuartersMaxLoyaltyBonus
+            : 0);
+
     /// <summary>Adds crew loyalty up to the cap and persists.</summary>
     public void AddLoyalty(int amount)
     {
         if (CurrentSave == null || amount <= 0) return;
-        CurrentSave.CrewLoyalty = Mathf.Min(Constants.Resources.MaxLoyalty, CurrentSave.CrewLoyalty + amount);
+        CurrentSave.CrewLoyalty = Mathf.Min(MaxLoyalty, CurrentSave.CrewLoyalty + amount);
         SaveGame();
+    }
+
+    /// <summary>
+    /// Accrues passive loyalty for the given number of in-game days.
+    /// The base rate always applies; Recreational Facilities adds a bonus while He3 > 0.
+    /// </summary>
+    private void AdvanceLoyalty(float days)
+    {
+        if (CurrentSave == null || days <= 0f) return;
+        float rate = Constants.Resources.LoyaltyPerDay;
+        if (IsResearched(Constants.Research.Ids.RecreationalFacilities) && CurrentSave.Helium3 > 0)
+            rate += Constants.Research.Effects.RecreationalFacilitiesLoyaltyPerDay;
+        int gained = Mathf.FloorToInt(rate * days);
+        if (gained > 0)
+            CurrentSave.CrewLoyalty = Mathf.Min(MaxLoyalty, CurrentSave.CrewLoyalty + gained);
     }
 
     /// <summary>
@@ -680,7 +803,11 @@ public class GameManager : MonoBehaviour
         if (CurrentSave == null) return;
         float days = CalculateTravelDays(from, to);
         CurrentSave.DaysPassed += days;
-        CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateFtlFuelCost(from, to));
+        int ftlCost = CalculateFtlFuelCost(from, to);
+        if (IsResearched(Constants.Research.Ids.SlipstreamCalibration))
+            ftlCost = Mathf.RoundToInt(ftlCost * (1f - Constants.Research.Effects.SlipstreamCalibrationFuelReduction));
+        CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - ftlCost);
+        AdvanceLoyalty(days);
         AdvanceResearch(days);
         SaveGame();
     }
@@ -698,7 +825,13 @@ public class GameManager : MonoBehaviour
         float days = CalculateInSystemTravelDays(from, to);
         CurrentSave.DaysPassed += days;
         if (!IsInSolSystem())
-            CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - CalculateSubLightFuelCost(from, to));
+        {
+            int subLightCost = CalculateSubLightFuelCost(from, to);
+            if (IsResearched(Constants.Research.Ids.PlasmaExhaust))
+                subLightCost = Mathf.RoundToInt(subLightCost * (1f - Constants.Research.Effects.PlasmaExhaustFuelReduction));
+            CurrentSave.Helium3 = Mathf.Max(0, CurrentSave.Helium3 - subLightCost);
+        }
+        AdvanceLoyalty(days);
         AdvanceResearch(days);
         SaveGame();
     }

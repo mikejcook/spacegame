@@ -2055,6 +2055,32 @@ public static class GameSceneSetup
             rt.sizeDelta = new Vector2(220f, 52f);
         }
 
+        // Debug: Research Now button — centred between Unlock and Close
+        GameObject debugResearchGO;
+        if (unlockPrefab != null)
+        {
+            debugResearchGO      = (GameObject)Object.Instantiate(unlockPrefab, detailPanel.transform);
+            debugResearchGO.name = "DebugResearchNowButton";
+            var mb = debugResearchGO.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "Research Now";
+        }
+        else
+        {
+            debugResearchGO = MakeImage(detailPanel.transform, "DebugResearchNowButton", BtnNormal);
+            debugResearchGO.AddComponent<Button>();
+            var lbl = MakeTMP(debugResearchGO.transform, "Label", "Research Now", 24, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        // DEBUG RESEARCH NOW — anchored bottom-centre
+        {
+            var rt       = debugResearchGO.GetComponent<RectTransform>();
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 16f);
+            rt.sizeDelta = new Vector2(220f, 52f);
+        }
+
         // Close detail button
         GameObject closeDetailGO;
         if (unlockPrefab != null)
@@ -2191,17 +2217,21 @@ public static class GameSceneSetup
     //         └─ Viewport              (RectMask2D)
     //            └─ ExpandedLogText    (TMP_Text + ContentSizeFitter; full-detail rolling log)
     //      ├─ AccentLine               (2 px cyan rule at top)
-    //      ├─ FireTorpedesContainer    (left-anchored, 300 px)
-    //      │  └─ FireTorpedesButton    (Shift MainButton — "FIRE TORPEDOES")
-    //      ├─ TargetInfoPanel          (centre, flexible — enemy Shield/Hull %)
-    //      │  ├─ TargetInfoTitle       ("TARGET", 16 px)
-    //      │  └─ TargetStatsRow        (HLG)
-    //      │     ├─ TargetShieldText   ("SHIELDS  100%")
-    //      │     ├─ DividerText        ("|")
-    //      │     └─ TargetHullText     ("HULL  100%")
-    //      ├─ PilotManeuverContainer   (right-anchored, 220 px — left of cannon button)
-    //      │  ├─ ManeuverLabel         (TMP_Text — "PILOT MANEUVER")
-    //      │  └─ PilotManeuverDropdown (Shift Dropdown — Standard / Evasive / Attack Pattern)
+    //      ├─ FireTorpedesContainer      (left-anchored, 300 px)
+    //      │  └─ FireTorpedesButton      (Shift MainButton — "FIRE TORPEDOES")
+    //      ├─ EmergencyThrustContainer   (left-anchored, 220 px — right of torpedo button; hidden unless prop_3a researched)
+    //      │  ├─ EmergencyThrustLabel    (TMP_Text — "EMERGENCY THRUST")
+    //      │  ├─ EmergencyThrustButton   (Shift MainButton — "ACTIVATE")
+    //      │  └─ EmergencyThrustStatusText (TMP_Text — "" / "Active: N" / "Cooldown: N")
+    //      ├─ TargetInfoPanel            (centre, flexible — enemy Shield/Hull %)
+    //      │  ├─ TargetInfoTitle         ("TARGET", 16 px)
+    //      │  └─ TargetStatsRow          (HLG)
+    //      │     ├─ TargetShieldText     ("SHIELDS  100%")
+    //      │     ├─ DividerText          ("|")
+    //      │     └─ TargetHullText       ("HULL  100%")
+    //      ├─ PilotManeuverContainer     (right-anchored, 220 px — left of cannon button)
+    //      │  ├─ ManeuverLabel           (TMP_Text — "PILOT MANEUVER")
+    //      │  └─ PilotManeuverDropdown   (Shift Dropdown — Standard / Evasive / Attack Pattern)
     //      └─ FireParticleCannonContainer  (right-anchored, 300 px)
     //         └─ FireParticleCannonButton  (Shift MainButton — "FIRE PARTICLE CANNONS")
 
@@ -2357,6 +2387,82 @@ public static class GameSceneSetup
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
         }
+
+        // ── Emergency Thrust container — mirrors PilotManeuverContainer from the left ──
+        // Positioned just right of the torpedo button; hidden by default (shown only
+        // when prop_3a research is unlocked). Layout: label (26px) + button (40px) +
+        // status text (18px) stacked, total ~90px.
+        const float ThrustLabelH  = 26f;
+        const float ThrustButtonH = 40f;
+        const float ThrustStatusH = 18f;
+        const float ThrustTotalH  = ThrustLabelH + 4f + ThrustButtonH + 2f + ThrustStatusH; // 90px
+        var thrustContainer = MakeUIGO("EmergencyThrustContainer", actionBar.transform);
+        {
+            var rt              = thrustContainer.GetComponent<RectTransform>();
+            rt.pivot            = new Vector2(0f, 0.5f);
+            rt.anchorMin        = new Vector2(0f, 0.5f);
+            rt.anchorMax        = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(ActionBarPad + WeaponBtnWidth + DropdownGap, 0f);
+            rt.sizeDelta        = new Vector2(DropdownWidth, ThrustTotalH);
+        }
+        {
+            var inset   = thrustContainer.AddComponent<SafeAreaInset>();
+            var insetSo = new SerializedObject(inset);
+            insetSo.FindProperty("_left").boolValue = true;
+            insetSo.ApplyModifiedProperties();
+        }
+        // Label — top
+        {
+            var lbl = MakeTMP(thrustContainer.transform, "EmergencyThrustLabel", "Emergency Thrust", 20, TextSubtle);
+            var rt  = lbl.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, 0f);
+            rt.sizeDelta        = new Vector2(0f, ThrustLabelH);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        // Activate button — below the label
+        if (weaponBtnPrefab != null)
+        {
+            var go = (GameObject)Object.Instantiate(weaponBtnPrefab, thrustContainer.transform);
+            go.name = "EmergencyThrustButton";
+            var mb  = go.GetComponent<Michsky.UI.Shift.MainButton>();
+            if (mb != null) mb.buttonText = "Activate";
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -(ThrustLabelH + 4f));
+            rt.sizeDelta        = new Vector2(0f, ThrustButtonH);
+        }
+        else
+        {
+            var go  = MakeImage(thrustContainer.transform, "EmergencyThrustButton", BtnNormal);
+            go.AddComponent<Button>();
+            var lbl = MakeTMP(go.transform, "Label", "Activate", 20, TextWhite);
+            Stretch(lbl);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+            var rt  = go.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -(ThrustLabelH + 4f));
+            rt.sizeDelta        = new Vector2(0f, ThrustButtonH);
+        }
+        // Status text — below the button (shows "Active: N" or "Cooldown: N")
+        {
+            var statusPos = -(ThrustLabelH + 4f + ThrustButtonH + 2f);
+            var lbl = MakeTMP(thrustContainer.transform, "EmergencyThrustStatusText", "", 18, AccentCyan);
+            var rt  = lbl.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, statusPos);
+            rt.sizeDelta        = new Vector2(0f, ThrustStatusH);
+            lbl.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Center;
+        }
+        thrustContainer.SetActive(false);  // hidden until research unlocks it
 
         // ── Target info panel — centre ────────────────────────────────────
         var targetInfoPanel = MakeUIGO("TargetInfoPanel", actionBar.transform);
@@ -3557,8 +3663,9 @@ public static class GameSceneSetup
                     Set(rvcSo, "detailCategoryText", Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailCategoryText"));
                     Set(rvcSo, "detailDescText",     Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailDescText"));
                     Set(rvcSo, "detailCostText",     Find<TMP_Text>(detailRoot.gameObject, "DetailPanel/DetailCostText"));
-                    Set(rvcSo, "unlockButton",       detailRoot.Find("DetailPanel/UnlockButton")?.GetComponentInChildren<Button>(true));
-                    Set(rvcSo, "closeDetailButton",  detailRoot.Find("DetailPanel/CloseDetailButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "unlockButton",           detailRoot.Find("DetailPanel/UnlockButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "debugResearchNowButton", detailRoot.Find("DetailPanel/DebugResearchNowButton")?.GetComponentInChildren<Button>(true));
+                    Set(rvcSo, "closeDetailButton",      detailRoot.Find("DetailPanel/CloseDetailButton")?.GetComponentInChildren<Button>(true));
                 }
                 else Debug.LogWarning("[GameSceneSetup] DetailPanel not found under ResearchView.");
 
@@ -3872,6 +3979,14 @@ public static class GameSceneSetup
                     torpContainerTf?.GetComponentInChildren<Button>(true);
                 cvcSo.FindProperty("fireParticleCannonButton").objectReferenceValue =
                     cannonContainerTf?.GetComponentInChildren<Button>(true);
+
+                var thrustContainerTf = combatView.transform.Find("CombatActionBar/EmergencyThrustContainer");
+                cvcSo.FindProperty("emergencyThrustContainer").objectReferenceValue =
+                    thrustContainerTf?.gameObject;
+                cvcSo.FindProperty("emergencyThrustButton").objectReferenceValue =
+                    thrustContainerTf?.GetComponentInChildren<Button>(true);
+                cvcSo.FindProperty("emergencyThrustStatusText").objectReferenceValue =
+                    Find<TMP_Text>(combatView, "CombatActionBar/EmergencyThrustContainer/EmergencyThrustStatusText");
 
                 // Torpedo count — now in the header combat stats bar
                 cvcSo.FindProperty("torpedoCountText").objectReferenceValue =

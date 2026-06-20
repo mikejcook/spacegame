@@ -100,6 +100,9 @@ public class CombatViewController : MonoBehaviour
     [Header("Action Bar Buttons — wired by GameSceneSetup")]
     [SerializeField] private Button fireTorpedesButton;
     [SerializeField] private Button fireParticleCannonButton;
+    [SerializeField] private Button      emergencyThrustButton;
+    [SerializeField] private TMP_Text    emergencyThrustStatusText;
+    [SerializeField] private GameObject  emergencyThrustContainer;
 
     [Header("Torpedo Count Label — wired by GameSceneSetup")]
     [Tooltip("Small label below the Fire Torpedoes button showing remaining count (e.g. ×8).")]
@@ -262,6 +265,7 @@ public class CombatViewController : MonoBehaviour
 
         fireTorpedesButton?.onClick.AddListener(FireTorpedoes);
         fireParticleCannonButton?.onClick.AddListener(FireParticleCannon);
+        emergencyThrustButton?.onClick.AddListener(OnEmergencyThrustClicked);
 
         // Pilot maneuver dropdown
         if (pilotManeuverDropdown != null)
@@ -371,6 +375,9 @@ public class CombatViewController : MonoBehaviour
         CheckCombatEnd();
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(PlayerTurnShieldRegenRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
             yield return StartCoroutine(PlayerTurnRepairRoutine());
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
@@ -420,6 +427,9 @@ public class CombatViewController : MonoBehaviour
         CheckCombatEnd();
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
+            yield return StartCoroutine(PlayerTurnShieldRegenRoutine());
+
+        if (_combatState.Phase == CombatPhase.PlayerTurn)
             yield return StartCoroutine(PlayerTurnRepairRoutine());
 
         if (_combatState.Phase == CombatPhase.PlayerTurn)
@@ -433,6 +443,21 @@ public class CombatViewController : MonoBehaviour
             StartCoroutine(ShowTurnBanner("Player's Turn"));
             SetFireButtonsEnabled(true);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Shield regen (end of player turn, before engineer repair)
+    // -----------------------------------------------------------------------
+
+    private IEnumerator PlayerTurnShieldRegenRoutine()
+    {
+        var regen = CombatResolver.ShieldRegen(_combatState);
+        if (!regen.Applied) yield break;
+
+        AppendLog($"<color={ColShields}>Shields</color> +{regen.Amount}");
+        AppendDetailLog($"<color={ColShields}>Shields</color> {regen.Description}");
+        RefreshDisplaysFromState();
+        yield return new WaitForSeconds(0.2f);
     }
 
     // -----------------------------------------------------------------------
@@ -490,6 +515,13 @@ public class CombatViewController : MonoBehaviour
             CheckCombatEnd();
 
             if (_combatState.Phase != CombatPhase.PlayerTurn) yield break;
+        }
+
+        // Advance Emergency Thrust active/cooldown countdown at end of enemy turn.
+        if (_combatState.Research.HasEmergencyThrust)
+        {
+            _combatState.AdvanceEmergencyThrustTurn();
+            RefreshEmergencyThrustUI();
         }
     }
 
@@ -639,6 +671,31 @@ public class CombatViewController : MonoBehaviour
         return img;
     }
 
+    private void OnEmergencyThrustClicked()
+    {
+        if (_combatState == null || !_combatState.CanActivateEmergencyThrust) return;
+        if (_combatState.Phase != CombatPhase.PlayerTurn) return;
+        _combatState.ActivateEmergencyThrust();
+        AppendLog($"<color={ColShields}>Emergency Thrust</color> active — defense +{Constants.Research.Effects.EmergencyThrustDefenseBonus} for {Constants.Research.Effects.EmergencyThrustActiveTurns} turns.");
+        AppendDetailLog($"<color={ColShields}>Emergency Thrust</color> activated — defense +{Constants.Research.Effects.EmergencyThrustDefenseBonus} for {Constants.Research.Effects.EmergencyThrustActiveTurns} turns.");
+        RefreshEmergencyThrustUI();
+    }
+
+    private void RefreshEmergencyThrustUI()
+    {
+        if (emergencyThrustButton == null) return;
+        bool ready = _combatState?.CanActivateEmergencyThrust ?? false;
+        emergencyThrustButton.interactable = ready;
+
+        if (emergencyThrustStatusText == null) return;
+        if (_combatState == null || (_combatState.EmergencyThrustActiveTurns == 0 && _combatState.EmergencyThrustCooldownTurns == 0))
+            emergencyThrustStatusText.text = "";
+        else if (_combatState.EmergencyThrustActiveTurns > 0)
+            emergencyThrustStatusText.text = $"Active: {_combatState.EmergencyThrustActiveTurns}";
+        else
+            emergencyThrustStatusText.text = $"Cooldown: {_combatState.EmergencyThrustCooldownTurns}";
+    }
+
     private void SetFireButtonsEnabled(bool enabled)
     {
         if (fireParticleCannonButton != null)
@@ -766,6 +823,7 @@ public class CombatViewController : MonoBehaviour
     private const string ColPlayer  = "#4DD9FF";   // cyan  — player actions
     private const string ColEnemy   = "#FF6633";   // orange — enemy actions
     private const string ColEngineer= "#60FF90";   // green  — engineer repair
+    private const string ColShields = "#66BBFF";   // blue  — shield regen
     private const string ColRolls   = "#8AADCC";   // dim blue-grey — roll detail
 
     /// <summary>
@@ -929,6 +987,7 @@ public class CombatViewController : MonoBehaviour
         _destroyedSlots.Clear();
         _combatState = null;
         SetFireButtonsEnabled(true);
+        if (emergencyThrustContainer != null) emergencyThrustContainer.SetActive(false);
         if (targetInfoTitle != null) targetInfoTitle.text = "Target";
         RefreshDisplays(100f, 100f, 100f, 100f);
         RefreshTorpedoCountDisplay();
@@ -1051,6 +1110,12 @@ public class CombatViewController : MonoBehaviour
         SetTarget(initialTarget);
 
         RefreshTorpedoCountDisplay();   // OnCombatEnter ran before SetCombatState, so refresh now
+
+        bool hasThrust = _combatState?.Research.HasEmergencyThrust ?? false;
+        if (emergencyThrustContainer != null)
+            emergencyThrustContainer.SetActive(hasThrust);
+        RefreshEmergencyThrustUI();
+
         StartCoroutine(ShowTurnBanner("Player's Turn"));
         Debug.Log($"[CombatViewController] StartCombat — {enemies.Length} enemy(s).");
     }

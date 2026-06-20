@@ -128,7 +128,8 @@ public static class CombatResolver
         int skill       = GetPlayerWeaponSkill(state, isParticleCannon: true);
         int tierBonus   = TierBonus(state.PlayerParticleCannonTier);
         r.AttackerRoll  = DiceRoller.D20();
-        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
+        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus
+                          + state.Research.WeaponAttackBonus;   // combat_1 Predictive Targeting
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill     = GetEnemyPilotSkill(target);
@@ -147,6 +148,9 @@ public static class CombatResolver
 
         r.RawDamage = DiceRoller.D6() + DiceRoller.D6() + TierBonus(state.PlayerParticleCannonTier);
 
+        // combat_2a Coherence Amplifier reduces the hull DR particle cannons must overcome.
+        int hullDR = Mathf.Max(0, ParticleCannonVsHullDR - state.Research.ParticleCannonHullPenetration);
+
         if (target.ShieldsUp)
         {
             // Particle cannons are efficient against shields — no DR
@@ -155,8 +159,8 @@ public static class CombatResolver
         }
         else
         {
-            // Hull armor resists particle cannons
-            r.DR        = ParticleCannonVsHullDR;
+            // Hull armor resists particle cannons (reduced by penetration research)
+            r.DR        = hullDR;
             r.HitShields = false;
         }
 
@@ -164,7 +168,7 @@ public static class CombatResolver
 
         bool hadShields = target.ShieldsUp;
         (_, r.HullOverflow) = ApplyDamageToEnemy(target, r.FinalDamage, r.HitShields,
-                                                  hullDR: r.IsParticleCannonAttack ? ParticleCannonVsHullDR : 0);
+                                                  hullDR: hullDR);
         r.ShieldsBroken = hadShields && !target.ShieldsUp;
 
         string where = r.HitShields ? "shields" : "hull";
@@ -187,7 +191,8 @@ public static class CombatResolver
         int skill       = GetPlayerWeaponSkill(state, isParticleCannon: false);
         int tierBonus   = TierBonus(state.PlayerTorpedoTier);
         r.AttackerRoll  = DiceRoller.D20();
-        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus;
+        r.AttackerTotal = r.AttackerRoll + skill + tierBonus + state.ManeuverAttackBonus
+                          + state.Research.WeaponAttackBonus;   // combat_1 Predictive Targeting
 
         // Flat defense DC — pilot skill + defense rating, no roll
         int pilotSkill   = GetEnemyPilotSkill(target);
@@ -211,8 +216,8 @@ public static class CombatResolver
 
         if (target.ShieldsUp)
         {
-            // Shields strongly resist torpedoes
-            r.DR         = TorpedoVsShieldDR;
+            // Shields strongly resist torpedoes — combat_2b Shaped Charge Warheads cuts into that DR.
+            r.DR         = Mathf.Max(0, TorpedoVsShieldDR - state.Research.TorpedoShieldPenetration);
             r.HitShields = true;
         }
         else
@@ -259,8 +264,12 @@ public static class CombatResolver
         // Flat defense DC — pilot skill + defense rating + maneuver bonus, no roll
         int pilotSkill   = GetPlayerPilotSkill(state);
         int defenseBonus = state.PlayerShieldsUp ? state.PlayerShieldDefenseRating : state.PlayerArmorDefenseRating;
+        // Research defense: prop_3b adds vs all; shields_1/2 add while shields are up.
+        int researchDefense = state.Research.DefenseBonusVsAll
+                            + (state.PlayerShieldsUp ? state.Research.ShieldDefenseBonus : 0);
         r.DefenderRoll   = 0;
-        r.DefenderTotal  = 10 + pilotSkill + defenseBonus + state.ManeuverDefenseBonus;
+        r.DefenderTotal  = 10 + pilotSkill + defenseBonus + state.ManeuverDefenseBonus
+                           + researchDefense + state.EmergencyThrustDefenseBonus;
 
         r.IsParticleCannonAttack = useParticleCannon;
         r.IsHit = r.AttackerTotal >= r.DefenderTotal;
@@ -285,7 +294,25 @@ public static class CombatResolver
             r.HitShields = state.PlayerShieldsUp;
         }
 
-        r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR);
+        // Research damage reduction: shields_3 (Tessellated Barrier) while shields up,
+        // armor_1/2/3 (plating) while shields are down.
+        int researchDR = state.PlayerShieldsUp
+            ? state.Research.ShieldDamageReduction
+            : state.Research.ArmorDamageReduction;
+        r.FinalDamage = Mathf.Max(0, r.RawDamage - r.DR - researchDR);
+
+        // Chance to ignore the hit entirely: shields_5 (Phase-Inversion) while shields up,
+        // armor_5 (Null-Impact) while shields down.
+        float ignoreChance = state.PlayerShieldsUp
+            ? state.Research.ShieldIgnoreChance
+            : state.Research.ArmorIgnoreChance;
+        if (ignoreChance > 0f && Random.value < ignoreChance)
+        {
+            r.FinalDamage = 0;
+            string layer = state.PlayerShieldsUp ? "Shields phase the hit" : "Armor negates the hit";
+            r.Description = $"{layer} — Enemy {weaponName} deals no damage! ({r.AttackerTotal} vs {r.DefenderTotal})";
+            return r;
+        }
 
         bool playerHadShields = state.PlayerShieldsUp;
         int  hullDR           = useParticleCannon ? ParticleCannonVsHullDR : 0;
@@ -356,6 +383,45 @@ public static class CombatResolver
         int hullOverflow = Mathf.Max(0, rawOverflow - hullDR);
         state.PlayerCurrentHull = Mathf.Max(0, state.PlayerCurrentHull - hullOverflow);
         return (shieldDmg, hullOverflow);
+    }
+
+    // ── Shield regen (end of player turn, before engineer repair) ────────────
+
+    public struct ShieldRegenResult
+    {
+        /// <summary>False when shields are not installed or already full.</summary>
+        public bool Applied;
+        public int  Amount;
+        public bool Researched;
+        public string Description;
+    }
+
+    /// <summary>
+    /// Passive shield regeneration at the end of the player's turn.
+    /// Base: 1 pt per shield tier. Regenerative Field (shields_4) increases it by 50%, min 1.
+    /// Only applies while shields are installed and below maximum.
+    /// </summary>
+    public static ShieldRegenResult ShieldRegen(CombatState state)
+    {
+        if (state.PlayerShieldTier <= 0 || state.PlayerCurrentShields >= state.PlayerMaxShields)
+            return new ShieldRegenResult { Description = "" };
+
+        int   basePts    = state.PlayerShieldTier;
+        bool  researched = state.Research.ShieldRegenResearched > 0;
+        int   amount     = researched
+            ? Mathf.Max(1, Mathf.RoundToInt(basePts * Constants.Research.Effects.RegenerativeFieldRegenMultiplier))
+            : basePts;
+
+        state.PlayerCurrentShields = Mathf.Min(state.PlayerMaxShields, state.PlayerCurrentShields + amount);
+
+        string bonus = researched ? " (Regenerative Field)" : "";
+        return new ShieldRegenResult
+        {
+            Applied    = true,
+            Amount     = amount,
+            Researched = researched,
+            Description = $"Shields regenerate {amount} pts{bonus}.",
+        };
     }
 
     // ── Engineer repair ───────────────────────────────────────────────────────

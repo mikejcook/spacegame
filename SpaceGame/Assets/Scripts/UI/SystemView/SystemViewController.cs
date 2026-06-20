@@ -1510,7 +1510,8 @@ public class SystemViewController : MonoBehaviour
                     torpedoes:  torpedoItem,
                     shields:    shieldItem,
                     armor:      armorItem,
-                    engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer)
+                    engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer),
+                    research:   ResearchEffects.GetCombatModifiers(gm.GetUnlockedResearchIds())
                 );
 
                 combatViewController.SetCombatState(combatState);
@@ -1608,7 +1609,8 @@ public class SystemViewController : MonoBehaviour
                         torpedoes:  GetSlotItem(Constants.Ship.EquipmentSlots.Torpedoes),
                         shields:    GetSlotItem(Constants.Ship.EquipmentSlots.Shields),
                         armor:      GetSlotItem(Constants.Ship.EquipmentSlots.Armor),
-                        engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer)
+                        engineer:   db?.GetCrewByRole(saveId, Constants.Crew.Roles.Engineer),
+                        research:   ResearchEffects.GetCombatModifiers(gm.GetUnlockedResearchIds())
                     );
                     combatViewController.OnCombatEnter();
                     combatViewController.SetCombatState(combatState);

@@ -47,6 +47,7 @@ public class ResearchViewController : MonoBehaviour
     [SerializeField] private TMP_Text      detailCostText;
     [SerializeField] private TMP_Text      detailCategoryText;
     [SerializeField] private Button        unlockButton;
+    [SerializeField] private Button        debugResearchNowButton;
     [SerializeField] private Button        closeDetailButton;
 
     [SerializeField] private GameObject    researchingOverlayPrefab;
@@ -81,6 +82,7 @@ public class ResearchViewController : MonoBehaviour
     private void Start()
     {
         unlockButton?.onClick.AddListener(OnUnlockClicked);
+        debugResearchNowButton?.onClick.AddListener(OnDebugResearchNowClicked);
         closeDetailButton?.onClick.AddListener(HideDetail);
 
         HideDetail();
@@ -416,6 +418,23 @@ public class ResearchViewController : MonoBehaviour
             detailPanelGroup.blocksRaycasts = false;
             detailPanelGroup.interactable   = false;
         }
+    }
+
+    private void OnDebugResearchNowClicked()
+    {
+        if (_selectedNode == null) return;
+        if (_unlockedIds.Contains(_selectedNode.id)) return;
+        if (!IsAvailable(_selectedNode)) return;
+
+        var gm = GameManager.Instance;
+        if (gm == null) return;
+
+        // Bypass salvage cost and duration — unlock immediately.
+        gm.DebugUnlockResearch(_selectedNode.id);
+
+        _unlockedIds = gm.GetUnlockedResearchIds();
+        RefreshAllNodeVisuals();
+        HideDetail();
     }
 
     private void OnUnlockClicked()

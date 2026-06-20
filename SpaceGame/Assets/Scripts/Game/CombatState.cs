@@ -86,6 +86,8 @@ public class CombatState
 
     // ── Player ship equipment modifiers (read from installed gear at combat start) ──
 
+    /// <summary>Installed shield equipment tier (1–6). 0 = no shields installed.</summary>
+    public int PlayerShieldTier          { get; set; }
     /// <summary>Added to defense roll while player shields are up.</summary>
     public int PlayerShieldDefenseRating { get; set; }
     /// <summary>Added to defense roll when player shields are down.</summary>
@@ -126,6 +128,51 @@ public class CombatState
     /// </summary>
     public int ManeuverDefenseBonus { get; set; }
 
+    // ── Research-derived combat modifiers (set at Begin from unlocked research) ──
+
+    /// <summary>All passive/offensive combat modifiers granted by the player's research.</summary>
+    public CombatResearchModifiers Research { get; set; }
+
+    // ── Emergency Thrust active ability (prop_3a) ─────────────────────────────
+
+    /// <summary>Turns remaining where the +2 defense bonus is active. 0 = inactive.</summary>
+    public int EmergencyThrustActiveTurns   { get; set; }
+    /// <summary>Turns remaining on cooldown. 0 = ready to activate.</summary>
+    public int EmergencyThrustCooldownTurns { get; set; }
+
+    /// <summary>Defense bonus applied to all incoming attacks while active.</summary>
+    public int EmergencyThrustDefenseBonus =>
+        EmergencyThrustActiveTurns > 0 ? Constants.Research.Effects.EmergencyThrustDefenseBonus : 0;
+
+    /// <summary>True when the ability can be activated (researched check is the caller's responsibility).</summary>
+    public bool CanActivateEmergencyThrust =>
+        EmergencyThrustActiveTurns == 0 && EmergencyThrustCooldownTurns == 0;
+
+    /// <summary>Activates Emergency Thrust for the configured number of turns.</summary>
+    public void ActivateEmergencyThrust()
+    {
+        EmergencyThrustActiveTurns   = Constants.Research.Effects.EmergencyThrustActiveTurns;
+        EmergencyThrustCooldownTurns = 0;
+    }
+
+    /// <summary>
+    /// Called at the end of each enemy turn. Decrements the active counter; when it
+    /// hits zero the cooldown starts. Decrements cooldown when active is already zero.
+    /// </summary>
+    public void AdvanceEmergencyThrustTurn()
+    {
+        if (EmergencyThrustActiveTurns > 0)
+        {
+            EmergencyThrustActiveTurns--;
+            if (EmergencyThrustActiveTurns == 0)
+                EmergencyThrustCooldownTurns = Constants.Research.Effects.EmergencyThrustCooldownTurns;
+        }
+        else if (EmergencyThrustCooldownTurns > 0)
+        {
+            EmergencyThrustCooldownTurns--;
+        }
+    }
+
     // ── Phase ─────────────────────────────────────────────────────────────────
 
     public CombatPhase Phase { get; set; } = CombatPhase.PlayerTurn;
@@ -146,10 +193,15 @@ public class CombatState
         EquipmentItem    torpedoes    = null,
         EquipmentItem    shields      = null,
         EquipmentItem    armor        = null,
-        Character        engineer     = null)
+        Character        engineer     = null,
+        CombatResearchModifiers research = default)
     {
         int torpedoTier  = torpedoes != null ? (int)torpedoes.Tier : 0;
         int torpedoCount = torpedoTier > 0 ? torpedoTier * 4 : 0;  // Mk I = 4 shots … Mk VI = 24
+
+        // Research can enlarge the torpedo magazine (combat_3b Warhead Miniaturization).
+        if (torpedoCount > 0 && research.TorpedoCountMultiplier > 1f)
+            torpedoCount = Mathf.RoundToInt(torpedoCount * research.TorpedoCountMultiplier);
 
         // Each tier of Shields/Armor adds +5 to the respective max HP pool.
         int shieldTierBonus = shields != null ? (int)shields.Tier * 5 : 0;
@@ -174,10 +226,13 @@ public class CombatState
             PlayerTorpedoTier  = torpedoTier,
             PlayerTorpedoCount = torpedoCount,
 
+            PlayerShieldTier          = shields != null ? (int)shields.Tier     : 0,
             // DefenseRating on shield equipment boosts defense vs attacks while shields are up.
             // DefenseRating on armor boosts defense when shields are down.
             PlayerShieldDefenseRating = shields != null ? shields.DefenseRating : 0,
             PlayerArmorDefenseRating  = armor   != null ? armor.DefenseRating   : 0,
+
+            Research = research,
 
             Phase = CombatPhase.PlayerTurn,
         };

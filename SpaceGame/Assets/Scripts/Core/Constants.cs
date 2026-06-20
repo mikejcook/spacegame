@@ -240,6 +240,9 @@ public static class Constants
         public const int StartingLoyalty  = 75;
         public const int MaxLoyalty       = 100;
         public const int MutinyThreshold  = 0;   // loyalty <= this triggers game over
+
+        /// <summary>Loyalty earned per in-game day during travel (base rate, no research).</summary>
+        public const float LoyaltyPerDay  = 1f;
     }
 
     public static class CargoBay
@@ -291,6 +294,137 @@ public static class Constants
         public static int GetCost(int tier)
         {
             return UnityEngine.Mathf.RoundToInt(CostPercentOfSalvageCap * CargoBay.GetSalvageCapacity(tier));
+        }
+
+        /// <summary>
+        /// Node IDs from research_tree.json. Keep in sync with that file — these are the
+        /// strings stored in SaveGame.UnlockedResearchJson and matched against unlock effects.
+        /// </summary>
+        public static class Ids
+        {
+            // Crew
+            public const string TrainingProgram         = "crew_1";
+            public const string RecreationalFacilities  = "crew_2";
+            public const string CrewQuartersImprovement = "crew_3";
+
+            // Propulsion
+            public const string PlasmaExhaust           = "prop_1";
+            public const string SlipstreamCalibration   = "prop_2";
+            public const string EmergencyThrust         = "prop_3a";
+            public const string ManeuveringThrusters    = "prop_3b";
+            public const string LowEmissionDrive        = "prop_4";
+
+            // Armor
+            public const string ReactivePlating         = "armor_1";
+            public const string AdaptiveComposite       = "armor_2";
+            public const string AblativePlating         = "armor_3";
+            public const string RegenerativeHull        = "armor_4";
+            public const string NullImpactArmor         = "armor_5";
+
+            // Shields
+            public const string HarmonicShields         = "shields_1";
+            public const string AdaptiveFrequencies     = "shields_2";
+            public const string TessellatedBarrier      = "shields_3";
+            public const string RegenerativeField       = "shields_4";
+            public const string PhaseInversion          = "shields_5";
+
+            // Combat
+            public const string PredictiveTargeting     = "combat_1";
+            public const string CoherenceAmplifier      = "combat_2a";
+            public const string ShapedChargeWarheads    = "combat_2b";
+            public const string ShieldDisruption        = "combat_3a";
+            public const string WarheadMiniaturization  = "combat_3b";
+            public const string OverchargeCapacitors    = "combat_4";
+            public const string SplitFire               = "combat_5";
+
+            // Starship Upgrades (equipment tier unlocks)
+            public const string MarkIIEquipment         = "upgrades_1";
+            public const string MarkIIIEquipment        = "upgrades_2";
+            public const string MarkIVEquipment         = "upgrades_3";
+            public const string MarkVEquipment          = "upgrades_4";
+            public const string MarkVIEquipment         = "upgrades_5";
+        }
+
+        /// <summary>
+        /// Tunable magnitudes for each research effect. Centralised here so balance can be
+        /// adjusted without touching gameplay code. The frameworks that consume these live in
+        /// <see cref="ResearchEffects"/> (combat) and GameManager (skill points / tier gating).
+        /// </summary>
+        public static class Effects
+        {
+            // ── Crew ────────────────────────────────────────────────────────────
+            /// <summary>Extra skill points granted per character level by Training Program.</summary>
+            public const int TrainingProgramPointsPerLevel = 1;
+
+            /// <summary>Extra loyalty per day from Recreational Facilities (crew_2), when He3 > 0.</summary>
+            public const float RecreationalFacilitiesLoyaltyPerDay = 1f;
+
+            /// <summary>Extra loyalty cap from Crew Quarters Improvement (crew_3).</summary>
+            public const int CrewQuartersMaxLoyaltyBonus = 20;
+
+            // ── Propulsion ───────────────────────────────────────────────────────
+            /// <summary>Fraction by which Plasma Exhaust (prop_1) reduces sub-light He3 costs.</summary>
+            public const float PlasmaExhaustFuelReduction = 0.25f;
+
+            /// <summary>Fraction by which Slipstream Calibration (prop_2) reduces FTL He3 costs.</summary>
+            public const float SlipstreamCalibrationFuelReduction = 0.25f;
+
+            /// <summary>Defense DC bonus while Emergency Thrust (prop_3a) is active.</summary>
+            public const int EmergencyThrustDefenseBonus  = 2;
+            /// <summary>Number of turns Emergency Thrust stays active after activation.</summary>
+            public const int EmergencyThrustActiveTurns   = 3;
+            /// <summary>Cooldown turns after Emergency Thrust expires before it can be used again.</summary>
+            public const int EmergencyThrustCooldownTurns = 4;
+
+            // ── Starship Upgrades — equipment tier gating ───────────────────────
+            /// <summary>Research id that unlocks a given equipment tier (2-6). Tier 1 needs none.</summary>
+            public static string EquipmentTierResearchId(int tier) => tier switch
+            {
+                2 => Ids.MarkIIEquipment,
+                3 => Ids.MarkIIIEquipment,
+                4 => Ids.MarkIVEquipment,
+                5 => Ids.MarkVEquipment,
+                6 => Ids.MarkVIEquipment,
+                _ => null,
+            };
+
+            /// <summary>Display name of the research required to reach a given equipment tier (2-6).</summary>
+            public static string EquipmentTierResearchName(int tier) => tier switch
+            {
+                2 => "Mark II Equipment",
+                3 => "Mark III Equipment",
+                4 => "Mark IV Equipment",
+                5 => "Mark V Equipment",
+                6 => "Mark VI Equipment",
+                _ => "",
+            };
+
+            // ── Combat: player offense ──────────────────────────────────────────
+            public const int   PredictiveTargetingAttackBonus    = 2;    // combat_1: +to-hit, all weapons
+            public const int   CoherenceAmplifierHullPenetration = 2;    // combat_2a: reduces particle-cannon-vs-hull DR
+            public const int   ShapedChargeShieldPenetration     = 4;    // combat_2b: reduces torpedo-vs-shield DR
+            public const float ShieldDisruptionChance            = 0.25f; // combat_3a: chance per particle-cannon hit
+            public const int   ShieldDisruptionAmount            = 2;    // combat_3a: enemy shield defense reduction
+            public const float WarheadMiniaturizationTorpedoMult = 1.5f;  // combat_3b: torpedo magazine multiplier
+
+            // ── Combat: player defense ──────────────────────────────────────────
+            public const int HarmonicShieldsDefense      = 1;  // shields_1: +defense while shields up
+            public const int AdaptiveFrequenciesDefense  = 1;  // shields_2: additional +defense while shields up
+            public const int TessellatedBarrierDR        = 2;  // shields_3: damage reduction while shields up
+            /// <summary>
+            /// Multiplier applied to the shield-tier base regen by Regenerative Field (shields_4).
+            /// Base regen = shieldTier pts/turn; researched = max(1, RoundToInt(shieldTier * mult)).
+            /// </summary>
+            public const float RegenerativeFieldRegenMultiplier = 1.5f;  // shields_4
+            public const float PhaseInversionIgnoreChance = 0.10f; // shields_5: chance to ignore a hit while shields up
+
+            public const int ReactivePlatingDR           = 1;  // armor_1: hull damage reduction
+            public const int AdaptiveCompositeDR         = 1;  // armor_2: additional hull damage reduction
+            public const int AblativePlatingDR           = 2;  // armor_3: additional hull damage reduction
+            public const int RegenerativeHullPerTurn     = 2;  // armor_4: hull regen per combat turn (framework)
+            public const float NullImpactIgnoreChance    = 0.10f; // armor_5: chance to ignore a hit while shields down
+
+            public const int ManeuveringThrustersDefense = 1;  // prop_3b: +defense vs all attacks
         }
     }
 

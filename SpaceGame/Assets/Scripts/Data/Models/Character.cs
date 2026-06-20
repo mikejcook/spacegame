@@ -186,14 +186,22 @@ public class Character
         }
     }
 
-    public void GainExperience(int amount)
+    /// <summary>
+    /// Adds XP and levels the character up as thresholds are crossed.
+    /// Returns the number of levels gained (0 if none) so callers can apply
+    /// per-level bonuses such as the Training Program research effect.
+    /// </summary>
+    public int GainExperience(int amount)
     {
         ExperiencePoints += amount;
+        int levelsGained = 0;
         while (ExperiencePoints >= ExperienceToNextLevel)
         {
             ExperiencePoints -= ExperienceToNextLevel;
             LevelUp();
+            levelsGained++;
         }
+        return levelsGained;
     }
 
     /// <summary>

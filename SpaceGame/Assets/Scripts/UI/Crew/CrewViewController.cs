@@ -857,14 +857,13 @@ public class CrewViewController : MonoBehaviour
 
     private void OnDebugAddXP(Character person)
     {
-        person.GainExperience(100);
-
         var gm = GameManager.Instance;
-        if (gm?.Database != null)
-        {
-            try   { gm.Database.Characters.Update(person); }
-            catch (System.Exception e) { Debug.LogError($"[CrewViewController] Debug XP save failed: {e.Message}"); }
-        }
+        if (gm != null)
+            // Routed through GameManager so the Training Program per-level skill-point
+            // bonus is applied and the character is persisted.
+            gm.AwardExperience(person, 100);
+        else
+            person.GainExperience(100);
 
         // Refresh the detail panel (rebuilds XP bar, level text, skill-up button visibility)
         ShowDetail(person);

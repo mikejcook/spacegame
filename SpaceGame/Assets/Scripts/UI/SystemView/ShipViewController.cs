@@ -189,12 +189,22 @@ public class ShipViewController : MonoBehaviour
             detailDescText.text = desc;
         }
 
-        // Upgrade cost + button state — disable Upgrade at max tier.
-        bool canUpgrade = TryGetNextTier(item, out var next);
+        // Upgrade cost + button state. Disabled at max tier, or when the next tier
+        // is locked behind unresearched Mark-N Equipment.
+        bool hasNext       = TryGetNextTier(item, out var next);
+        int  maxTier       = GameManager.Instance?.GetMaxEquipmentTier() ?? 1;
+        bool researchGated = hasNext && (int)next > maxTier;
+        bool canUpgrade    = hasNext && !researchGated;
+
         if (detailCostText != null)
-            detailCostText.text = canUpgrade
-                ? $"{Constants.Ship.UpgradeCost(next)} Resources"
-                : "MAX TIER";
+        {
+            if (!hasNext)
+                detailCostText.text = "Max tier";
+            else if (researchGated)
+                detailCostText.text = $"Locked — research {Constants.Research.Effects.EquipmentTierResearchName((int)next)}";
+            else
+                detailCostText.text = $"{Constants.Ship.UpgradeCost(next)} Resources";
+        }
         if (upgradeButton != null)
             upgradeButton.interactable = canUpgrade;
 
@@ -231,6 +241,18 @@ public class ShipViewController : MonoBehaviour
             return;
         }
 
+        // Research gate — next tier must be unlocked by Mark-N Equipment research.
+        int maxTier = GameManager.Instance?.GetMaxEquipmentTier() ?? 1;
+        if ((int)nextTier > maxTier)
+        {
+            if (confirmText != null)
+                confirmText.text =
+                    $"{(_currentItem != null ? _currentItem.Name : _currentSlotName)} requires " +
+                    $"{Constants.Research.Effects.EquipmentTierResearchName((int)nextTier)} research before it can be upgraded.";
+            ShowConfirm();   // both buttons simply dismiss — OnConfirmYes re-checks the gate
+            return;
+        }
+
         int cost = Constants.Ship.UpgradeCost(nextTier);
         string compName = _currentItem != null ? _currentItem.Name : _currentSlotName;
 
@@ -260,6 +282,14 @@ public class ShipViewController : MonoBehaviour
         if (!TryGetNextTier(_currentItem, out var nextTier))
         {
             // Max tier (or guard) — just dismiss.
+            HideConfirm();
+            return;
+        }
+
+        // Research gate — refuse the upgrade if the next tier isn't unlocked yet.
+        int maxTier = GameManager.Instance?.GetMaxEquipmentTier() ?? 1;
+        if ((int)nextTier > maxTier)
+        {
             HideConfirm();
             return;
         }
