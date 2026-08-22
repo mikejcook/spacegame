@@ -1144,6 +1144,39 @@ public class CombatViewController : MonoBehaviour
     /// the ship-destruction explosion and sound.  Yields for the explosion
     /// duration so the caller can wait before resolving combat end.
     ///
+    /// When the currently targeted slot is destroyed, move the reticle to the
+    /// next live ship to the right, wrapping to the farthest-left live ship.
+    /// If no live ships remain, hides the reticle and clears the target.
+    private void AutoRetargetAfterDestruction(RectTransform destroyedSlot)
+    {
+        // Ordered left → right; only slots actually in use this combat.
+        var orderedSlots = new[] { enemyLeftSlotRT, enemyCenterSlotRT, enemyRightSlotRT };
+
+        int destroyedIdx = System.Array.IndexOf(orderedSlots, destroyedSlot);
+
+        // Search right of the destroyed slot first, then wrap from left.
+        RectTransform next = null;
+        for (int offset = 1; offset < orderedSlots.Length; offset++)
+        {
+            int idx = (destroyedIdx + offset) % orderedSlots.Length;
+            var candidate = orderedSlots[idx];
+            if (!_slotToState.TryGetValue(candidate, out var state)) continue;
+            if (!state.IsDestroyed)
+            {
+                next = candidate;
+                break;
+            }
+        }
+
+        if (next != null)
+            SetTarget(next);
+        else
+        {
+            _currentTargetRT = null;
+            combatCrosshair?.Hide();
+        }
+    }
+
     /// Safe to call even when no ships were destroyed this turn — exits
     /// immediately without yielding.
     /// </summary>
@@ -1160,6 +1193,10 @@ public class CombatViewController : MonoBehaviour
 
             _destroyedSlots.Add(slotRT);
             anyDestroyed = true;
+
+            // If this was the current target, move the reticle before hiding.
+            if (slotRT == _currentTargetRT)
+                AutoRetargetAfterDestruction(slotRT);
 
             // Hide the ship image immediately so the explosion plays over nothing.
             if (_slotToImage.TryGetValue(slotRT, out var img) && img != null)

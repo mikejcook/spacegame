@@ -201,9 +201,9 @@ public class ShipViewController : MonoBehaviour
             if (!hasNext)
                 detailCostText.text = "Max tier";
             else if (researchGated)
-                detailCostText.text = $"Locked — research {Constants.Research.Effects.EquipmentTierResearchName((int)next)}";
+                detailCostText.text = $"Locked - Research {Constants.Research.Effects.EquipmentTierResearchName((int)next)}";
             else
-                detailCostText.text = $"{Constants.Ship.UpgradeCost(next)} Resources";
+                detailCostText.text = $"{Constants.Ship.UpgradeCost(next)} Iridium";
         }
         if (upgradeButton != null)
             upgradeButton.interactable = canUpgrade;

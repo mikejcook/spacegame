@@ -1045,13 +1045,13 @@ public static class GameSceneSetup
         // ── Upgrade cost ──────────────────────────────────────────────────
         float costY = descTop - DescH - 18f;
         var costLabel = MakeTMP(card.transform, "CostLabel", "UPGRADE COST", 20, TextSubtle);
-        PlaceRect(costLabel, anchor(0f, 1f), anchor(0f, 1f),
-                  v2(Pad + 120f, costY - 14f), v2(240f, 28f));
-        costLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Right;
+        PlaceRect(costLabel, anchor(0f, 1f), anchor(0.5f, 1f),
+                  v2(0f, costY - 14f), v2(-Pad, 28f));
+        costLabel.GetComponent<TextMeshProUGUI>().alignment = TextAlignmentOptions.Left;
 
         var costValue = MakeTMP(card.transform, "CostValue", "[RESOURCES TBD]", 20, AccentCyan);
-        PlaceRect(costValue, anchor(0f, 1f), anchor(1f, 1f),
-                  v2(0f, costY - 14f), v2(-Pad * 2f - 260f, 28f));
+        PlaceRect(costValue, anchor(0.5f, 1f), anchor(1f, 1f),
+                  v2(0f, costY - 14f), v2(-Pad, 28f));
         var costTMP = costValue.GetComponent<TextMeshProUGUI>();
         costTMP.alignment = TextAlignmentOptions.Right;
 
